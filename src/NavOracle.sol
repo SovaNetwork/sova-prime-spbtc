@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.25;
 
 import {tRWA} from "./tRWA.sol";
 
@@ -60,7 +60,7 @@ contract NavOracle {
 
         tRWA token = tRWA(_token);
         token.updateUnderlyingValue(_newUnderlyingPerToken);
-        
+
         emit UnderlyingValueUpdated(_token, _newUnderlyingPerToken, block.timestamp);
     }
 
@@ -71,9 +71,9 @@ contract NavOracle {
      */
     function setUpdaterStatus(address _updater, bool _isAuthorized) external onlyAdmin {
         if (_updater == address(0)) revert InvalidAddress();
-        
+
         authorizedUpdaters[_updater] = _isAuthorized;
-        
+
         emit UpdaterStatusChanged(_updater, _isAuthorized);
     }
 
@@ -84,9 +84,9 @@ contract NavOracle {
      */
     function setTokenStatus(address _token, bool _isSupported) external onlyAdmin {
         if (_token == address(0)) revert InvalidAddress();
-        
+
         supportedTokens[_token] = _isSupported;
-        
+
         emit TokenStatusChanged(_token, _isSupported);
     }
 
@@ -96,10 +96,10 @@ contract NavOracle {
      */
     function updateAdmin(address _newAdmin) external onlyAdmin {
         if (_newAdmin == address(0)) revert InvalidAddress();
-        
+
         address oldAdmin = admin;
         admin = _newAdmin;
-        
+
         emit AdminUpdated(oldAdmin, _newAdmin);
     }
 }

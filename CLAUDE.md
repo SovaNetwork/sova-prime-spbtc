@@ -10,11 +10,11 @@
 - Deploy: `forge script script/SimpleRWADeploy.s.sol:SimpleRWADeployScript --rpc-url <url> --private-key <key>`
 
 ## Code Style Guidelines
-- **Pragma**: Use `^0.8.13` or higher
+- **Pragma**: Use `^0.8.22` or higher
 - **Imports**: Named using `{Contract} from "path"` syntax
 - **Formatting**: 4-space indentation, braces on same line as declarations
 - **Types**: Always use explicit types (uint256 instead of uint)
-- **Naming**: 
+- **Naming**:
   - Contracts: PascalCase (tRWA, SimpleRWA)
   - Functions: camelCase (setNumber, updateNav)
   - Tests: prefix with `test_` or `testFuzz_`

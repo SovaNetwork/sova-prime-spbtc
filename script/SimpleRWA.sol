@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.25;
 
 /**
  * @title SimpleRWA
@@ -12,15 +12,15 @@ contract SimpleRWA {
     uint256 public totalSupply;
     address public owner;
     uint256 public underlyingPerToken; // Value of underlying asset per token in USD (18 decimals)
-    
+
     mapping(address => uint256) public balanceOf;
     mapping(address => mapping(address => uint256)) public allowance;
-    
+
     // Events
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
     event UnderlyingValueUpdated(uint256 newUnderlyingPerToken, uint256 timestamp);
-    
+
     /**
      * @notice Constructor
      * @param _name Token name
@@ -33,7 +33,7 @@ contract SimpleRWA {
         owner = msg.sender;
         underlyingPerToken = _initialUnderlyingPerToken;
     }
-    
+
     /**
      * @notice Only owner modifier
      */
@@ -41,7 +41,7 @@ contract SimpleRWA {
         require(msg.sender == owner, "Not authorized");
         _;
     }
-    
+
     /**
      * @notice Transfer tokens to another address
      * @param _to Recipient address
@@ -51,13 +51,13 @@ contract SimpleRWA {
     function transfer(address _to, uint256 _value) public returns (bool success) {
         require(_to != address(0), "Invalid recipient");
         require(balanceOf[msg.sender] >= _value, "Insufficient balance");
-        
+
         balanceOf[msg.sender] -= _value;
         balanceOf[_to] += _value;
         emit Transfer(msg.sender, _to, _value);
         return true;
     }
-    
+
     /**
      * @notice Approve spender to transfer tokens on behalf of the sender
      * @param _spender Address allowed to spend
@@ -66,12 +66,12 @@ contract SimpleRWA {
      */
     function approve(address _spender, uint256 _value) public returns (bool success) {
         require(_spender != address(0), "Invalid spender");
-        
+
         allowance[msg.sender][_spender] = _value;
         emit Approval(msg.sender, _spender, _value);
         return true;
     }
-    
+
     /**
      * @notice Transfer tokens from one address to another
      * @param _from Source address
@@ -83,14 +83,14 @@ contract SimpleRWA {
         require(_from != address(0) && _to != address(0), "Invalid address");
         require(balanceOf[_from] >= _value, "Insufficient balance");
         require(allowance[_from][msg.sender] >= _value, "Insufficient allowance");
-        
+
         balanceOf[_from] -= _value;
         balanceOf[_to] += _value;
         allowance[_from][msg.sender] -= _value;
         emit Transfer(_from, _to, _value);
         return true;
     }
-    
+
     /**
      * @notice Mint new tokens (only owner)
      * @param _to Recipient address
@@ -98,12 +98,12 @@ contract SimpleRWA {
      */
     function mint(address _to, uint256 _amount) public onlyOwner {
         require(_to != address(0), "Invalid recipient");
-        
+
         balanceOf[_to] += _amount;
         totalSupply += _amount;
         emit Transfer(address(0), _to, _amount);
     }
-    
+
     /**
      * @notice Burn tokens (only owner)
      * @param _from Address to burn from
@@ -112,23 +112,23 @@ contract SimpleRWA {
     function burn(address _from, uint256 _amount) public onlyOwner {
         require(_from != address(0), "Invalid address");
         require(balanceOf[_from] >= _amount, "Insufficient balance");
-        
+
         balanceOf[_from] -= _amount;
         totalSupply -= _amount;
         emit Transfer(_from, address(0), _amount);
     }
-    
+
     /**
      * @notice Update underlying value per token (only owner)
      * @param _newUnderlyingPerToken New underlying value per token in USD (18 decimals)
      */
     function updateUnderlyingValue(uint256 _newUnderlyingPerToken) public onlyOwner {
         require(_newUnderlyingPerToken > 0, "Invalid underlying value");
-        
+
         underlyingPerToken = _newUnderlyingPerToken;
         emit UnderlyingValueUpdated(_newUnderlyingPerToken, block.timestamp);
     }
-    
+
     /**
      * @notice Calculate the USD value of shares
      * @param _shares Number of shares

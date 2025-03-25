@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.25;
 
 /**
  * @title ComplianceModule
@@ -14,7 +14,7 @@ contract ComplianceModule {
     mapping(address => bool) public isExempt;
     uint256 public transferLimit;
     bool public enforceTransferLimits;
-    
+
     // Events
     event TokenRegistered(address indexed token);
     event TokenUnregistered(address indexed token);
@@ -25,14 +25,14 @@ contract ComplianceModule {
     event TransferLimitEnforcementUpdated(bool enforced);
     event AdminUpdated(address indexed oldAdmin, address indexed newAdmin);
     event ComplianceOfficerUpdated(address indexed oldOfficer, address indexed newOfficer);
-    
+
     // Errors
     error Unauthorized();
     error KycRequired();
     error TransferLimitExceeded();
     error InvalidAddress();
     error InvalidLimit();
-    
+
     /**
      * @notice Contract constructor
      * @param _transferLimit Initial transfer limit in tokens
@@ -44,7 +44,7 @@ contract ComplianceModule {
         transferLimit = _transferLimit;
         enforceTransferLimits = _enforceTransferLimits;
     }
-    
+
     /**
      * @notice Modifier to restrict function calls to admin
      */
@@ -52,7 +52,7 @@ contract ComplianceModule {
         if (msg.sender != admin) revert Unauthorized();
         _;
     }
-    
+
     /**
      * @notice Modifier to restrict function calls to compliance officer
      */
@@ -60,55 +60,55 @@ contract ComplianceModule {
         if (msg.sender != complianceOfficer && msg.sender != admin) revert Unauthorized();
         _;
     }
-    
+
     /**
      * @notice Register a token to be regulated by this compliance module
      * @param _token Address of the token to register
      */
     function registerToken(address _token) external onlyAdmin {
         if (_token == address(0)) revert InvalidAddress();
-        
+
         isRegulatedToken[_token] = true;
-        
+
         emit TokenRegistered(_token);
     }
-    
+
     /**
      * @notice Unregister a token from compliance regulation
      * @param _token Address of the token to unregister
      */
     function unregisterToken(address _token) external onlyAdmin {
         if (_token == address(0)) revert InvalidAddress();
-        
+
         isRegulatedToken[_token] = false;
-        
+
         emit TokenUnregistered(_token);
     }
-    
+
     /**
      * @notice Approve KYC for a user
      * @param _user Address of the user to approve
      */
     function approveKyc(address _user) external onlyComplianceOfficer {
         if (_user == address(0)) revert InvalidAddress();
-        
+
         isKycApproved[_user] = true;
-        
+
         emit KycApproved(_user);
     }
-    
+
     /**
      * @notice Revoke KYC for a user
      * @param _user Address of the user to revoke KYC from
      */
     function revokeKyc(address _user) external onlyComplianceOfficer {
         if (_user == address(0)) revert InvalidAddress();
-        
+
         isKycApproved[_user] = false;
-        
+
         emit KycRevoked(_user);
     }
-    
+
     /**
      * @notice Batch approve KYC for multiple users
      * @param _users Array of addresses to approve
@@ -116,13 +116,13 @@ contract ComplianceModule {
     function batchApproveKyc(address[] calldata _users) external onlyComplianceOfficer {
         for (uint256 i = 0; i < _users.length; i++) {
             if (_users[i] == address(0)) revert InvalidAddress();
-            
+
             isKycApproved[_users[i]] = true;
-            
+
             emit KycApproved(_users[i]);
         }
     }
-    
+
     /**
      * @notice Update exempt status for a user (exempt from KYC)
      * @param _user Address of the user
@@ -130,60 +130,60 @@ contract ComplianceModule {
      */
     function updateExemptStatus(address _user, bool _isExempt) external onlyComplianceOfficer {
         if (_user == address(0)) revert InvalidAddress();
-        
+
         isExempt[_user] = _isExempt;
-        
+
         emit ExemptStatusUpdated(_user, _isExempt);
     }
-    
+
     /**
      * @notice Update the transfer limit
      * @param _newLimit New transfer limit in tokens
      */
     function updateTransferLimit(uint256 _newLimit) external onlyComplianceOfficer {
         if (_newLimit == 0) revert InvalidLimit();
-        
+
         transferLimit = _newLimit;
-        
+
         emit TransferLimitUpdated(_newLimit);
     }
-    
+
     /**
      * @notice Enable or disable transfer limit enforcement
      * @param _enforce Whether to enforce transfer limits
      */
     function setTransferLimitEnforcement(bool _enforce) external onlyComplianceOfficer {
         enforceTransferLimits = _enforce;
-        
+
         emit TransferLimitEnforcementUpdated(_enforce);
     }
-    
+
     /**
      * @notice Update the admin address
      * @param _newAdmin Address of the new admin
      */
     function updateAdmin(address _newAdmin) external onlyAdmin {
         if (_newAdmin == address(0)) revert InvalidAddress();
-        
+
         address oldAdmin = admin;
         admin = _newAdmin;
-        
+
         emit AdminUpdated(oldAdmin, _newAdmin);
     }
-    
+
     /**
      * @notice Update the compliance officer address
      * @param _newOfficer Address of the new compliance officer
      */
     function updateComplianceOfficer(address _newOfficer) external onlyAdmin {
         if (_newOfficer == address(0)) revert InvalidAddress();
-        
+
         address oldOfficer = complianceOfficer;
         complianceOfficer = _newOfficer;
-        
+
         emit ComplianceOfficerUpdated(oldOfficer, _newOfficer);
     }
-    
+
     /**
      * @notice Check if a transfer is compliant
      * @param _token Address of the token
@@ -202,21 +202,21 @@ contract ComplianceModule {
         if (!isRegulatedToken[_token]) {
             return true;
         }
-        
+
         // Check KYC status for sender and receiver, unless exempt
         if (!isExempt[_from] && !isKycApproved[_from]) {
             return false;
         }
-        
+
         if (!isExempt[_to] && !isKycApproved[_to]) {
             return false;
         }
-        
+
         // Check transfer limits if enforced
         if (enforceTransferLimits && _amount > transferLimit) {
             return false;
         }
-        
+
         return true;
     }
 }

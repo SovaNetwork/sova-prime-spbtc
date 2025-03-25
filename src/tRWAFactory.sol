@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.25;
 
 import {tRWA} from "./tRWA.sol";
 import {NavOracle} from "./NavOracle.sol";
@@ -32,7 +32,7 @@ contract tRWAFactory {
      */
     constructor(address _oracle) {
         if (_oracle == address(0)) revert InvalidAddress();
-        
+
         admin = msg.sender;
         oracle = NavOracle(_oracle);
     }
@@ -66,20 +66,20 @@ contract tRWAFactory {
             address(oracle),
             _initialUnderlyingPerToken
         );
-        
+
         // Register token in the factory
         address tokenAddr = address(newToken);
         isRegisteredToken[tokenAddr] = true;
         allTokens.push(tokenAddr);
-        
+
         // Register token in the oracle
         oracle.setTokenStatus(tokenAddr, true);
-        
+
         emit TokenDeployed(tokenAddr, _name, _symbol, _initialUnderlyingPerToken);
-        
+
         return tokenAddr;
     }
-    
+
     /**
      * @notice Deploy a new tRWA token with compliance
      * @param _name Token name
@@ -103,29 +103,29 @@ contract tRWAFactory {
             address(oracle),
             _initialUnderlyingPerToken
         );
-        
+
         // Register token in the factory
         address tokenAddr = address(newToken);
         isRegisteredToken[tokenAddr] = true;
         allTokens.push(tokenAddr);
-        
+
         // Register token in the oracle
         oracle.setTokenStatus(tokenAddr, true);
-        
+
         // Set compliance module if available and enabled
         if (complianceModule != address(0) && _enableCompliance) {
             newToken.setComplianceModule(complianceModule);
             newToken.toggleCompliance(true);
-            
+
             // Try to register token in compliance module using a safe call
             (bool success, ) = complianceModule.call(
                 abi.encodeWithSignature("registerToken(address)", tokenAddr)
             );
             // Don't revert if this fails, it's not critical
         }
-        
+
         emit TokenDeployed(tokenAddr, _name, _symbol, _initialUnderlyingPerToken);
-        
+
         return tokenAddr;
     }
 
@@ -135,10 +135,10 @@ contract tRWAFactory {
      */
     function updateAdmin(address _newAdmin) external onlyAdmin {
         if (_newAdmin == address(0)) revert InvalidAddress();
-        
+
         address oldAdmin = admin;
         admin = _newAdmin;
-        
+
         emit AdminUpdated(oldAdmin, _newAdmin);
     }
 
@@ -148,23 +148,23 @@ contract tRWAFactory {
      */
     function updateOracle(address _newOracle) external onlyAdmin {
         if (_newOracle == address(0)) revert InvalidAddress();
-        
+
         address oldOracle = address(oracle);
         oracle = NavOracle(_newOracle);
-        
+
         emit OracleUpdated(oldOracle, _newOracle);
     }
-    
+
     /**
      * @notice Set the compliance module
      * @param _complianceModule Address of the compliance module
      */
     function setComplianceModule(address _complianceModule) external onlyAdmin {
         if (_complianceModule == address(0)) revert InvalidAddress();
-        
+
         address oldModule = complianceModule;
         complianceModule = _complianceModule;
-        
+
         emit ComplianceModuleUpdated(oldModule, _complianceModule);
     }
 
