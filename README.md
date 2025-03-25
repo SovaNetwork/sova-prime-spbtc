@@ -1,66 +1,99 @@
-## Foundry
+# FountFi - RWA Tokenization Protocol
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+FountFi is a protocol for tokenizing Real World Assets (RWA) on-chain, providing a secure and compliant bridge between traditional finance and DeFi.
 
-Foundry consists of:
+## Overview
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+The protocol offers:
 
-## Documentation
+- **Share-based accounting**: Each token represents a share in the underlying real-world fund
+- **NAV Integration**: Token value is connected to the underlying asset's Net Asset Value
+- **Compliance layer**: Built-in KYC/AML and transfer restriction capabilities
+- **Modular architecture**: Flexible and upgradeable components
 
-https://book.getfoundry.sh/
+## Key Components
 
-## Usage
+1. **tRWA Token**: The main token contract representing shares in real-world assets
+2. **NavOracle**: Updates the NAV (Net Asset Value) per share
+3. **ComplianceModule**: Handles KYC/AML requirements and transfer restrictions
+4. **tRWAFactory**: Creates and deploys new tokenized RWA assets
+
+## Getting Started
+
+### Prerequisites
+
+- [Foundry](https://book.getfoundry.sh/getting-started/installation.html)
+
+### Installation
+
+```bash
+git clone https://github.com/yourusername/fountfi.git
+cd fountfi
+forge install
+```
 
 ### Build
 
-```shell
-$ forge build
+```bash
+forge build
 ```
 
 ### Test
 
-```shell
-$ forge test
-```
-
-### Format
-
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
+```bash
+forge test
 ```
 
 ### Deploy
 
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
+To deploy a simplified version for testing:
+
+```bash
+forge script script/SimpleRWADeploy.s.sol:SimpleRWADeployScript --rpc-url <your_rpc_url> --private-key <your_private_key> --broadcast
 ```
 
-### Cast
+To deploy the full protocol:
 
-```shell
-$ cast <subcommand>
+```bash
+forge script script/tRWADeploy.s.sol:tRWADeployScript --rpc-url <your_rpc_url> --private-key <your_private_key> --broadcast
 ```
 
-### Help
+## Architecture
 
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+### tRWA Token
+
+The main token contract that:
+- Implements ERC20 functionality
+- Links to an NAV oracle
+- Can integrate with a compliance module
+- Calculates USD values based on NAV
+
+### NAV Oracle
+
+Updates the Net Asset Value per share, which determines the token's value. 
+
+### Compliance Module
+
+Ensures regulatory compliance by:
+- Managing KYC approvals
+- Enforcing transfer restrictions
+- Setting transfer limits
+- Supporting regulatory exemptions
+
+### Factory
+
+Deployment system that:
+- Creates new tRWA tokens
+- Connects tokens to oracles and compliance modules
+- Maintains a registry of deployed tokens
+
+## Testing
+
+The project includes comprehensive tests for all components:
+- Unit tests for individual contracts
+- Integration tests for the entire system
+- Fuzz tests for robust validation
+
+## License
+
+MIT License
