@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.25;
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.13;
 
-import {Script, console} from "forge-std/Script.sol";
-import {NavOracle} from "../src/NavOracle.sol";
-import {tRWAFactory} from "../src/tRWAFactory.sol";
-import {tRWA} from "../src/tRWA.sol";
-import {ComplianceModule} from "../src/ComplianceModule.sol";
+import {Script, console2} from "forge-std/Script.sol";
+import {NavOracle} from "../src/token/NavOracle.sol";
+import {tRWAFactory} from "../src/token/tRWAFactory.sol";
+import {tRWA} from "../src/token/tRWA.sol";
+import {ComplianceModule} from "../src/token/ComplianceModule.sol";
 
 contract tRWADeployScript is Script {
     function run() public {
@@ -15,19 +15,19 @@ contract tRWADeployScript is Script {
 
         // Deploy the oracle
         NavOracle oracle = new NavOracle();
-        console.log("NavOracle deployed at:", address(oracle));
+        console2.log("NavOracle deployed at:", address(oracle));
 
         // Deploy compliance module with 100 token transfer limit
         ComplianceModule compliance = new ComplianceModule(100e18, true);
-        console.log("ComplianceModule deployed at:", address(compliance));
+        console2.log("ComplianceModule deployed at:", address(compliance));
 
         // Deploy the factory
         tRWAFactory factory = new tRWAFactory(address(oracle));
-        console.log("tRWAFactory deployed at:", address(factory));
+        console2.log("tRWAFactory deployed at:", address(factory));
 
         // Set compliance module in factory
         factory.setComplianceModule(address(compliance));
-        console.log("Compliance module set in factory");
+        console2.log("Compliance module set in factory");
 
         // Deploy a sample token with compliance enabled
         address tokenAddress = factory.deployTokenWithCompliance(
@@ -36,7 +36,7 @@ contract tRWADeployScript is Script {
             1e18, // $1.00 per share
             true  // Enable compliance
         );
-        console.log("Sample token deployed at:", tokenAddress);
+        console2.log("Sample token deployed at:", tokenAddress);
 
         // Deploy another token without compliance
         address token2Address = factory.deployToken(
@@ -44,7 +44,7 @@ contract tRWADeployScript is Script {
             "TIF",
             1.5e18 // $1.50 per share
         );
-        console.log("Second token deployed at:", token2Address);
+        console2.log("Second token deployed at:", token2Address);
 
         vm.stopBroadcast();
     }
@@ -68,13 +68,13 @@ contract tRWASimulationScript is Script {
 
         // Update underlying value to $1.05 per token
         oracle.updateUnderlyingValue(tokenAddress, 1.05e18);
-        console.log("Updated underlying value per token:", token.underlyingPerToken());
+        console2.log("Updated underlying value per token:", token.underlyingPerToken());
 
         // Mint some tokens to an address (replace with actual address)
         address recipient = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
         token.mint(recipient, 1000e18);
-        console.log("Minted 1000 tokens to:", recipient);
-        console.log("USD value of holdings:", token.getUsdValue(1000e18));
+        console2.log("Minted 1000 tokens to:", recipient);
+        console2.log("USD value of holdings:", token.getUsdValue(1000e18));
 
         vm.stopBroadcast();
     }

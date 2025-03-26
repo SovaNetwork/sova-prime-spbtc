@@ -2,9 +2,9 @@
 pragma solidity ^0.8.25;
 
 import {Test, console} from "forge-std/Test.sol";
-import {tRWA} from "../src/tRWA.sol";
-import {NavOracle} from "../src/NavOracle.sol";
-import {tRWAFactory} from "../src/tRWAFactory.sol";
+import {tRWA} from "../src/token/tRWA.sol";
+import {NavOracle} from "../src/token/NavOracle.sol";
+import {tRWAFactory} from "../src/token/tRWAFactory.sol";
 
 contract tRWAFactoryTest is Test {
     NavOracle public oracle;
@@ -15,7 +15,14 @@ contract tRWAFactoryTest is Test {
     function setUp() public {
         // Deploy contracts
         oracle = new NavOracle();
+
+        // Verify test contract has authorization in the oracle
+        assertTrue(oracle.authorizedUpdaters(address(this)), "Test contract not authorized in oracle");
+
         factory = new tRWAFactory(address(oracle));
+
+        // Update the factory to be the admin of the oracle
+        oracle.updateAdmin(address(factory));
     }
 
     function test_DeployToken() public {
@@ -36,7 +43,7 @@ contract tRWAFactoryTest is Test {
         assertEq(token.symbol(), "TREF");
         assertEq(token.underlyingPerToken(), 1e18);
         assertEq(token.oracle(), address(oracle));
-        assertEq(token.admin(), address(this)); // Test contract is admin
+        assertEq(token.admin(), address(factory)); // Factory is the admin, not the test contract
     }
 
     function test_DeployMultipleTokens() public {
@@ -87,6 +94,9 @@ contract tRWAFactoryTest is Test {
     function test_UpdateOracle() public {
         // Deploy a new oracle
         NavOracle newOracle = new NavOracle();
+
+        // Update the new oracle to have the factory as admin
+        newOracle.updateAdmin(address(factory));
 
         // Update factory to use new oracle
         factory.updateOracle(address(newOracle));

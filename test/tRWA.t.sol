@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.25;
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.13;
 
-import {Test, console} from "forge-std/Test.sol";
-import {tRWA} from "../src/tRWA.sol";
-import {NavOracle} from "../src/NavOracle.sol";
-import {tRWAFactory} from "../src/tRWAFactory.sol";
+import {Test, console2} from "forge-std/Test.sol";
+import {tRWA} from "../src/token/tRWA.sol";
+import {NavOracle} from "../src/token/NavOracle.sol";
+import {tRWAFactory} from "../src/token/tRWAFactory.sol";
 
 contract tRWATest is Test {
     tRWA public token;
@@ -19,11 +19,24 @@ contract tRWATest is Test {
     function setUp() public {
         // Deploy contracts
         oracle = new NavOracle();
+
+        // The test contract is already an authorized updater through the constructor
+        // but we need to make sure it has explicit authorization as the test runs
+        assertTrue(oracle.authorizedUpdaters(address(this)), "Test contract not authorized in oracle");
+
         factory = new tRWAFactory(address(oracle));
+
+        // Update the factory to be the admin of the oracle
+        oracle.updateAdmin(address(factory));
 
         // Deploy a test token through the factory
         address tokenAddress = factory.deployToken("Tokenized Real Estate Fund", "TREF", initialUnderlying);
         token = tRWA(tokenAddress);
+
+        // Transfer the token admin role back to the test contract for testing purposes
+        vm.startPrank(address(factory));
+        token.updateAdmin(address(this));
+        vm.stopPrank();
 
         // Mint some tokens to users for testing
         token.mint(user1, 1000e18);

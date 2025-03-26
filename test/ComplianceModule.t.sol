@@ -2,10 +2,10 @@
 pragma solidity ^0.8.25;
 
 import {Test, console} from "forge-std/Test.sol";
-import {tRWA} from "../src/tRWA.sol";
-import {NavOracle} from "../src/NavOracle.sol";
-import {tRWAFactory} from "../src/tRWAFactory.sol";
-import {ComplianceModule} from "../src/ComplianceModule.sol";
+import {tRWA} from "../src/token/tRWA.sol";
+import {NavOracle} from "../src/token/NavOracle.sol";
+import {tRWAFactory} from "../src/token/tRWAFactory.sol";
+import {ComplianceModule} from "../src/token/ComplianceModule.sol";
 
 contract ComplianceModuleTest is Test {
     ComplianceModule public compliance;
@@ -23,12 +23,25 @@ contract ComplianceModuleTest is Test {
     function setUp() public {
         // Deploy contracts
         oracle = new NavOracle();
+
+        // Verify test contract has authorization in the oracle
+        assertTrue(oracle.authorizedUpdaters(address(this)), "Test contract not authorized in oracle");
+
         factory = new tRWAFactory(address(oracle));
+
+        // Update the factory to be the admin of the oracle
+        oracle.updateAdmin(address(factory));
+
         compliance = new ComplianceModule(transferLimit, true);
 
         // Deploy a test token through the factory
         address tokenAddress = factory.deployToken("Tokenized Real Estate Fund", "TREF", initialNav);
         token = tRWA(tokenAddress);
+
+        // Transfer the token admin role back to the test contract for testing purposes
+        vm.startPrank(address(factory));
+        token.updateAdmin(address(this));
+        vm.stopPrank();
 
         // Set compliance module for the token
         token.setComplianceModule(address(compliance));
@@ -63,13 +76,25 @@ contract ComplianceModuleTest is Test {
         // Enable compliance on token
         token.toggleCompliance(true);
 
-        // Test transfer from KYC-approved user to non-KYC-approved user (should pass)
+        // Approve KYC for User2 as well, so transfers to them will work
+        compliance.approveKyc(user2);
+
+        // Test transfer from KYC-approved user to another KYC-approved user (should pass)
         vm.startPrank(user1);
         token.transfer(user2, 10e18);
 
         // Test transfer exceeding limit (should fail)
         vm.expectRevert();
         token.transfer(user2, 200e18);
+        vm.stopPrank();
+
+        // Revoke KYC for user2 to test transfers to non-approved users
+        compliance.revokeKyc(user2);
+
+        // Test transfer from KYC-approved user to non-KYC-approved user (should fail)
+        vm.startPrank(user1);
+        vm.expectRevert();
+        token.transfer(user2, 10e18);
         vm.stopPrank();
 
         // Test transfer from non-KYC-approved user (should fail)
@@ -113,9 +138,11 @@ contract ComplianceModuleTest is Test {
         compliance.setTransferLimitEnforcement(false);
         assertFalse(compliance.enforceTransferLimits());
 
-        // Now test a transfer over the limit (should pass now)
+        // Enable compliance but approve KYC for user2
         token.toggleCompliance(true);
+        compliance.approveKyc(user2);
 
+        // Now test a transfer over the limit (should pass now since limits are disabled)
         vm.startPrank(user1);
         token.transfer(user2, 75e18);
         vm.stopPrank();
