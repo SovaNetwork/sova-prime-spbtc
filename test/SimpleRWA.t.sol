@@ -74,12 +74,12 @@ contract SimpleRWATest is Test {
 
     function test_MintAndBurn() public {
         // Mint more tokens to User1
-        token.mint(user1, 500e18);
+        token.deposit(500e18, user1);
         assertEq(token.balanceOf(user1), 1500e18);
         assertEq(token.totalSupply(), 2000e18);
 
         // Burn tokens from User2
-        token.burn(user2, 200e18);
+        token.redeem(200e18, address(this), user2);
         assertEq(token.balanceOf(user2), 300e18);
         assertEq(token.totalSupply(), 1800e18);
     }
@@ -89,11 +89,11 @@ contract SimpleRWATest is Test {
 
         // Try to mint (should fail)
         vm.expectRevert("Not authorized");
-        token.mint(user1, 100e18);
+        token.deposit(100e18, user1);
 
         // Try to burn (should fail)
         vm.expectRevert("Not authorized");
-        token.burn(user2, 100e18);
+        token.redeem(100e18, user1, user2);
 
         // Try to update underlying value (should fail)
         vm.expectRevert("Not authorized");

@@ -118,7 +118,7 @@ contract ApprovalSubscriptionModule is BaseSubscriptionModule {
         request.status = SubscriptionStatus.APPROVED;
 
         // Mint tokens to subscriber
-        token.mint(request.subscriber, tokensToMint);
+        token.deposit(tokensToMint, request.subscriber);
 
         emit SubscriptionApproved(_requestId, msg.sender, tokensToMint);
     }

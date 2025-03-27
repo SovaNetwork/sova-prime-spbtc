@@ -335,49 +335,73 @@ contract tRWARebase {
     }
 
     /**
-     * @notice Mint new tokens to an address (admin only)
+     * @notice Mint new tokens to an address
      * @param _to Address to mint tokens to
      * @param _amount Amount of tokens to mint
      */
     function mint(address _to, uint256 _amount) external onlyAdmin {
         if (_to == address(0)) revert InvalidAddress();
+        if (_amount == 0) revert ZeroShares();
 
         // Convert token amount to shares
         uint256 sharesAmount = _tokensToShares(_amount);
         if (sharesAmount == 0) revert ZeroShares();
 
-        // Mint shares (internal accounting)
+        // Update shares and balance
         _shares[_to] += sharesAmount;
         _sharesTotalSupply += sharesAmount;
 
-        // Update balances and total supply
-        _balances[_to] = _sharesToTokens(_shares[_to]);
+        // Update token balance
+        _balances[_to] += _amount;
         _totalSupply += _amount;
 
         emit Transfer(address(0), _to, _amount);
     }
 
     /**
-     * @notice Burn tokens from an address (admin only)
+     * @notice ERC4626-like interface for minting tokens to an address (for backward compatibility)
+     * @param _amount Amount of tokens to mint
+     * @param _to Address to mint tokens to
+     */
+    function deposit(uint256 _amount, address _to) external onlyAdmin {
+        this.mint(_to, _amount);
+    }
+
+    /**
+     * @notice Burn tokens from an address
      * @param _from Address to burn tokens from
      * @param _amount Amount of tokens to burn
      */
     function burn(address _from, uint256 _amount) external onlyAdmin {
         if (_from == address(0)) revert InvalidAddress();
+        if (_amount == 0) revert ZeroShares();
         if (_balances[_from] < _amount) revert InsufficientBalance();
 
         // Convert token amount to shares
         uint256 sharesAmount = _tokensToShares(_amount);
+        if (sharesAmount == 0) revert ZeroShares();
+        if (_shares[_from] < sharesAmount) revert InsufficientBalance();
 
-        // Burn shares (internal accounting)
+        // Update shares and balance
         _shares[_from] -= sharesAmount;
         _sharesTotalSupply -= sharesAmount;
 
-        // Update balances and total supply
-        _balances[_from] = _sharesToTokens(_shares[_from]);
+        // Update token balance
+        _balances[_from] -= _amount;
         _totalSupply -= _amount;
 
         emit Transfer(_from, address(0), _amount);
+    }
+
+    /**
+     * @notice ERC4626-like interface for burning tokens from an address (for backward compatibility)
+     * @param _amount Amount of tokens to burn
+     * @param _receiver Address to receive the underlying assets (not used in this implementation)
+     * @param _owner Address from which to burn the tokens
+     */
+    function redeem(uint256 _amount, address _receiver, address _owner) external onlyAdmin {
+        // The _receiver parameter is ignored as we don't transfer any underlying assets
+        this.burn(_owner, _amount);
     }
 
     /**

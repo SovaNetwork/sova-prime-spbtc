@@ -1,14 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
-import {ERC20} from "solady/tokens/ERC20.sol";
+import {ERC4626} from "solady/tokens/ERC4626.sol";
+import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
+import {FixedPointMathLib} from "solady/utils/FixedPointMathLib.sol";
 
 /**
  * @title tRWA
- * @notice Tokenized Real World Asset (tRWA) with share-based accounting model
+ * @notice Tokenized Real World Asset (tRWA) inheriting ERC4626 standard
  * @dev Each token represents a share in the underlying real-world fund
  */
-contract tRWA is ERC20 {
+contract tRWA is ERC4626 {
+    using FixedPointMathLib for uint256;
+
     // Internal storage for token metadata
     string internal _name;
     string internal _symbol;
@@ -19,6 +23,9 @@ contract tRWA is ERC20 {
     uint256 public underlyingPerToken; // Value of underlying asset per token in USD (18 decimals)
     uint256 public lastValueUpdate; // Timestamp of last underlying value update
     bool public complianceEnabled = false;
+
+    // Asset-related state
+    uint256 public totalUnderlying; // Total value of underlying assets in USD (18 decimals)
 
     // Events
     event UnderlyingValueUpdated(uint256 newUnderlyingPerToken, uint256 timestamp);
@@ -36,6 +43,8 @@ contract tRWA is ERC20 {
     error InvalidComplianceModuleAddress();
     error TransferBlocked(string reason);
     error InvalidAddress();
+    error ZeroAssets();
+    error ZeroShares();
 
     /**
      * @notice Contract constructor
@@ -53,6 +62,8 @@ contract tRWA is ERC20 {
         if (_oracle == address(0)) revert InvalidOracleAddress();
         if (_initialUnderlyingPerToken == 0) revert InvalidUnderlyingValue();
 
+        _name = name_;
+        _symbol = symbol_;
         admin = msg.sender;
         oracle = _oracle;
         underlyingPerToken = _initialUnderlyingPerToken;
@@ -83,6 +94,13 @@ contract tRWA is ERC20 {
     }
 
     /**
+     * @notice Returns the asset address, which is address(0) as we use synthetic USD value
+     */
+    function asset() public view virtual override returns (address) {
+        return address(0); // Synthetic USD value representation
+    }
+
+    /**
      * @notice Modifier to restrict function calls to authorized addresses
      */
     modifier onlyAdmin() {
@@ -104,6 +122,12 @@ contract tRWA is ERC20 {
      */
     function updateUnderlyingValue(uint256 _newUnderlyingPerToken) external onlyOracle {
         if (_newUnderlyingPerToken == 0) revert InvalidUnderlyingValue();
+
+        // Calculate the total underlying value based on current shares
+        uint256 supply = totalSupply();
+        if (supply > 0) {
+            totalUnderlying = supply * _newUnderlyingPerToken / 1e18;
+        }
 
         underlyingPerToken = _newUnderlyingPerToken;
         lastValueUpdate = block.timestamp;
@@ -194,31 +218,112 @@ contract tRWA is ERC20 {
         }
     }
 
+    /*//////////////////////////////////////////////////////////////
+                            ERC4626 OVERRIDES
+    //////////////////////////////////////////////////////////////*/
+
     /**
-     * @notice Mint new shares to an address
-     * @param _to Address to mint shares to
-     * @param _amount Amount of shares to mint
+     * @notice Returns the total amount of the underlying assets managed by the vault
+     * @return assets Total underlying assets in USD value (18 decimals)
      */
-    function mint(address _to, uint256 _amount) external onlyAdmin {
-        if (_to == address(0)) revert InvalidAddress();
-        _mint(_to, _amount);
+    function totalAssets() public view override returns (uint256 assets) {
+        return totalUnderlying;
     }
 
     /**
-     * @notice Burn shares from an address
-     * @param _from Address to burn shares from
-     * @param _amount Amount of shares to burn
+     * @notice Deposit assets and mint shares to receiver, only callable by admin
+     * @param assets Amount of assets to deposit
+     * @param receiver Address receiving the shares
+     * @return shares Amount of shares minted
      */
-    function burn(address _from, uint256 _amount) external onlyAdmin {
-        if (_from == address(0)) revert InvalidAddress();
+    function deposit(uint256 assets, address receiver) public override onlyAdmin returns (uint256 shares) {
+        if (receiver == address(0)) revert InvalidAddress();
+        if (assets == 0) revert ZeroAssets();
 
-        // Check balance before burning
-        if (balanceOf(_from) < _amount) {
-            // Use the ERC20 InsufficientBalance error from the parent contract
-            revert ERC20.InsufficientBalance();
-        }
+        shares = previewDeposit(assets);
+        if (shares == 0) revert ZeroShares();
 
-        _burn(_from, _amount);
+        // Update the total underlying assets
+        totalUnderlying += assets;
+
+        // Mint shares to receiver
+        _mint(receiver, shares);
+
+        emit Deposit(msg.sender, receiver, assets, shares);
+    }
+
+    /**
+     * @notice Mint shares to receiver by depositing assets, only callable by admin
+     * @param shares Amount of shares to mint
+     * @param receiver Address receiving the shares
+     * @return assets Amount of assets deposited
+     */
+    function mint(uint256 shares, address receiver) public override onlyAdmin returns (uint256 assets) {
+        if (receiver == address(0)) revert InvalidAddress();
+        if (shares == 0) revert ZeroShares();
+
+        assets = previewMint(shares);
+        if (assets == 0) revert ZeroAssets();
+
+        // Update the total underlying assets
+        totalUnderlying += assets;
+
+        // Mint shares to receiver
+        _mint(receiver, shares);
+
+        emit Deposit(msg.sender, receiver, assets, shares);
+    }
+
+    /**
+     * @notice Withdraw assets by burning shares, only callable by admin
+     * @param assets Amount of assets to withdraw
+     * @param receiver Address receiving the assets
+     * @param owner Address owning the shares
+     * @return shares Amount of shares burned
+     */
+    function withdraw(uint256 assets, address receiver, address owner) public override onlyAdmin returns (uint256 shares) {
+        if (receiver == address(0)) revert InvalidAddress();
+        if (assets == 0) revert ZeroAssets();
+
+        shares = previewWithdraw(assets);
+        if (shares == 0) revert ZeroShares();
+
+        if (shares > balanceOf(owner))
+            revert WithdrawMoreThanMax();
+
+        // Update the total underlying assets
+        totalUnderlying -= assets;
+
+        // Burn shares from owner
+        _burn(owner, shares);
+
+        emit Withdraw(msg.sender, receiver, owner, assets, shares);
+    }
+
+    /**
+     * @notice Redeem shares for assets, only callable by admin
+     * @param shares Amount of shares to redeem
+     * @param receiver Address receiving the assets
+     * @param owner Address owning the shares
+     * @return assets Amount of assets received
+     */
+    function redeem(uint256 shares, address receiver, address owner) public override onlyAdmin returns (uint256 assets) {
+        if (receiver == address(0)) revert InvalidAddress();
+        if (shares == 0) revert ZeroShares();
+
+        if (shares > balanceOf(owner))
+            revert RedeemMoreThanMax();
+
+        assets = previewRedeem(shares);
+        if (assets == 0) revert ZeroAssets();
+
+        // Update the total underlying assets
+        totalUnderlying -= assets;
+
+        // Burn shares from owner
+        _burn(owner, shares);
+
+        emit Withdraw(msg.sender, receiver, owner, assets, shares);
     }
 
     /**
@@ -227,6 +332,6 @@ contract tRWA is ERC20 {
      * @return usdValue USD value of the shares (18 decimals)
      */
     function getUsdValue(uint256 _shares) public view returns (uint256 usdValue) {
-        return (_shares * underlyingPerToken) / 1e18;
+        return convertToAssets(_shares);
     }
 }

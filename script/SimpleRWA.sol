@@ -105,6 +105,17 @@ contract SimpleRWA {
     }
 
     /**
+     * @notice ERC4626-like interface for depositing assets and minting shares
+     * @param _assets Amount of assets to deposit
+     * @param _receiver Address receiving the tokens
+     * @return shares Amount of shares minted
+     */
+    function deposit(uint256 _assets, address _receiver) public onlyOwner returns (uint256 shares) {
+        mint(_receiver, _assets);
+        return _assets;
+    }
+
+    /**
      * @notice Burn tokens (only owner)
      * @param _from Address to burn from
      * @param _amount Amount to burn
@@ -116,6 +127,18 @@ contract SimpleRWA {
         balanceOf[_from] -= _amount;
         totalSupply -= _amount;
         emit Transfer(_from, address(0), _amount);
+    }
+
+    /**
+     * @notice ERC4626-like interface for redeeming shares for assets
+     * @param _shares Amount of shares to redeem
+     * @param _receiver Address receiving the assets (not used)
+     * @param _owner Address owning the shares to burn
+     * @return assets Amount of assets received
+     */
+    function redeem(uint256 _shares, address _receiver, address _owner) public onlyOwner returns (uint256 assets) {
+        burn(_owner, _shares);
+        return _shares;
     }
 
     /**

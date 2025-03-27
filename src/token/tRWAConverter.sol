@@ -90,7 +90,7 @@ contract tRWAConverter {
         if (!success) revert InsufficientBalance();
 
         // Mint rebasing tokens to the user
-        rebaseToken.mint(msg.sender, rebaseAmount);
+        rebaseToken.deposit(rebaseAmount, msg.sender);
 
         emit ConvertedToRebase(msg.sender, _shareAmount, rebaseAmount);
         return rebaseAmount;
@@ -112,7 +112,7 @@ contract tRWAConverter {
         shareAmount = calculateShareAmount(usdValue);
 
         // Burn rebasing tokens from the user
-        rebaseToken.burn(msg.sender, _rebaseAmount);
+        rebaseToken.redeem(_rebaseAmount, address(this), msg.sender);
 
         // Transfer share tokens from this contract to the user
         bool success = shareToken.transfer(msg.sender, shareAmount);

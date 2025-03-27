@@ -39,8 +39,9 @@ contract tRWATest is Test {
         vm.stopPrank();
 
         // Mint some tokens to users for testing
-        token.mint(user1, 1000e18);
-        token.mint(user2, 500e18);
+        // Update total underlying assets first
+        token.deposit(1000e18, user1);
+        token.deposit(500e18, user2);
     }
 
     function test_InitialState() public {
@@ -88,12 +89,14 @@ contract tRWATest is Test {
 
     function test_TokenMintAndBurn() public {
         // Mint new tokens
-        token.mint(user1, 500e18);
+        uint256 assetsToDeposit = 500e18;
+        token.deposit(assetsToDeposit, user1);
         assertEq(token.balanceOf(user1), 1500e18);
         assertEq(token.totalSupply(), 2000e18);
 
         // Burn tokens
-        token.burn(user1, 300e18);
+        uint256 sharesToRedeem = 300e18;
+        token.redeem(sharesToRedeem, address(this), user1);
         assertEq(token.balanceOf(user1), 1200e18);
         assertEq(token.totalSupply(), 1700e18);
     }
@@ -103,11 +106,11 @@ contract tRWATest is Test {
 
         // Try to mint tokens (should fail)
         vm.expectRevert();
-        token.mint(user1, 500e18);
+        token.deposit(500e18, user1);
 
         // Try to burn tokens (should fail)
         vm.expectRevert();
-        token.burn(user1, 100e18);
+        token.redeem(100e18, user1, user1);
 
         vm.stopPrank();
     }

@@ -53,9 +53,9 @@ contract ComplianceModuleTest is Test {
         compliance.approveKyc(user1);
 
         // Mint tokens to users for testing
-        token.mint(user1, 1000e18);
-        token.mint(user2, 500e18);
-        token.mint(user3, 50e18);
+        token.deposit(1000e18, user1);
+        token.deposit(500e18, user2);
+        token.deposit(50e18, user3);
 
         // Mark user3 as exempt from KYC
         compliance.updateExemptStatus(user3, true);

@@ -85,7 +85,7 @@ contract CappedSubscriptionModule is AutomaticSubscriptionModule {
         requests[requestId].status = SubscriptionStatus.PROCESSED;
 
         // Mint tokens to subscriber
-        token.mint(_subscriber, tokensToMint);
+        token.deposit(tokensToMint, _subscriber);
 
         emit SubscriptionProcessed(requestId, _subscriber, _amount, tokensToMint);
 

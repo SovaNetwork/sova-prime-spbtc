@@ -72,7 +72,7 @@ contract tRWASimulationScript is Script {
 
         // Mint some tokens to an address (replace with actual address)
         address recipient = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
-        token.mint(recipient, 1000e18);
+        token.deposit(1000e18, recipient);
         console2.log("Minted 1000 tokens to:", recipient);
         console2.log("USD value of holdings:", token.getUsdValue(1000e18));
 
