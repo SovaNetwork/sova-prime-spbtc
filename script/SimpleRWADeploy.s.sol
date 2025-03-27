@@ -6,8 +6,7 @@ import {SimpleRWA} from "./SimpleRWA.sol";
 
 contract SimpleRWADeployScript is Script {
     function run() public {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        vm.startBroadcast(deployerPrivateKey);
+        vm.startBroadcast();
 
         // Deploy RWA token with $1.00 initial underlying value per token
         SimpleRWA rwaToken = new SimpleRWA("Tokenized Real Estate Fund", "TREF", 1e18);

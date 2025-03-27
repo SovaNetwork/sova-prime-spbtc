@@ -19,7 +19,6 @@ contract tRWAFactory {
     event TokenDeployed(address indexed token, string name, string symbol, uint256 initialUnderlyingPerToken);
     event AdminUpdated(address indexed oldAdmin, address indexed newAdmin);
     event OracleUpdated(address indexed oldOracle, address indexed newOracle);
-    event ComplianceModuleUpdated(address indexed oldModule, address indexed newModule);
 
     // Errors
     error Unauthorized();

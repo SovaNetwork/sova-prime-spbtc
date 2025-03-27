@@ -4,72 +4,69 @@ pragma solidity ^0.8.25;
 import {ERC4626} from "solady/tokens/ERC4626.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solady/utils/FixedPointMathLib.sol";
+import {OwnableRoles} from "solady/auth/OwnableRoles.sol";
+import {ItRWA} from "./ItRWA.sol";
 
 /**
  * @title tRWA
  * @notice Tokenized Real World Asset (tRWA) inheriting ERC4626 standard
  * @dev Each token represents a share in the underlying real-world fund
  */
-contract tRWA is ERC4626 {
+contract tRWA is ERC4626, OwnableRoles, ItRWA {
     using FixedPointMathLib for uint256;
+
+    // Role definitions
+    uint256 public constant PRICE_AUTHORITY_ROLE = 1 << 0;
+    uint256 public constant ADMIN_ROLE = 1 << 1;
+    uint256 public constant SUBSCRIPTION_ROLE = 1 << 2;
 
     // Internal storage for token metadata
     string internal _name;
     string internal _symbol;
+    address internal _asset;
 
-    address public oracle;
-    address public admin;
-    address public complianceModule;
+    address public transferApproval;
     uint256 public underlyingPerToken; // Value of underlying asset per token in USD (18 decimals)
     uint256 public lastValueUpdate; // Timestamp of last underlying value update
-    bool public complianceEnabled = false;
+    bool public transferApprovalEnabled = false;
 
     // Asset-related state
     uint256 public totalUnderlying; // Total value of underlying assets in USD (18 decimals)
-
-    // Events
-    event UnderlyingValueUpdated(uint256 newUnderlyingPerToken, uint256 timestamp);
-    event OracleUpdated(address indexed oldOracle, address indexed newOracle);
-    event AdminUpdated(address indexed oldAdmin, address indexed newAdmin);
-    event ComplianceModuleUpdated(address indexed oldModule, address indexed newModule);
-    event ComplianceToggled(bool enabled);
-    event TransferRejected(address indexed from, address indexed to, uint256 value, string reason);
-
-    // Errors
-    error Unauthorized();
-    error InvalidUnderlyingValue();
-    error InvalidOracleAddress();
-    error InvalidAdminAddress();
-    error InvalidComplianceModuleAddress();
-    error TransferBlocked(string reason);
-    error InvalidAddress();
-    error ZeroAssets();
-    error ZeroShares();
 
     /**
      * @notice Contract constructor
      * @param name_ Token name
      * @param symbol_ Token symbol
-     * @param _oracle Address of the NAV oracle
-     * @param _initialUnderlyingPerToken Initial value of underlying asset per token in USD (18 decimals)
+     * @param config Configuration struct with all deployment parameters
      */
     constructor(
         string memory name_,
         string memory symbol_,
-        address _oracle,
-        uint256 _initialUnderlyingPerToken
+        ConfigurationStruct memory config
     ) {
-        if (_oracle == address(0)) revert InvalidOracleAddress();
-        if (_initialUnderlyingPerToken == 0) revert InvalidUnderlyingValue();
+        // Validate configuration parameters
+        if (config.underlyingAsset == address(0)) revert InvalidAddress();
+        if (config.priceAuthority == address(0)) revert InvalidAddress();
+        if (config.admin == address(0)) revert InvalidAddress();
+        if (config.subscriptionManager == address(0)) revert InvalidAddress();
+        if (config.initialUnderlyingPerToken == 0) revert InvalidUnderlyingValue();
 
         _name = name_;
         _symbol = symbol_;
-        admin = msg.sender;
-        oracle = _oracle;
-        underlyingPerToken = _initialUnderlyingPerToken;
+        _asset = config.underlyingAsset;
+
+        // Initialize owner to the admin address from config
+        _initializeOwner(config.admin);
+
+        // Grant the roles as specified in the config
+        _grantRoles(config.admin, ADMIN_ROLE);
+        _grantRoles(config.priceAuthority, PRICE_AUTHORITY_ROLE);
+        _grantRoles(config.subscriptionManager, SUBSCRIPTION_ROLE);
+
+        underlyingPerToken = config.initialUnderlyingPerToken;
         lastValueUpdate = block.timestamp;
 
-        emit UnderlyingValueUpdated(_initialUnderlyingPerToken, block.timestamp);
+        emit UnderlyingValueUpdated(config.initialUnderlyingPerToken, block.timestamp);
     }
 
     /**
@@ -94,33 +91,18 @@ contract tRWA is ERC4626 {
     }
 
     /**
-     * @notice Returns the asset address, which is address(0) as we use synthetic USD value
+     * @notice Returns the underlying asset address
+     * @return Address of the underlying ERC20 token
      */
     function asset() public view virtual override returns (address) {
-        return address(0); // Synthetic USD value representation
-    }
-
-    /**
-     * @notice Modifier to restrict function calls to authorized addresses
-     */
-    modifier onlyAdmin() {
-        if (msg.sender != admin) revert Unauthorized();
-        _;
-    }
-
-    /**
-     * @notice Modifier to restrict function calls to the oracle
-     */
-    modifier onlyOracle() {
-        if (msg.sender != oracle) revert Unauthorized();
-        _;
+        return _asset;
     }
 
     /**
      * @notice Update the underlying value per token
      * @param _newUnderlyingPerToken New underlying value per token in USD (18 decimals)
      */
-    function updateUnderlyingValue(uint256 _newUnderlyingPerToken) external onlyOracle {
+    function updateUnderlyingValue(uint256 _newUnderlyingPerToken) external onlyRoles(PRICE_AUTHORITY_ROLE) {
         if (_newUnderlyingPerToken == 0) revert InvalidUnderlyingValue();
 
         // Calculate the total underlying value based on current shares
@@ -136,56 +118,30 @@ contract tRWA is ERC4626 {
     }
 
     /**
-     * @notice Update the oracle address
-     * @param _newOracle Address of the new oracle
+     * @notice Set or update the transfer approval module
+     * @param _transferApproval Address of the transfer approval module
      */
-    function updateOracle(address _newOracle) external onlyAdmin {
-        if (_newOracle == address(0)) revert InvalidOracleAddress();
+    function setTransferApproval(address _transferApproval) external onlyOwnerOrRoles(ADMIN_ROLE) {
+        if (_transferApproval == address(0)) revert InvalidTransferApprovalAddress();
 
-        address oldOracle = oracle;
-        oracle = _newOracle;
+        address oldModule = transferApproval;
+        transferApproval = _transferApproval;
 
-        emit OracleUpdated(oldOracle, _newOracle);
+        emit TransferApprovalUpdated(oldModule, _transferApproval);
     }
 
     /**
-     * @notice Update the admin address
-     * @param _newAdmin Address of the new admin
+     * @notice Enable or disable transfer approval checks
+     * @param _enabled Whether transfer approval is enabled
      */
-    function updateAdmin(address _newAdmin) external onlyAdmin {
-        if (_newAdmin == address(0)) revert InvalidAdminAddress();
+    function toggleTransferApproval(bool _enabled) external onlyOwnerOrRoles(ADMIN_ROLE) {
+        transferApprovalEnabled = _enabled;
 
-        address oldAdmin = admin;
-        admin = _newAdmin;
-
-        emit AdminUpdated(oldAdmin, _newAdmin);
+        emit TransferApprovalToggled(_enabled);
     }
 
     /**
-     * @notice Set or update the compliance module
-     * @param _complianceModule Address of the compliance module
-     */
-    function setComplianceModule(address _complianceModule) external onlyAdmin {
-        if (_complianceModule == address(0)) revert InvalidComplianceModuleAddress();
-
-        address oldModule = complianceModule;
-        complianceModule = _complianceModule;
-
-        emit ComplianceModuleUpdated(oldModule, _complianceModule);
-    }
-
-    /**
-     * @notice Enable or disable compliance checks
-     * @param _enabled Whether compliance is enabled
-     */
-    function toggleCompliance(bool _enabled) external onlyAdmin {
-        complianceEnabled = _enabled;
-
-        emit ComplianceToggled(_enabled);
-    }
-
-    /**
-     * @notice Override _beforeTokenTransfer to add compliance checks
+     * @notice Override _beforeTokenTransfer to add transfer approval checks
      * @dev Called before any transfer, mint, or burn
      */
     function _beforeTokenTransfer(
@@ -197,12 +153,12 @@ contract tRWA is ERC4626 {
         if (from != address(0) && to != address(0)) {
             if (to == address(0)) revert InvalidAddress();
 
-            // Check compliance if enabled
-            if (complianceEnabled && complianceModule != address(0)) {
-                // Interface to the checkTransferCompliance function
-                (bool successCall, bytes memory data) = complianceModule.staticcall(
+            // Check approval if enabled
+            if (transferApprovalEnabled && transferApproval != address(0)) {
+                // Interface to the checkTransferApproval function
+                (bool successCall, bytes memory data) = transferApproval.staticcall(
                     abi.encodeWithSignature(
-                        "checkTransferCompliance(address,address,address,uint256)",
+                        "checkTransferApproval(address,address,address,uint256)",
                         address(this),
                         from,
                         to,
@@ -211,8 +167,8 @@ contract tRWA is ERC4626 {
                 );
 
                 if (!successCall || !abi.decode(data, (bool))) {
-                    emit TransferRejected(from, to, amount, "Failed compliance check");
-                    revert TransferBlocked("Failed compliance check");
+                    emit TransferRejected(from, to, amount, "Failed transfer approval check");
+                    revert TransferBlocked("Failed transfer approval check");
                 }
             }
         }
@@ -231,12 +187,12 @@ contract tRWA is ERC4626 {
     }
 
     /**
-     * @notice Deposit assets and mint shares to receiver, only callable by admin
+     * @notice Deposit assets and mint shares to receiver, only callable by subscription role
      * @param assets Amount of assets to deposit
      * @param receiver Address receiving the shares
      * @return shares Amount of shares minted
      */
-    function deposit(uint256 assets, address receiver) public override onlyAdmin returns (uint256 shares) {
+    function deposit(uint256 assets, address receiver) public override onlyRoles(SUBSCRIPTION_ROLE) returns (uint256 shares) {
         if (receiver == address(0)) revert InvalidAddress();
         if (assets == 0) revert ZeroAssets();
 
@@ -253,12 +209,12 @@ contract tRWA is ERC4626 {
     }
 
     /**
-     * @notice Mint shares to receiver by depositing assets, only callable by admin
+     * @notice Mint shares to receiver by depositing assets, only callable by subscription role
      * @param shares Amount of shares to mint
      * @param receiver Address receiving the shares
      * @return assets Amount of assets deposited
      */
-    function mint(uint256 shares, address receiver) public override onlyAdmin returns (uint256 assets) {
+    function mint(uint256 shares, address receiver) public override onlyRoles(SUBSCRIPTION_ROLE) returns (uint256 assets) {
         if (receiver == address(0)) revert InvalidAddress();
         if (shares == 0) revert ZeroShares();
 
@@ -281,7 +237,7 @@ contract tRWA is ERC4626 {
      * @param owner Address owning the shares
      * @return shares Amount of shares burned
      */
-    function withdraw(uint256 assets, address receiver, address owner) public override onlyAdmin returns (uint256 shares) {
+    function withdraw(uint256 assets, address receiver, address owner) public override onlyOwnerOrRoles(ADMIN_ROLE) returns (uint256 shares) {
         if (receiver == address(0)) revert InvalidAddress();
         if (assets == 0) revert ZeroAssets();
 
@@ -307,7 +263,7 @@ contract tRWA is ERC4626 {
      * @param owner Address owning the shares
      * @return assets Amount of assets received
      */
-    function redeem(uint256 shares, address receiver, address owner) public override onlyAdmin returns (uint256 assets) {
+    function redeem(uint256 shares, address receiver, address owner) public override onlyOwnerOrRoles(ADMIN_ROLE) returns (uint256 assets) {
         if (receiver == address(0)) revert InvalidAddress();
         if (shares == 0) revert ZeroShares();
 
