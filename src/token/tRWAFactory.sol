@@ -3,6 +3,7 @@ pragma solidity ^0.8.25;
 
 import {tRWA} from "./tRWA.sol";
 import {NavOracle} from "./NavOracle.sol";
+import {ItRWA} from "../interfaces/ItRWA.sol";
 
 /**
  * @title tRWAFactory
@@ -12,6 +13,8 @@ contract tRWAFactory {
     address public admin;
     NavOracle public oracle;
     address public complianceModule;
+    address public subscriptionManager;
+    address public underlyingAsset;
     mapping(address => bool) public isRegisteredToken;
     address[] public allTokens;
 
@@ -19,6 +22,9 @@ contract tRWAFactory {
     event TokenDeployed(address indexed token, string name, string symbol, uint256 initialUnderlyingPerToken);
     event AdminUpdated(address indexed oldAdmin, address indexed newAdmin);
     event OracleUpdated(address indexed oldOracle, address indexed newOracle);
+    event ComplianceModuleUpdated(address indexed oldModule, address indexed newModule);
+    event SubscriptionManagerUpdated(address indexed oldManager, address indexed newManager);
+    event UnderlyingAssetUpdated(address indexed oldAsset, address indexed newAsset);
 
     // Errors
     error Unauthorized();
@@ -28,12 +34,18 @@ contract tRWAFactory {
     /**
      * @notice Contract constructor
      * @param _oracle Address of the oracle
+     * @param _subscriptionManager Address of the subscription manager
+     * @param _underlyingAsset Address of the underlying asset
      */
-    constructor(address _oracle) {
+    constructor(address _oracle, address _subscriptionManager, address _underlyingAsset) {
         if (_oracle == address(0)) revert InvalidAddress();
+        if (_subscriptionManager == address(0)) revert InvalidAddress();
+        if (_underlyingAsset == address(0)) revert InvalidAddress();
 
         admin = msg.sender;
         oracle = NavOracle(_oracle);
+        subscriptionManager = _subscriptionManager;
+        underlyingAsset = _underlyingAsset;
     }
 
     /**
@@ -58,12 +70,20 @@ contract tRWAFactory {
     ) external onlyAdmin returns (address) {
         if (_initialUnderlyingPerToken == 0) revert InvalidUnderlyingValue();
 
+        // Create configuration struct
+        ItRWA.ConfigurationStruct memory config = ItRWA.ConfigurationStruct({
+            admin: admin,
+            priceAuthority: address(oracle),
+            subscriptionManager: subscriptionManager,
+            underlyingAsset: underlyingAsset,
+            initialUnderlyingPerToken: _initialUnderlyingPerToken
+        });
+
         // Deploy new tRWA token
         tRWA newToken = new tRWA(
             _name,
             _symbol,
-            address(oracle),
-            _initialUnderlyingPerToken
+            config
         );
 
         // Register token in the factory
@@ -95,12 +115,20 @@ contract tRWAFactory {
     ) external onlyAdmin returns (address tokenAddress) {
         if (_initialUnderlyingPerToken == 0) revert InvalidUnderlyingValue();
 
+        // Create configuration struct
+        ItRWA.ConfigurationStruct memory config = ItRWA.ConfigurationStruct({
+            admin: admin,
+            priceAuthority: address(oracle),
+            subscriptionManager: subscriptionManager,
+            underlyingAsset: underlyingAsset,
+            initialUnderlyingPerToken: _initialUnderlyingPerToken
+        });
+
         // Deploy new tRWA token
         tRWA newToken = new tRWA(
             _name,
             _symbol,
-            address(oracle),
-            _initialUnderlyingPerToken
+            config
         );
 
         // Register token in the factory
@@ -113,8 +141,8 @@ contract tRWAFactory {
 
         // Set compliance module if available and enabled
         if (complianceModule != address(0) && _enableCompliance) {
-            newToken.setComplianceModule(complianceModule);
-            newToken.toggleCompliance(true);
+            newToken.setTransferApproval(complianceModule);
+            newToken.toggleTransferApproval(true);
 
             // Try to register token in compliance module using a safe call
             (bool success, ) = complianceModule.call(
@@ -165,6 +193,32 @@ contract tRWAFactory {
         complianceModule = _complianceModule;
 
         emit ComplianceModuleUpdated(oldModule, _complianceModule);
+    }
+
+    /**
+     * @notice Set the subscription manager
+     * @param _subscriptionManager Address of the subscription manager
+     */
+    function setSubscriptionManager(address _subscriptionManager) external onlyAdmin {
+        if (_subscriptionManager == address(0)) revert InvalidAddress();
+
+        address oldManager = subscriptionManager;
+        subscriptionManager = _subscriptionManager;
+
+        emit SubscriptionManagerUpdated(oldManager, _subscriptionManager);
+    }
+
+    /**
+     * @notice Set the underlying asset
+     * @param _underlyingAsset Address of the underlying asset
+     */
+    function setUnderlyingAsset(address _underlyingAsset) external onlyAdmin {
+        if (_underlyingAsset == address(0)) revert InvalidAddress();
+
+        address oldAsset = underlyingAsset;
+        underlyingAsset = _underlyingAsset;
+
+        emit UnderlyingAssetUpdated(oldAsset, _underlyingAsset);
     }
 
     /**

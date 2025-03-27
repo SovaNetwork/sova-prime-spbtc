@@ -5,7 +5,7 @@ import {ERC4626} from "solady/tokens/ERC4626.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solady/utils/FixedPointMathLib.sol";
 import {OwnableRoles} from "solady/auth/OwnableRoles.sol";
-import {ItRWA} from "./ItRWA.sol";
+import {ItRWA} from "../interfaces/ItRWA.sol";
 
 /**
  * @title tRWA

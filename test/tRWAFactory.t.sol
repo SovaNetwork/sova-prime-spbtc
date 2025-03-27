@@ -5,21 +5,28 @@ import {Test, console} from "forge-std/Test.sol";
 import {tRWA} from "../src/token/tRWA.sol";
 import {NavOracle} from "../src/token/NavOracle.sol";
 import {tRWAFactory} from "../src/token/tRWAFactory.sol";
+import {ItRWA} from "../src/interfaces/ItRWA.sol";
 
 contract tRWAFactoryTest is Test {
     NavOracle public oracle;
     tRWAFactory public factory;
+    address public mockSubscriptionManager;
+    address public mockUnderlyingAsset;
 
     address public user = address(2);
 
     function setUp() public {
+        // Create mock addresses
+        mockSubscriptionManager = address(0x123);
+        mockUnderlyingAsset = address(0x456);
+
         // Deploy contracts
         oracle = new NavOracle();
 
         // Verify test contract has authorization in the oracle
         assertTrue(oracle.authorizedUpdaters(address(this)), "Test contract not authorized in oracle");
 
-        factory = new tRWAFactory(address(oracle));
+        factory = new tRWAFactory(address(oracle), mockSubscriptionManager, mockUnderlyingAsset);
 
         // Update the factory to be the admin of the oracle
         oracle.updateAdmin(address(factory));
@@ -42,8 +49,31 @@ contract tRWAFactoryTest is Test {
         assertEq(token.name(), "Tokenized Real Estate Fund");
         assertEq(token.symbol(), "TREF");
         assertEq(token.underlyingPerToken(), 1e18);
-        assertEq(token.oracle(), address(oracle));
-        assertEq(token.admin(), address(factory)); // Factory is the admin, not the test contract
+        assertEq(token.asset(), mockUnderlyingAsset);
+
+        // Check roles are correctly assigned
+        assertTrue(token.hasRole(address(factory), token.ADMIN_ROLE()));
+        assertTrue(token.hasRole(address(oracle), token.PRICE_AUTHORITY_ROLE()));
+        assertTrue(token.hasRole(mockSubscriptionManager, token.SUBSCRIPTION_ROLE()));
+    }
+
+    function test_DeployTokenWithCompliance() public {
+        // Set compliance module
+        address mockComplianceModule = address(0x789);
+        factory.setComplianceModule(mockComplianceModule);
+
+        // Deploy token with compliance
+        address tokenAddress = factory.deployTokenWithCompliance(
+            "Tokenized Real Estate Fund",
+            "TREF",
+            1e18,
+            true
+        );
+
+        // Verify token was deployed with compliance
+        tRWA token = tRWA(tokenAddress);
+        assertEq(token.transferApproval(), mockComplianceModule);
+        assertTrue(token.transferApprovalEnabled());
     }
 
     function test_DeployMultipleTokens() public {
@@ -108,9 +138,35 @@ contract tRWAFactoryTest is Test {
         // Verify token is registered in new oracle
         assertTrue(newOracle.supportedTokens(tokenAddress));
 
-        // Verify token uses new oracle
+        // Verify token uses new oracle as price authority
         tRWA token = tRWA(tokenAddress);
-        assertEq(token.oracle(), address(newOracle));
+        assertTrue(token.hasRole(address(newOracle), token.PRICE_AUTHORITY_ROLE()));
+    }
+
+    function test_UpdateSubscriptionManager() public {
+        address newSubscriptionManager = address(0xABC);
+
+        // Update subscription manager
+        factory.setSubscriptionManager(newSubscriptionManager);
+        assertEq(factory.subscriptionManager(), newSubscriptionManager);
+
+        // Deploy a token and verify it uses the new subscription manager
+        address tokenAddress = factory.deployToken("Test Token", "TEST", 1e18);
+        tRWA token = tRWA(tokenAddress);
+        assertTrue(token.hasRole(newSubscriptionManager, token.SUBSCRIPTION_ROLE()));
+    }
+
+    function test_UpdateUnderlyingAsset() public {
+        address newUnderlyingAsset = address(0xDEF);
+
+        // Update underlying asset
+        factory.setUnderlyingAsset(newUnderlyingAsset);
+        assertEq(factory.underlyingAsset(), newUnderlyingAsset);
+
+        // Deploy a token and verify it uses the new underlying asset
+        address tokenAddress = factory.deployToken("Test Token", "TEST", 1e18);
+        tRWA token = tRWA(tokenAddress);
+        assertEq(token.asset(), newUnderlyingAsset);
     }
 
     function test_InvalidUnderlyingValue() public {
