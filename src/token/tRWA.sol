@@ -1,23 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
+import {ERC20} from "solady/tokens/ERC20.sol";
+
 /**
  * @title tRWA
  * @notice Tokenized Real World Asset (tRWA) with share-based accounting model
  * @dev Each token represents a share in the underlying real-world fund
  */
-contract tRWA {
-    // ERC20 standard variables
-    string public name;
-    string public symbol;
-    uint8 public decimals = 18;
-    uint256 public totalSupply;
-    mapping(address => uint256) public balanceOf;
-    mapping(address => mapping(address => uint256)) public allowance;
+contract tRWA is ERC20 {
+    // Internal storage for token metadata
+    string internal _name;
+    string internal _symbol;
 
-    // Events for ERC20
-    event Transfer(address indexed from, address indexed to, uint256 value);
-    event Approval(address indexed owner, address indexed spender, uint256 value);
     address public oracle;
     address public admin;
     address public complianceModule;
@@ -40,31 +35,51 @@ contract tRWA {
     error InvalidAdminAddress();
     error InvalidComplianceModuleAddress();
     error TransferBlocked(string reason);
+    error InvalidAddress();
 
     /**
      * @notice Contract constructor
-     * @param _name Token name
-     * @param _symbol Token symbol
+     * @param name_ Token name
+     * @param symbol_ Token symbol
      * @param _oracle Address of the NAV oracle
      * @param _initialUnderlyingPerToken Initial value of underlying asset per token in USD (18 decimals)
      */
     constructor(
-        string memory _name,
-        string memory _symbol,
+        string memory name_,
+        string memory symbol_,
         address _oracle,
         uint256 _initialUnderlyingPerToken
     ) {
         if (_oracle == address(0)) revert InvalidOracleAddress();
         if (_initialUnderlyingPerToken == 0) revert InvalidUnderlyingValue();
 
-        name = _name;
-        symbol = _symbol;
-        oracle = _oracle;
         admin = msg.sender;
+        oracle = _oracle;
         underlyingPerToken = _initialUnderlyingPerToken;
         lastValueUpdate = block.timestamp;
 
         emit UnderlyingValueUpdated(_initialUnderlyingPerToken, block.timestamp);
+    }
+
+    /**
+     * @notice Returns the name of the token
+     */
+    function name() public view virtual override returns (string memory) {
+        return _name;
+    }
+
+    /**
+     * @notice Returns the symbol of the token
+     */
+    function symbol() public view virtual override returns (string memory) {
+        return _symbol;
+    }
+
+    /**
+     * @notice Returns the decimals places of the token
+     */
+    function decimals() public view virtual override returns (uint8) {
+        return 18;
     }
 
     /**
@@ -146,90 +161,37 @@ contract tRWA {
     }
 
     /**
-     * @notice Transfer tokens to a specified address
-     * @param _to The address to transfer to
-     * @param _value The amount to be transferred
-     * @return success Whether the transfer was successful or not
+     * @notice Override _beforeTokenTransfer to add compliance checks
+     * @dev Called before any transfer, mint, or burn
      */
-    function transfer(address _to, uint256 _value) public returns (bool success) {
-        if (_to == address(0)) revert InvalidAddress();
-        if (balanceOf[msg.sender] < _value) revert InsufficientBalance();
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 amount
+    ) internal virtual override {
+        // Skip checks for minting and burning which are controlled by admin
+        if (from != address(0) && to != address(0)) {
+            if (to == address(0)) revert InvalidAddress();
 
-        // Check compliance if enabled
-        if (complianceEnabled && complianceModule != address(0)) {
-            // Interface to the checkTransferCompliance function
-            (bool successCall, bytes memory data) = complianceModule.staticcall(
-                abi.encodeWithSignature(
-                    "checkTransferCompliance(address,address,address,uint256)",
-                    address(this),
-                    msg.sender,
-                    _to,
-                    _value
-                )
-            );
+            // Check compliance if enabled
+            if (complianceEnabled && complianceModule != address(0)) {
+                // Interface to the checkTransferCompliance function
+                (bool successCall, bytes memory data) = complianceModule.staticcall(
+                    abi.encodeWithSignature(
+                        "checkTransferCompliance(address,address,address,uint256)",
+                        address(this),
+                        from,
+                        to,
+                        amount
+                    )
+                );
 
-            if (!successCall || !abi.decode(data, (bool))) {
-                emit TransferRejected(msg.sender, _to, _value, "Failed compliance check");
-                revert TransferBlocked("Failed compliance check");
+                if (!successCall || !abi.decode(data, (bool))) {
+                    emit TransferRejected(from, to, amount, "Failed compliance check");
+                    revert TransferBlocked("Failed compliance check");
+                }
             }
         }
-
-        balanceOf[msg.sender] -= _value;
-        balanceOf[_to] += _value;
-        emit Transfer(msg.sender, _to, _value);
-        return true;
-    }
-
-    /**
-     * @notice Approve the passed address to spend the specified amount of tokens on behalf of msg.sender
-     * @param _spender The address which will spend the funds
-     * @param _value The amount of tokens to be spent
-     * @return success Whether the approval was successful or not
-     */
-    function approve(address _spender, uint256 _value) public returns (bool success) {
-        if (_spender == address(0)) revert InvalidAddress();
-
-        allowance[msg.sender][_spender] = _value;
-        emit Approval(msg.sender, _spender, _value);
-        return true;
-    }
-
-    /**
-     * @notice Transfer tokens from one address to another
-     * @param _from The address to transfer from
-     * @param _to The address to transfer to
-     * @param _value The amount to be transferred
-     * @return success Whether the transfer was successful or not
-     */
-    function transferFrom(address _from, address _to, uint256 _value) public returns (bool success) {
-        if (_from == address(0) || _to == address(0)) revert InvalidAddress();
-        if (balanceOf[_from] < _value) revert InsufficientBalance();
-        if (allowance[_from][msg.sender] < _value) revert InsufficientAllowance();
-
-        // Check compliance if enabled
-        if (complianceEnabled && complianceModule != address(0)) {
-            // Interface to the checkTransferCompliance function
-            (bool successCall, bytes memory data) = complianceModule.staticcall(
-                abi.encodeWithSignature(
-                    "checkTransferCompliance(address,address,address,uint256)",
-                    address(this),
-                    _from,
-                    _to,
-                    _value
-                )
-            );
-
-            if (!successCall || !abi.decode(data, (bool))) {
-                emit TransferRejected(_from, _to, _value, "Failed compliance check");
-                revert TransferBlocked("Failed compliance check");
-            }
-        }
-
-        balanceOf[_from] -= _value;
-        balanceOf[_to] += _value;
-        allowance[_from][msg.sender] -= _value;
-        emit Transfer(_from, _to, _value);
-        return true;
     }
 
     /**
@@ -239,10 +201,7 @@ contract tRWA {
      */
     function mint(address _to, uint256 _amount) external onlyAdmin {
         if (_to == address(0)) revert InvalidAddress();
-
-        balanceOf[_to] += _amount;
-        totalSupply += _amount;
-        emit Transfer(address(0), _to, _amount);
+        _mint(_to, _amount);
     }
 
     /**
@@ -252,11 +211,14 @@ contract tRWA {
      */
     function burn(address _from, uint256 _amount) external onlyAdmin {
         if (_from == address(0)) revert InvalidAddress();
-        if (balanceOf[_from] < _amount) revert InsufficientBalance();
 
-        balanceOf[_from] -= _amount;
-        totalSupply -= _amount;
-        emit Transfer(_from, address(0), _amount);
+        // Check balance before burning
+        if (balanceOf(_from) < _amount) {
+            // Use the ERC20 InsufficientBalance error from the parent contract
+            revert ERC20.InsufficientBalance();
+        }
+
+        _burn(_from, _amount);
     }
 
     /**
@@ -267,9 +229,4 @@ contract tRWA {
     function getUsdValue(uint256 _shares) public view returns (uint256 usdValue) {
         return (_shares * underlyingPerToken) / 1e18;
     }
-
-    // Additional Errors
-    error InsufficientBalance();
-    error InsufficientAllowance();
-    error InvalidAddress();
 }
