@@ -43,7 +43,7 @@ contract tRWA is ERC4626, OwnableRoles, ItRWA {
     event PendingWithdrawalsFunded(address indexed manager, uint256 amount);
     event WithdrawalProcessed(address indexed recipient, uint256 amount);
 
-    // Errors
+    // TODO: Placeholder before withdrawal queue is fully implemented
     error InsufficientWithdrawalFunds();
 
     /**
@@ -213,8 +213,8 @@ contract tRWA is ERC4626, OwnableRoles, ItRWA {
 
             // Check approval if enabled
             if (transferApprovalEnabled && transferApproval != address(0)) {
-                // Interface to the checkTransferApproval function
-                (bool successCall, bytes memory data) = transferApproval.staticcall(
+                // Call checkTransferApproval which will revert with specific errors if not approved
+                (bool successCall,) = transferApproval.staticcall(
                     abi.encodeWithSignature(
                         "checkTransferApproval(address,address,address,uint256)",
                         address(this),
@@ -224,9 +224,13 @@ contract tRWA is ERC4626, OwnableRoles, ItRWA {
                     )
                 );
 
-                if (!successCall || !abi.decode(data, (bool))) {
-                    emit TransferRejected(from, to, amount, "Failed transfer approval check");
-                    revert TransferBlocked("Failed transfer approval check");
+                if (!successCall) {
+                    // If the call failed, it means one of the specific errors was thrown
+                    // We'll rethrow the same error
+                    assembly {
+                        returndatacopy(0, 0, returndatasize())
+                        revert(0, returndatasize())
+                    }
                 }
             }
         }

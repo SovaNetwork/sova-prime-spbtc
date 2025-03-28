@@ -29,9 +29,11 @@ contract TransferApproval {
     // Errors
     error Unauthorized();
     error KycRequired();
-    error TransferLimitExceeded();
     error InvalidAddress();
     error InvalidLimit();
+    error SenderKycRequired();
+    error ReceiverKycRequired();
+    error TransferLimitExceeded(uint256 amount, uint256 limit);
 
     /**
      * @notice Contract constructor
@@ -190,33 +192,30 @@ contract TransferApproval {
      * @param _from Address sending tokens
      * @param _to Address receiving tokens
      * @param _amount Amount of tokens being transferred
-     * @return approved Whether the transfer is approved
      */
     function checkTransferApproval(
         address _token,
         address _from,
         address _to,
         uint256 _amount
-    ) external view returns (bool approved) {
+    ) external view {
         // Skip compliance checks if token is not regulated
         if (!isRegulatedToken[_token]) {
-            return true;
+            return;
         }
 
         // Check KYC status for sender and receiver, unless exempt
         if (!isExempt[_from] && !isKycApproved[_from]) {
-            return false;
+            revert SenderKycRequired();
         }
 
         if (!isExempt[_to] && !isKycApproved[_to]) {
-            return false;
+            revert ReceiverKycRequired();
         }
 
         // Check transfer limits if enforced
         if (enforceTransferLimits && _amount > transferLimit) {
-            return false;
+            revert TransferLimitExceeded(_amount, transferLimit);
         }
-
-        return true;
     }
 }
