@@ -20,9 +20,13 @@ contract tRWATest is Test {
 
     function setUp() public {
         // Deploy contracts
-        oracle = new NavOracle();
+        // Create a mock initial token for the oracle
         mockUnderlyingAsset = address(0xDADA);
         mockTransferApproval = address(0xDEAD);
+        address mockInitialToken = address(0xDEDB); // Mock token address for oracle
+
+        // Deploy oracle with mock token address and initial price
+        oracle = new NavOracle(mockInitialToken, initialUnderlying);
 
         // The test contract is already an authorized updater through the constructor
         // but we need to make sure it has explicit authorization as the test runs
@@ -38,18 +42,16 @@ contract tRWATest is Test {
         factory.setTransferApprovalApproval(mockTransferApproval, true);
 
         // Update the factory to be the admin of the oracle
-        oracle.updateAdmin(address(factory));
+        oracle.transferOwnership(address(factory));
 
         // Deploy a test token through the factory with the specified implementations
         address tokenAddress = factory.deployToken(
             "Tokenized Real Estate Fund",
             "TREF",
-            initialUnderlying,
             address(oracle),
             address(this),
             mockUnderlyingAsset,
-            address(0), // No transfer approval initially
-            false
+            address(0) // No transfer approval initially
         );
         token = tRWA(tokenAddress);
 
@@ -74,7 +76,7 @@ contract tRWATest is Test {
         uint256 newValue = 1.05e18; // $1.05 per token
 
         // Update underlying value through the oracle
-        oracle.updateUnderlyingValue(address(token), newValue);
+        oracle.updateUnderlyingValue(newValue, "Test Update");
 
         // Check if underlying value was updated
         assertEq(token.underlyingPerToken(), newValue);
@@ -91,21 +93,19 @@ contract tRWATest is Test {
         address secondTokenAddress = factory.deployToken(
             "Second Tokenized Fund",
             "STF",
-            2e18, // $2.00 per token
             address(oracle),
             secondSubscriptionManager,
             mockUnderlyingAsset,
-            address(0),
-            false
+            address(0)
         );
         tRWA secondToken = tRWA(secondTokenAddress);
 
         // Check that the second token is properly configured
-        assertEq(secondToken.underlyingPerToken(), 2e18);
+        assertEq(secondToken.underlyingPerToken(), initialUnderlying);
         assertTrue(secondToken.hasAnyRole(secondSubscriptionManager, secondToken.SUBSCRIPTION_ROLE()));
 
         // Update underlying value only for the second token
-        oracle.updateUnderlyingValue(secondTokenAddress, 2.5e18);
+        oracle.updateUnderlyingValue(2.5e18, "Second Token Update");
 
         // First token should remain unchanged
         assertEq(token.underlyingPerToken(), initialUnderlying);
@@ -116,9 +116,10 @@ contract tRWATest is Test {
 
     function test_MultipleTRWAsWithDifferentOracles() public {
         // Deploy a second oracle
-        NavOracle secondOracle = new NavOracle();
+        address mockSecondToken = address(0xBEDB);
+        NavOracle secondOracle = new NavOracle(mockSecondToken, 1e18);
         assertTrue(secondOracle.authorizedUpdaters(address(this)), "Test contract not authorized in second oracle");
-        secondOracle.updateAdmin(address(factory));
+        secondOracle.transferOwnership(address(factory));
 
         // Approve the second oracle in the factory
         factory.setOracleApproval(address(secondOracle), true);
@@ -127,12 +128,10 @@ contract tRWATest is Test {
         address secondTokenAddress = factory.deployToken(
             "Alternative Tokenized Fund",
             "ATF",
-            3e18, // $3.00 per token
             address(secondOracle),
             address(this), // Same subscription manager
             mockUnderlyingAsset,
-            mockTransferApproval, // Use transfer approval
-            true
+            mockTransferApproval // Use transfer approval
         );
         tRWA secondToken = tRWA(secondTokenAddress);
 
@@ -144,7 +143,7 @@ contract tRWATest is Test {
         assertTrue(secondToken.transferApprovalEnabled());
 
         // Update value through the second oracle
-        secondOracle.updateUnderlyingValue(secondTokenAddress, 3.5e18);
+        secondOracle.updateUnderlyingValue(3.5e18, "Second Oracle Update");
 
         // First token should remain unchanged (different oracle)
         assertEq(token.underlyingPerToken(), initialUnderlying);
@@ -158,12 +157,10 @@ contract tRWATest is Test {
         address tokenWithApprovalAddress = factory.deployToken(
             "Token With Transfer Approval",
             "TWTA",
-            1.5e18,
             address(oracle),
             address(this),
             mockUnderlyingAsset,
-            mockTransferApproval,
-            true
+            mockTransferApproval
         );
         tRWA tokenWithApproval = tRWA(tokenWithApprovalAddress);
 
@@ -195,7 +192,7 @@ contract tRWATest is Test {
         // Try to update underlying value through oracle as unauthorized user (should fail)
         vm.startPrank(user2);
         vm.expectRevert();
-        oracle.updateUnderlyingValue(address(token), newValue);
+        oracle.updateUnderlyingValue(newValue, "Unauthorized Update");
         vm.stopPrank();
     }
 
@@ -232,7 +229,7 @@ contract tRWATest is Test {
         shares = bound(shares, 1, 1e24);
         underlying = bound(underlying, 1e6, 1e20);
 
-        oracle.updateUnderlyingValue(address(token), underlying);
+        oracle.updateUnderlyingValue(underlying, "Fuzz Test Update");
 
         uint256 expectedUsdValue = (shares * underlying) / 1e18;
         assertEq(token.getUsdValue(shares), expectedUsdValue);

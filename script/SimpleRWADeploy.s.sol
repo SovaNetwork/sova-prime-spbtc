@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
-import {Script, console} from "forge-std/Script.sol";
-import {SimpleRWA} from "./SimpleRWA.sol";
+import "forge-std/Script.sol";
+import {SimpleRWA} from "../script/SimpleRWA.sol";
 
 contract SimpleRWADeployScript is Script {
     function run() public {

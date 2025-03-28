@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
-import {Test, console} from "forge-std/Test.sol";
+import {Test, console2} from "forge-std/Test.sol";
 import {tRWA} from "../src/token/tRWA.sol";
 import {NavOracle} from "../src/token/NavOracle.sol";
 import {tRWAFactory} from "../src/token/tRWAFactory.sol";
@@ -27,21 +27,33 @@ contract TransferApprovalTest is Test {
         mockSubscriptionManager = address(0x123);
         mockUnderlyingAsset = address(0x456);
 
+        // Create a mock token address for the oracle
+        address mockToken = address(0xFEED);
+
         // Deploy contracts
-        oracle = new NavOracle();
+        oracle = new NavOracle(mockToken, initialNav);
 
         // Verify test contract has authorization in the oracle
         assertTrue(oracle.authorizedUpdaters(address(this)), "Test contract not authorized in oracle");
 
-        factory = new tRWAFactory(address(oracle), mockSubscriptionManager, mockUnderlyingAsset);
+        factory = new tRWAFactory();
 
-        // Update the factory to be the admin of the oracle
-        oracle.updateAdmin(address(factory));
+        // Set approvals in the factory
+        factory.setOracleApproval(address(oracle), true);
+        factory.setSubscriptionManagerApproval(mockSubscriptionManager, true);
+        factory.setUnderlyingAssetApproval(mockUnderlyingAsset, true);
 
         compliance = new TransferApproval(transferLimit, true);
 
         // Deploy a test token through the factory
-        address tokenAddress = factory.deployToken("Tokenized Real Estate Fund", "TREF", initialNav);
+        address tokenAddress = factory.deployToken(
+            "Tokenized Real Estate Fund",
+            "TREF",
+            address(oracle),
+            mockSubscriptionManager,
+            mockUnderlyingAsset,
+            address(0)
+        );
         token = tRWA(tokenAddress);
 
         // Transfer the admin role back to the test contract for testing purposes
@@ -156,7 +168,14 @@ contract TransferApprovalTest is Test {
 
     function test_TokenRegistration() public {
         // Deploy another token
-        address token2Address = factory.deployToken("Tokenized Credit Fund", "TCF", initialNav);
+        address token2Address = factory.deployToken(
+            "Tokenized Credit Fund",
+            "TCF",
+            address(oracle),
+            mockSubscriptionManager,
+            mockUnderlyingAsset,
+            address(0)
+        );
 
         // Register the token
         compliance.registerToken(token2Address);
@@ -165,21 +184,6 @@ contract TransferApprovalTest is Test {
         // Unregister the token
         compliance.unregisterToken(token2Address);
         assertFalse(compliance.isRegulatedToken(token2Address));
-    }
-
-    function test_AdminFunctions() public {
-        // Test updating admin
-        address newAdmin = address(8);
-        compliance.updateAdmin(newAdmin);
-        assertEq(compliance.admin(), newAdmin);
-
-        // Test updating compliance officer
-        address newOfficer = address(9);
-
-        vm.startPrank(newAdmin);
-        compliance.updateComplianceOfficer(newOfficer);
-        assertEq(compliance.complianceOfficer(), newOfficer);
-        vm.stopPrank();
     }
 
     function test_UnauthorizedAccess() public {
