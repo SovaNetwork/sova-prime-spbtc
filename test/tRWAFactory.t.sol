@@ -15,6 +15,8 @@ contract tRWAFactoryTest is Test {
     address public mockUnderlyingAsset;
     address public secondSubscriptionManager;
     address public secondUnderlyingAsset;
+    address public mockTransferApproval;
+    address public secondTransferApproval;
 
     address public user = address(2);
 
@@ -24,6 +26,8 @@ contract tRWAFactoryTest is Test {
         mockUnderlyingAsset = address(0x456);
         secondSubscriptionManager = address(0x789);
         secondUnderlyingAsset = address(0xABC);
+        mockTransferApproval = address(0xDEF);
+        secondTransferApproval = address(0x789AB);
 
         // Deploy contracts
         oracle = new NavOracle();
@@ -33,7 +37,13 @@ contract tRWAFactoryTest is Test {
         assertTrue(oracle.authorizedUpdaters(address(this)), "Test contract not authorized in oracle");
         assertTrue(secondOracle.authorizedUpdaters(address(this)), "Test contract not authorized in second oracle");
 
-        factory = new tRWAFactory(address(oracle), mockSubscriptionManager, mockUnderlyingAsset);
+        factory = new tRWAFactory();
+
+        // Approve initial implementations
+        factory.setOracleApproval(address(oracle), true);
+        factory.setSubscriptionManagerApproval(mockSubscriptionManager, true);
+        factory.setUnderlyingAssetApproval(mockUnderlyingAsset, true);
+        factory.setTransferApprovalApproval(mockTransferApproval, true);
 
         // Update the oracles to have the factory as admin
         oracle.updateAdmin(address(factory));
@@ -41,14 +51,16 @@ contract tRWAFactoryTest is Test {
     }
 
     function test_DeployToken() public {
-        // Deploy a token with initially approved contracts
+        // Deploy a token with initially approved contracts and no transfer approval enabled
         address tokenAddress = factory.deployToken(
             "Tokenized Real Estate Fund",
             "TREF",
             1e18,
             address(oracle),
             mockSubscriptionManager,
-            mockUnderlyingAsset
+            mockUnderlyingAsset,
+            address(0), // No transfer approval
+            false
         );
 
         // Verify token was deployed and registered
@@ -72,11 +84,31 @@ contract tRWAFactoryTest is Test {
         assertTrue(token.hasAnyRole(mockSubscriptionManager, token.SUBSCRIPTION_ROLE()));
     }
 
+    function test_DeployTokenWithTransferApproval() public {
+        // Deploy a token with transfer approval enabled
+        address tokenAddress = factory.deployToken(
+            "Tokenized Real Estate Fund With Transfer Approval",
+            "TREFTA",
+            1e18,
+            address(oracle),
+            mockSubscriptionManager,
+            mockUnderlyingAsset,
+            mockTransferApproval,
+            true
+        );
+
+        // Check token has transfer approval set and enabled
+        tRWA token = tRWA(tokenAddress);
+        assertEq(token.transferApproval(), mockTransferApproval);
+        assertTrue(token.transferApprovalEnabled());
+    }
+
     function test_DeployMultipleTokens() public {
         // Approve additional implementations
         factory.setOracleApproval(address(secondOracle), true);
         factory.setSubscriptionManagerApproval(secondSubscriptionManager, true);
         factory.setUnderlyingAssetApproval(secondUnderlyingAsset, true);
+        factory.setTransferApprovalApproval(secondTransferApproval, true);
 
         // Deploy multiple tokens with different implementations
         address token1 = factory.deployToken(
@@ -85,7 +117,9 @@ contract tRWAFactoryTest is Test {
             1e18,
             address(oracle),
             mockSubscriptionManager,
-            mockUnderlyingAsset
+            mockUnderlyingAsset,
+            address(0),
+            false
         );
 
         address token2 = factory.deployToken(
@@ -94,7 +128,9 @@ contract tRWAFactoryTest is Test {
             2e18,
             address(secondOracle),
             mockSubscriptionManager,
-            mockUnderlyingAsset
+            mockUnderlyingAsset,
+            mockTransferApproval,
+            true
         );
 
         address token3 = factory.deployToken(
@@ -103,7 +139,9 @@ contract tRWAFactoryTest is Test {
             0.5e18,
             address(oracle),
             secondSubscriptionManager,
-            secondUnderlyingAsset
+            secondUnderlyingAsset,
+            secondTransferApproval,
+            true
         );
 
         // Check token count
@@ -116,14 +154,18 @@ contract tRWAFactoryTest is Test {
         assertEq(tokens[1], token2);
         assertEq(tokens[2], token3);
 
-        // Verify token2 uses second oracle
+        // Verify token2 uses second oracle and has transfer approval
         tRWA token = tRWA(token2);
         assertTrue(token.hasAnyRole(address(secondOracle), token.PRICE_AUTHORITY_ROLE()));
+        assertEq(token.transferApproval(), mockTransferApproval);
+        assertTrue(token.transferApprovalEnabled());
 
-        // Verify token3 uses second subscription manager and underlying asset
+        // Verify token3 uses second subscription manager, underlying asset, and transfer approval
         token = tRWA(token3);
         assertTrue(token.hasAnyRole(secondSubscriptionManager, token.SUBSCRIPTION_ROLE()));
         assertEq(token.asset(), secondUnderlyingAsset);
+        assertEq(token.transferApproval(), secondTransferApproval);
+        assertTrue(token.transferApprovalEnabled());
     }
 
     function test_UnauthorizedDeployment() public {
@@ -137,18 +179,25 @@ contract tRWAFactoryTest is Test {
             1e18,
             address(oracle),
             mockSubscriptionManager,
-            mockUnderlyingAsset
+            mockUnderlyingAsset,
+            address(0),
+            false
         );
 
         vm.stopPrank();
     }
 
-    function test_UpdateAdmin() public {
-        address newAdmin = address(3);
+    function test_TransferOwnership() public {
+        address newOwner = address(3);
 
-        // Update admin to new address
-        factory.updateAdmin(newAdmin);
-        assertEq(factory.admin(), newAdmin);
+        // Transfer ownership to new address
+        factory.transferOwnership(newOwner);
+
+        vm.startPrank(newOwner);
+        factory.acceptOwnership();
+        vm.stopPrank();
+
+        assertEq(factory.owner(), newOwner);
 
         // Current address should no longer be able to deploy tokens
         vm.expectRevert();
@@ -158,18 +207,22 @@ contract tRWAFactoryTest is Test {
             1e18,
             address(oracle),
             mockSubscriptionManager,
-            mockUnderlyingAsset
+            mockUnderlyingAsset,
+            address(0),
+            false
         );
 
-        // New admin should be able to deploy tokens
-        vm.startPrank(newAdmin);
+        // New owner should be able to deploy tokens
+        vm.startPrank(newOwner);
         address tokenAddress = factory.deployToken(
             "Test Token",
             "TEST",
             1e18,
             address(oracle),
             mockSubscriptionManager,
-            mockUnderlyingAsset
+            mockUnderlyingAsset,
+            address(0),
+            false
         );
         assertTrue(factory.isRegisteredToken(tokenAddress));
         vm.stopPrank();
@@ -180,32 +233,38 @@ contract tRWAFactoryTest is Test {
         assertTrue(factory.isOracleApproved(address(oracle)));
         assertTrue(factory.isSubscriptionManagerApproved(mockSubscriptionManager));
         assertTrue(factory.isUnderlyingAssetApproved(mockUnderlyingAsset));
+        assertTrue(factory.isTransferApprovalApproved(mockTransferApproval));
 
         // Add new approvals
         factory.setOracleApproval(address(secondOracle), true);
         factory.setSubscriptionManagerApproval(secondSubscriptionManager, true);
         factory.setUnderlyingAssetApproval(secondUnderlyingAsset, true);
+        factory.setTransferApprovalApproval(secondTransferApproval, true);
 
         // Verify new approvals
         assertTrue(factory.isOracleApproved(address(secondOracle)));
         assertTrue(factory.isSubscriptionManagerApproved(secondSubscriptionManager));
         assertTrue(factory.isUnderlyingAssetApproved(secondUnderlyingAsset));
+        assertTrue(factory.isTransferApprovalApproved(secondTransferApproval));
 
         // Remove approvals
         factory.setOracleApproval(address(oracle), false);
         factory.setSubscriptionManagerApproval(mockSubscriptionManager, false);
         factory.setUnderlyingAssetApproval(mockUnderlyingAsset, false);
+        factory.setTransferApprovalApproval(mockTransferApproval, false);
 
         // Verify removed approvals
         assertFalse(factory.isOracleApproved(address(oracle)));
         assertFalse(factory.isSubscriptionManagerApproved(mockSubscriptionManager));
         assertFalse(factory.isUnderlyingAssetApproved(mockUnderlyingAsset));
+        assertFalse(factory.isTransferApprovalApproved(mockTransferApproval));
     }
 
     function test_UnapprovedImplementations() public {
         address unapprovedOracle = address(0xBBB);
         address unapprovedManager = address(0xCCC);
         address unapprovedAsset = address(0xDDD);
+        address unapprovedTransferApproval = address(0xEEE);
 
         // Try to use unapproved oracle (should fail)
         vm.expectRevert();
@@ -215,7 +274,9 @@ contract tRWAFactoryTest is Test {
             1e18,
             unapprovedOracle,
             mockSubscriptionManager,
-            mockUnderlyingAsset
+            mockUnderlyingAsset,
+            address(0),
+            false
         );
 
         // Try to use unapproved subscription manager (should fail)
@@ -226,7 +287,9 @@ contract tRWAFactoryTest is Test {
             1e18,
             address(oracle),
             unapprovedManager,
-            mockUnderlyingAsset
+            mockUnderlyingAsset,
+            address(0),
+            false
         );
 
         // Try to use unapproved underlying asset (should fail)
@@ -237,13 +300,29 @@ contract tRWAFactoryTest is Test {
             1e18,
             address(oracle),
             mockSubscriptionManager,
-            unapprovedAsset
+            unapprovedAsset,
+            address(0),
+            false
+        );
+
+        // Try to use unapproved transfer approval (should fail)
+        vm.expectRevert();
+        factory.deployToken(
+            "Test Token",
+            "TEST",
+            1e18,
+            address(oracle),
+            mockSubscriptionManager,
+            mockUnderlyingAsset,
+            unapprovedTransferApproval,
+            true
         );
 
         // Now approve them and try again
         factory.setOracleApproval(unapprovedOracle, true);
         factory.setSubscriptionManagerApproval(unapprovedManager, true);
         factory.setUnderlyingAssetApproval(unapprovedAsset, true);
+        factory.setTransferApprovalApproval(unapprovedTransferApproval, true);
 
         // Should now work
         address tokenAddress = factory.deployToken(
@@ -252,11 +331,37 @@ contract tRWAFactoryTest is Test {
             1e18,
             unapprovedOracle,
             unapprovedManager,
-            unapprovedAsset
+            unapprovedAsset,
+            unapprovedTransferApproval,
+            true
         );
 
         // Verify it worked
         assertTrue(factory.isRegisteredToken(tokenAddress));
+
+        // Verify transfer approval is set and enabled
+        tRWA token = tRWA(tokenAddress);
+        assertEq(token.transferApproval(), unapprovedTransferApproval);
+        assertTrue(token.transferApprovalEnabled());
+    }
+
+    function test_TransferApprovalButNotEnabled() public {
+        // Deploy token with transfer approval set but not enabled
+        address tokenAddress = factory.deployToken(
+            "Test Token",
+            "TEST",
+            1e18,
+            address(oracle),
+            mockSubscriptionManager,
+            mockUnderlyingAsset,
+            mockTransferApproval,
+            false
+        );
+
+        // Verify transfer approval is set but not enabled
+        tRWA token = tRWA(tokenAddress);
+        assertEq(token.transferApproval(), mockTransferApproval);
+        assertFalse(token.transferApprovalEnabled());
     }
 
     function test_InvalidUnderlyingValue() public {
@@ -268,7 +373,9 @@ contract tRWAFactoryTest is Test {
             0,
             address(oracle),
             mockSubscriptionManager,
-            mockUnderlyingAsset
+            mockUnderlyingAsset,
+            address(0),
+            false
         );
     }
 }

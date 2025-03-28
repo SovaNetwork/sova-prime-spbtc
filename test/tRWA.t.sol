@@ -11,6 +11,7 @@ contract tRWATest is Test {
     NavOracle public oracle;
     tRWAFactory public factory;
     address public mockUnderlyingAsset;
+    address public mockTransferApproval;
 
     address public user1 = address(2);
     address public user2 = address(3);
@@ -21,13 +22,20 @@ contract tRWATest is Test {
         // Deploy contracts
         oracle = new NavOracle();
         mockUnderlyingAsset = address(0xDADA);
+        mockTransferApproval = address(0xDEAD);
 
         // The test contract is already an authorized updater through the constructor
         // but we need to make sure it has explicit authorization as the test runs
         assertTrue(oracle.authorizedUpdaters(address(this)), "Test contract not authorized in oracle");
 
         // Deploy factory with initial approved implementations
-        factory = new tRWAFactory(address(oracle), address(this), mockUnderlyingAsset);
+        factory = new tRWAFactory();
+
+        // Approve implementations in the factory
+        factory.setOracleApproval(address(oracle), true);
+        factory.setSubscriptionManagerApproval(address(this), true);
+        factory.setUnderlyingAssetApproval(mockUnderlyingAsset, true);
+        factory.setTransferApprovalApproval(mockTransferApproval, true);
 
         // Update the factory to be the admin of the oracle
         oracle.updateAdmin(address(factory));
@@ -39,7 +47,9 @@ contract tRWATest is Test {
             initialUnderlying,
             address(oracle),
             address(this),
-            mockUnderlyingAsset
+            mockUnderlyingAsset,
+            address(0), // No transfer approval initially
+            false
         );
         token = tRWA(tokenAddress);
 
@@ -84,7 +94,9 @@ contract tRWATest is Test {
             2e18, // $2.00 per token
             address(oracle),
             secondSubscriptionManager,
-            mockUnderlyingAsset
+            mockUnderlyingAsset,
+            address(0),
+            false
         );
         tRWA secondToken = tRWA(secondTokenAddress);
 
@@ -118,12 +130,18 @@ contract tRWATest is Test {
             3e18, // $3.00 per token
             address(secondOracle),
             address(this), // Same subscription manager
-            mockUnderlyingAsset
+            mockUnderlyingAsset,
+            mockTransferApproval, // Use transfer approval
+            true
         );
         tRWA secondToken = tRWA(secondTokenAddress);
 
         // Check that the token uses the second oracle
         assertTrue(secondToken.hasAnyRole(address(secondOracle), secondToken.PRICE_AUTHORITY_ROLE()));
+
+        // Check that the transfer approval is set and enabled
+        assertEq(secondToken.transferApproval(), mockTransferApproval);
+        assertTrue(secondToken.transferApprovalEnabled());
 
         // Update value through the second oracle
         secondOracle.updateUnderlyingValue(secondTokenAddress, 3.5e18);
@@ -133,6 +151,36 @@ contract tRWATest is Test {
 
         // Second token should be updated
         assertEq(secondToken.underlyingPerToken(), 3.5e18);
+    }
+
+    function test_TokenWithTransferApproval() public {
+        // Deploy a token with transfer approval
+        address tokenWithApprovalAddress = factory.deployToken(
+            "Token With Transfer Approval",
+            "TWTA",
+            1.5e18,
+            address(oracle),
+            address(this),
+            mockUnderlyingAsset,
+            mockTransferApproval,
+            true
+        );
+        tRWA tokenWithApproval = tRWA(tokenWithApprovalAddress);
+
+        // Check transfer approval is set and enabled
+        assertEq(tokenWithApproval.transferApproval(), mockTransferApproval);
+        assertTrue(tokenWithApproval.transferApprovalEnabled());
+
+        // Test disabling transfer approval
+        tokenWithApproval.toggleTransferApproval(false);
+        assertFalse(tokenWithApproval.transferApprovalEnabled());
+
+        // Test changing transfer approval
+        address newTransferApproval = address(0xBEEF);
+        factory.setTransferApprovalApproval(newTransferApproval, true);
+
+        tokenWithApproval.setTransferApproval(newTransferApproval);
+        assertEq(tokenWithApproval.transferApproval(), newTransferApproval);
     }
 
     function test_UnauthorizedValueUpdate() public {

@@ -12,37 +12,31 @@ import {Ownable} from "solady/auth/Ownable.sol";
  */
 contract tRWAFactory is Ownable {
     address public admin;
-    address public transferApproval;
 
     // Registries for approved contracts
     mapping(address => bool) public approvedOracles;
     mapping(address => bool) public approvedSubscriptionManagers;
     mapping(address => bool) public approvedUnderlyingAssets;
+    mapping(address => bool) public approvedTransferApprovals;
 
     mapping(address => bool) public isRegisteredToken;
     address[] public allTokens;
 
     // Events
     event TokenDeployed(address indexed token, string name, string symbol, uint256 initialUnderlyingPerToken);
-    event AdminUpdated(address indexed oldAdmin, address indexed newAdmin);
-    event TransferApprovalUpdated(address indexed oldModule, address indexed newModule);
+    event TransferApprovalApproved(address indexed module, bool approved);
     event OracleApproved(address indexed oracle, bool approved);
     event SubscriptionManagerApproved(address indexed manager, bool approved);
     event UnderlyingAssetApproved(address indexed asset, bool approved);
 
     // Errors
-    error Unauthorized();
-    error InvalidAddress();
-    error InvalidUnderlyingValue();
     error UnapprovedOracle();
     error UnapprovedSubscriptionManager();
     error UnapprovedUnderlyingAsset();
+    error UnapprovedTransferApproval();
 
     /**
      * @notice Contract constructor
-     * @param _initialOracle Initial oracle to approve
-     * @param _initialSubscriptionManager Initial subscription manager to approve
-     * @param _initialUnderlyingAsset Initial underlying asset to approve
      */
     constructor() {
         _initializeOwner(msg.sender);
@@ -56,6 +50,8 @@ contract tRWAFactory is Ownable {
      * @param _oracle Oracle to use for this token
      * @param _subscriptionManager Subscription manager to use for this token
      * @param _underlyingAsset Underlying asset to use for this token
+     * @param _transferApproval Transfer approval module to use for this token (can be address(0) if not needed)
+     * @param _enableTransferApproval Whether to enable transfer approval for this token
      * @return token Address of the deployed token
      */
     function deployToken(
@@ -64,16 +60,22 @@ contract tRWAFactory is Ownable {
         uint256 _initialUnderlyingPerToken,
         address _oracle,
         address _subscriptionManager,
-        address _underlyingAsset
-    ) external onlyAdmin returns (address) {
+        address _underlyingAsset,
+        address _transferApproval
+    ) external onlyOwner returns (address) {
         if (_initialUnderlyingPerToken == 0) revert InvalidUnderlyingValue();
         if (!approvedOracles[_oracle]) revert UnapprovedOracle();
         if (!approvedSubscriptionManagers[_subscriptionManager]) revert UnapprovedSubscriptionManager();
         if (!approvedUnderlyingAssets[_underlyingAsset]) revert UnapprovedUnderlyingAsset();
 
+        // If transfer approval is provided and enabled, check it's approved
+        if (_transferApproval != address(0) && _enableTransferApproval) {
+            if (!approvedTransferApprovals[_transferApproval]) revert UnapprovedTransferApproval();
+        }
+
         // Create configuration struct
         ItRWA.ConfigurationStruct memory config = ItRWA.ConfigurationStruct({
-            admin: admin,
+            admin: owner(),
             priceAuthority: _oracle,
             subscriptionManager: _subscriptionManager,
             underlyingAsset: _underlyingAsset,
@@ -101,16 +103,16 @@ contract tRWAFactory is Ownable {
     }
 
     /**
-     * @notice Set the transfer approval module
+     * @notice Approve or disapprove a transfer approval module
      * @param _transferApproval Address of the transfer approval module
+     * @param _approved Whether to approve or disapprove
      */
-    function setTransferApproval(address _transferApproval) external onlyAdmin {
+    function setTransferApprovalApproval(address _transferApproval, bool _approved) external onlyOwner {
         if (_transferApproval == address(0)) revert InvalidAddress();
 
-        address oldModule = transferApproval;
-        transferApproval = _transferApproval;
+        approvedTransferApprovals[_transferApproval] = _approved;
 
-        emit TransferApprovalUpdated(oldModule, _transferApproval);
+        emit TransferApprovalApproved(_transferApproval, _approved);
     }
 
     /**
@@ -118,7 +120,7 @@ contract tRWAFactory is Ownable {
      * @param _oracle Address of the oracle
      * @param _approved Whether to approve or disapprove
      */
-    function setOracleApproval(address _oracle, bool _approved) external onlyAdmin {
+    function setOracleApproval(address _oracle, bool _approved) external onlyOwner {
         if (_oracle == address(0)) revert InvalidAddress();
 
         approvedOracles[_oracle] = _approved;
@@ -131,7 +133,7 @@ contract tRWAFactory is Ownable {
      * @param _subscriptionManager Address of the subscription manager
      * @param _approved Whether to approve or disapprove
      */
-    function setSubscriptionManagerApproval(address _subscriptionManager, bool _approved) external onlyAdmin {
+    function setSubscriptionManagerApproval(address _subscriptionManager, bool _approved) external onlyOwner {
         if (_subscriptionManager == address(0)) revert InvalidAddress();
 
         approvedSubscriptionManagers[_subscriptionManager] = _approved;
@@ -144,12 +146,21 @@ contract tRWAFactory is Ownable {
      * @param _underlyingAsset Address of the underlying asset
      * @param _approved Whether to approve or disapprove
      */
-    function setUnderlyingAssetApproval(address _underlyingAsset, bool _approved) external onlyAdmin {
+    function setUnderlyingAssetApproval(address _underlyingAsset, bool _approved) external onlyOwner {
         if (_underlyingAsset == address(0)) revert InvalidAddress();
 
         approvedUnderlyingAssets[_underlyingAsset] = _approved;
 
         emit UnderlyingAssetApproved(_underlyingAsset, _approved);
+    }
+
+    /**
+     * @notice Check if a transfer approval module is approved
+     * @param _transferApproval Address of the transfer approval module
+     * @return approved Whether the transfer approval module is approved
+     */
+    function isTransferApprovalApproved(address _transferApproval) external view returns (bool) {
+        return approvedTransferApprovals[_transferApproval];
     }
 
     /**
