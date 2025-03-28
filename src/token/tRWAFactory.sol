@@ -4,56 +4,48 @@ pragma solidity ^0.8.25;
 import {tRWA} from "./tRWA.sol";
 import {NavOracle} from "./NavOracle.sol";
 import {ItRWA} from "../interfaces/ItRWA.sol";
+import {Ownable} from "solady/auth/Ownable.sol";
 
 /**
  * @title tRWAFactory
  * @notice Factory contract for deploying new tRWA tokens
  */
-contract tRWAFactory {
+contract tRWAFactory is Ownable {
     address public admin;
-    NavOracle public oracle;
     address public transferApproval;
-    address public subscriptionManager;
-    address public underlyingAsset;
+
+    // Registries for approved contracts
+    mapping(address => bool) public approvedOracles;
+    mapping(address => bool) public approvedSubscriptionManagers;
+    mapping(address => bool) public approvedUnderlyingAssets;
+
     mapping(address => bool) public isRegisteredToken;
     address[] public allTokens;
 
     // Events
     event TokenDeployed(address indexed token, string name, string symbol, uint256 initialUnderlyingPerToken);
     event AdminUpdated(address indexed oldAdmin, address indexed newAdmin);
-    event OracleUpdated(address indexed oldOracle, address indexed newOracle);
     event TransferApprovalUpdated(address indexed oldModule, address indexed newModule);
-    event SubscriptionManagerUpdated(address indexed oldManager, address indexed newManager);
-    event UnderlyingAssetUpdated(address indexed oldAsset, address indexed newAsset);
+    event OracleApproved(address indexed oracle, bool approved);
+    event SubscriptionManagerApproved(address indexed manager, bool approved);
+    event UnderlyingAssetApproved(address indexed asset, bool approved);
 
     // Errors
     error Unauthorized();
     error InvalidAddress();
     error InvalidUnderlyingValue();
+    error UnapprovedOracle();
+    error UnapprovedSubscriptionManager();
+    error UnapprovedUnderlyingAsset();
 
     /**
      * @notice Contract constructor
-     * @param _oracle Address of the oracle
-     * @param _subscriptionManager Address of the subscription manager
-     * @param _underlyingAsset Address of the underlying asset
+     * @param _initialOracle Initial oracle to approve
+     * @param _initialSubscriptionManager Initial subscription manager to approve
+     * @param _initialUnderlyingAsset Initial underlying asset to approve
      */
-    constructor(address _oracle, address _subscriptionManager, address _underlyingAsset) {
-        if (_oracle == address(0)) revert InvalidAddress();
-        if (_subscriptionManager == address(0)) revert InvalidAddress();
-        if (_underlyingAsset == address(0)) revert InvalidAddress();
-
-        admin = msg.sender;
-        oracle = NavOracle(_oracle);
-        subscriptionManager = _subscriptionManager;
-        underlyingAsset = _underlyingAsset;
-    }
-
-    /**
-     * @notice Modifier to restrict function calls to admin
-     */
-    modifier onlyAdmin() {
-        if (msg.sender != admin) revert Unauthorized();
-        _;
+    constructor() {
+        _initializeOwner(msg.sender);
     }
 
     /**
@@ -61,21 +53,30 @@ contract tRWAFactory {
      * @param _name Token name
      * @param _symbol Token symbol
      * @param _initialUnderlyingPerToken Initial underlying value per token in USD (18 decimals)
+     * @param _oracle Oracle to use for this token
+     * @param _subscriptionManager Subscription manager to use for this token
+     * @param _underlyingAsset Underlying asset to use for this token
      * @return token Address of the deployed token
      */
     function deployToken(
         string memory _name,
         string memory _symbol,
-        uint256 _initialUnderlyingPerToken
+        uint256 _initialUnderlyingPerToken,
+        address _oracle,
+        address _subscriptionManager,
+        address _underlyingAsset
     ) external onlyAdmin returns (address) {
         if (_initialUnderlyingPerToken == 0) revert InvalidUnderlyingValue();
+        if (!approvedOracles[_oracle]) revert UnapprovedOracle();
+        if (!approvedSubscriptionManagers[_subscriptionManager]) revert UnapprovedSubscriptionManager();
+        if (!approvedUnderlyingAssets[_underlyingAsset]) revert UnapprovedUnderlyingAsset();
 
         // Create configuration struct
         ItRWA.ConfigurationStruct memory config = ItRWA.ConfigurationStruct({
             admin: admin,
-            priceAuthority: address(oracle),
-            subscriptionManager: subscriptionManager,
-            underlyingAsset: underlyingAsset,
+            priceAuthority: _oracle,
+            subscriptionManager: _subscriptionManager,
+            underlyingAsset: _underlyingAsset,
             initialUnderlyingPerToken: _initialUnderlyingPerToken
         });
 
@@ -92,37 +93,11 @@ contract tRWAFactory {
         allTokens.push(tokenAddr);
 
         // Register token in the oracle
-        oracle.setTokenStatus(tokenAddr, true);
+        NavOracle(_oracle).setTokenStatus(tokenAddr, true);
 
         emit TokenDeployed(tokenAddr, _name, _symbol, _initialUnderlyingPerToken);
 
         return tokenAddr;
-    }
-
-    /**
-     * @notice Update the admin address
-     * @param _newAdmin Address of the new admin
-     */
-    function updateAdmin(address _newAdmin) external onlyAdmin {
-        if (_newAdmin == address(0)) revert InvalidAddress();
-
-        address oldAdmin = admin;
-        admin = _newAdmin;
-
-        emit AdminUpdated(oldAdmin, _newAdmin);
-    }
-
-    /**
-     * @notice Update the oracle address
-     * @param _newOracle Address of the new oracle
-     */
-    function updateOracle(address _newOracle) external onlyAdmin {
-        if (_newOracle == address(0)) revert InvalidAddress();
-
-        address oldOracle = address(oracle);
-        oracle = NavOracle(_newOracle);
-
-        emit OracleUpdated(oldOracle, _newOracle);
     }
 
     /**
@@ -139,29 +114,69 @@ contract tRWAFactory {
     }
 
     /**
-     * @notice Set the subscription manager
-     * @param _subscriptionManager Address of the subscription manager
+     * @notice Approve or disapprove an oracle
+     * @param _oracle Address of the oracle
+     * @param _approved Whether to approve or disapprove
      */
-    function setSubscriptionManager(address _subscriptionManager) external onlyAdmin {
-        if (_subscriptionManager == address(0)) revert InvalidAddress();
+    function setOracleApproval(address _oracle, bool _approved) external onlyAdmin {
+        if (_oracle == address(0)) revert InvalidAddress();
 
-        address oldManager = subscriptionManager;
-        subscriptionManager = _subscriptionManager;
+        approvedOracles[_oracle] = _approved;
 
-        emit SubscriptionManagerUpdated(oldManager, _subscriptionManager);
+        emit OracleApproved(_oracle, _approved);
     }
 
     /**
-     * @notice Set the underlying asset
-     * @param _underlyingAsset Address of the underlying asset
+     * @notice Approve or disapprove a subscription manager
+     * @param _subscriptionManager Address of the subscription manager
+     * @param _approved Whether to approve or disapprove
      */
-    function setUnderlyingAsset(address _underlyingAsset) external onlyAdmin {
+    function setSubscriptionManagerApproval(address _subscriptionManager, bool _approved) external onlyAdmin {
+        if (_subscriptionManager == address(0)) revert InvalidAddress();
+
+        approvedSubscriptionManagers[_subscriptionManager] = _approved;
+
+        emit SubscriptionManagerApproved(_subscriptionManager, _approved);
+    }
+
+    /**
+     * @notice Approve or disapprove an underlying asset
+     * @param _underlyingAsset Address of the underlying asset
+     * @param _approved Whether to approve or disapprove
+     */
+    function setUnderlyingAssetApproval(address _underlyingAsset, bool _approved) external onlyAdmin {
         if (_underlyingAsset == address(0)) revert InvalidAddress();
 
-        address oldAsset = underlyingAsset;
-        underlyingAsset = _underlyingAsset;
+        approvedUnderlyingAssets[_underlyingAsset] = _approved;
 
-        emit UnderlyingAssetUpdated(oldAsset, _underlyingAsset);
+        emit UnderlyingAssetApproved(_underlyingAsset, _approved);
+    }
+
+    /**
+     * @notice Check if an oracle is approved
+     * @param _oracle Address of the oracle
+     * @return approved Whether the oracle is approved
+     */
+    function isOracleApproved(address _oracle) external view returns (bool) {
+        return approvedOracles[_oracle];
+    }
+
+    /**
+     * @notice Check if a subscription manager is approved
+     * @param _subscriptionManager Address of the subscription manager
+     * @return approved Whether the subscription manager is approved
+     */
+    function isSubscriptionManagerApproved(address _subscriptionManager) external view returns (bool) {
+        return approvedSubscriptionManagers[_subscriptionManager];
+    }
+
+    /**
+     * @notice Check if an underlying asset is approved
+     * @param _underlyingAsset Address of the underlying asset
+     * @return approved Whether the underlying asset is approved
+     */
+    function isUnderlyingAssetApproved(address _underlyingAsset) external view returns (bool) {
+        return approvedUnderlyingAssets[_underlyingAsset];
     }
 
     /**

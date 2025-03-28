@@ -10,6 +10,7 @@ contract tRWATest is Test {
     tRWA public token;
     NavOracle public oracle;
     tRWAFactory public factory;
+    address public mockUnderlyingAsset;
 
     address public user1 = address(2);
     address public user2 = address(3);
@@ -19,22 +20,30 @@ contract tRWATest is Test {
     function setUp() public {
         // Deploy contracts
         oracle = new NavOracle();
+        mockUnderlyingAsset = address(0xDADA);
 
         // The test contract is already an authorized updater through the constructor
         // but we need to make sure it has explicit authorization as the test runs
         assertTrue(oracle.authorizedUpdaters(address(this)), "Test contract not authorized in oracle");
 
-        factory = new tRWAFactory(address(oracle), address(this), address(0xDADA));
+        // Deploy factory with initial approved implementations
+        factory = new tRWAFactory(address(oracle), address(this), mockUnderlyingAsset);
 
         // Update the factory to be the admin of the oracle
         oracle.updateAdmin(address(factory));
 
-        // Deploy a test token through the factory
-        address tokenAddress = factory.deployToken("Tokenized Real Estate Fund", "TREF", initialUnderlying);
+        // Deploy a test token through the factory with the specified implementations
+        address tokenAddress = factory.deployToken(
+            "Tokenized Real Estate Fund",
+            "TREF",
+            initialUnderlying,
+            address(oracle),
+            address(this),
+            mockUnderlyingAsset
+        );
         token = tRWA(tokenAddress);
 
         // Mint some tokens to users for testing
-        // Update total underlying assets first
         token.deposit(1000e18, user1);
         token.deposit(500e18, user2);
     }
@@ -62,6 +71,68 @@ contract tRWATest is Test {
 
         // Check USD value calculation
         assertEq(token.getUsdValue(1000e18), 1050e18); // $1,050 for 1000 shares
+    }
+
+    function test_MultipleTRWAsWithSameOracle() public {
+        // Deploy a second token with the same oracle but different subscription manager
+        address secondSubscriptionManager = address(0x789);
+        factory.setSubscriptionManagerApproval(secondSubscriptionManager, true);
+
+        address secondTokenAddress = factory.deployToken(
+            "Second Tokenized Fund",
+            "STF",
+            2e18, // $2.00 per token
+            address(oracle),
+            secondSubscriptionManager,
+            mockUnderlyingAsset
+        );
+        tRWA secondToken = tRWA(secondTokenAddress);
+
+        // Check that the second token is properly configured
+        assertEq(secondToken.underlyingPerToken(), 2e18);
+        assertTrue(secondToken.hasAnyRole(secondSubscriptionManager, secondToken.SUBSCRIPTION_ROLE()));
+
+        // Update underlying value only for the second token
+        oracle.updateUnderlyingValue(secondTokenAddress, 2.5e18);
+
+        // First token should remain unchanged
+        assertEq(token.underlyingPerToken(), initialUnderlying);
+
+        // Second token should be updated
+        assertEq(secondToken.underlyingPerToken(), 2.5e18);
+    }
+
+    function test_MultipleTRWAsWithDifferentOracles() public {
+        // Deploy a second oracle
+        NavOracle secondOracle = new NavOracle();
+        assertTrue(secondOracle.authorizedUpdaters(address(this)), "Test contract not authorized in second oracle");
+        secondOracle.updateAdmin(address(factory));
+
+        // Approve the second oracle in the factory
+        factory.setOracleApproval(address(secondOracle), true);
+
+        // Deploy a token with the second oracle
+        address secondTokenAddress = factory.deployToken(
+            "Alternative Tokenized Fund",
+            "ATF",
+            3e18, // $3.00 per token
+            address(secondOracle),
+            address(this), // Same subscription manager
+            mockUnderlyingAsset
+        );
+        tRWA secondToken = tRWA(secondTokenAddress);
+
+        // Check that the token uses the second oracle
+        assertTrue(secondToken.hasAnyRole(address(secondOracle), secondToken.PRICE_AUTHORITY_ROLE()));
+
+        // Update value through the second oracle
+        secondOracle.updateUnderlyingValue(secondTokenAddress, 3.5e18);
+
+        // First token should remain unchanged (different oracle)
+        assertEq(token.underlyingPerToken(), initialUnderlying);
+
+        // Second token should be updated
+        assertEq(secondToken.underlyingPerToken(), 3.5e18);
     }
 
     function test_UnauthorizedValueUpdate() public {
