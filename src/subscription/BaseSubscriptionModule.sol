@@ -32,7 +32,7 @@ abstract contract BaseSubscriptionModule is Ownable {
      * @dev Base implementation with 1:1 token minting ratio
      * @param _amount Amount being deposited
      */
-    function deposit(uint256 _amount) external payable virtual override {
+    function deposit(uint256 _amount) external payable virtual {
         // Mint tokens to subscriber (1:1 ratio)
         token.deposit(_amount, msg.sender);
     }

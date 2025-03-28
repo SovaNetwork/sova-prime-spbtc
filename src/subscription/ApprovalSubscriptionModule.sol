@@ -37,22 +37,16 @@ contract ApprovalSubscriptionModule is BaseSubscriptionModule {
 
     /**
      * @notice Process a deposit to subscribe to the fund
-     * @param _subscriber Address subscribing to the fund
      * @param _amount Amount being deposited
      */
-    function deposit(address _subscriber, uint256 _amount) external payable override {
-        // Check if the subscriber has transfer approval for the token
-        if (ERC20(token).allowance(_subscriber, address(this)) < _amount) {
-            revert NoTransferApproval();
-        }
-
+    function deposit(uint256 _amount) external payable virtual override {
         // Record the pending deposit
-        pendingDeposits[_subscriber].push(PendingDeposit({
+        pendingDeposits[msg.sender].push(PendingDeposit({
             amount: _amount,
             timestamp: block.timestamp
         }));
 
-        emit DepositReceived(_subscriber, _amount, pendingDeposits[_subscriber].length - 1);
+        emit DepositReceived(msg.sender, _amount, pendingDeposits[msg.sender].length - 1);
     }
 
     /**
@@ -70,7 +64,7 @@ contract ApprovalSubscriptionModule is BaseSubscriptionModule {
         deposits.pop();
 
         // Call base implementation to handle token minting
-        super.deposit(_subscriber, amount);
+        token.deposit(amount, _subscriber);
 
         emit SubscriptionApproved(_subscriber, amount, amount);
     }
@@ -95,7 +89,7 @@ contract ApprovalSubscriptionModule is BaseSubscriptionModule {
         delete pendingDeposits[_subscriber];
 
         // Process the total amount in a single deposit
-        super.deposit(_subscriber, totalAmount);
+        token.deposit(totalAmount, _subscriber);
         emit SubscriptionApproved(_subscriber, totalAmount, totalAmount);
     }
 

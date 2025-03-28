@@ -42,10 +42,9 @@ contract CappedSubscriptionModule is BaseSubscriptionModule {
 
     /**
      * @notice Process a deposit to subscribe to the fund with cap enforcement
-     * @param _subscriber Address subscribing to the fund
      * @param _amount Amount being deposited
      */
-    function deposit(address _subscriber, uint256 _amount) external payable override {
+    function deposit(uint256 _amount) external payable override {
         // Check if the deposit would exceed the cap using current total supply
         uint256 currentSupply = ERC20(token).totalSupply();
         uint256 remainingCap = maxCap - currentSupply;
@@ -54,7 +53,7 @@ contract CappedSubscriptionModule is BaseSubscriptionModule {
         }
 
         // Call base implementation to handle token minting
-        super.deposit(_subscriber, _amount);
+        token.deposit(_amount, msg.sender);
     }
 
     /**
