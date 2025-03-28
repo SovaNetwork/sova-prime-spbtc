@@ -13,7 +13,6 @@ interface ItRWA {
         address priceAuthority;
         address subscriptionManager;
         address underlyingAsset;
-        uint256 initialUnderlyingPerToken;
     }
 
     // Roles

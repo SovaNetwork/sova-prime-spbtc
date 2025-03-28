@@ -49,7 +49,6 @@ contract tRWA is ERC4626, OwnableRoles, ItRWA {
         if (config.priceAuthority == address(0)) revert InvalidAddress();
         if (config.admin == address(0)) revert InvalidAddress();
         if (config.subscriptionManager == address(0)) revert InvalidAddress();
-        if (config.initialUnderlyingPerToken == 0) revert InvalidUnderlyingValue();
 
         _name = name_;
         _symbol = symbol_;
@@ -63,10 +62,7 @@ contract tRWA is ERC4626, OwnableRoles, ItRWA {
         _grantRoles(config.priceAuthority, PRICE_AUTHORITY_ROLE);
         _grantRoles(config.subscriptionManager, SUBSCRIPTION_ROLE);
 
-        underlyingPerToken = config.initialUnderlyingPerToken;
         lastValueUpdate = block.timestamp;
-
-        emit UnderlyingValueUpdated(config.initialUnderlyingPerToken, block.timestamp);
     }
 
     /**

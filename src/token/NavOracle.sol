@@ -2,43 +2,91 @@
 pragma solidity ^0.8.25;
 
 import {tRWA} from "./tRWA.sol";
+import {Ownable} from "solady/auth/Ownable.sol";
 
 /**
  * @title NavOracle
  * @notice Oracle contract for updating underlying value per token in tRWA tokens
  * @dev This is a simplified oracle. In production, you would want more security measures
  */
-contract NavOracle {
-    address public admin;
+contract NavOracle is Ownable {
     mapping(address => bool) public authorizedUpdaters;
-    mapping(address => bool) public supportedTokens;
+
+    // The token this oracle is tied to
+    tRWA public immutable token;
+
+    // Maximum allowed percentage deviation (denominated in basis points, 10000 = 100%)
+    uint256 public maxDeviationBps = 500; // Default 5% max deviation
+
+    // Price update metadata structure
+    struct PriceUpdate {
+        uint256 roundNumber;
+        uint256 price;        // Underlying value per token in USD (18 decimals)
+        uint256 timestamp;    // Block timestamp when the update was recorded
+        string source;        // Source of the price data
+    }
+
+    // Price update history
+    PriceUpdate[] private priceUpdateHistory;
+
+    // Latest price update
+    PriceUpdate public latestPriceUpdate;
+
+    // Current round number
+    uint256 public currentRound;
 
     // Events
-    event UnderlyingValueUpdated(address indexed token, uint256 newUnderlyingPerToken, uint256 timestamp);
+    event UnderlyingValueUpdated(
+        uint256 roundNumber,
+        uint256 price,
+        uint256 timestamp,
+        string source
+    );
     event UpdaterStatusChanged(address indexed updater, bool isAuthorized);
-    event TokenStatusChanged(address indexed token, bool isSupported);
-    event AdminUpdated(address indexed oldAdmin, address indexed newAdmin);
+    event MaxDeviationUpdated(uint256 oldMaxDeviationBps, uint256 newMaxDeviationBps);
 
     // Errors
-    error Unauthorized();
-    error UnsupportedToken();
     error InvalidUnderlyingValue();
     error InvalidAddress();
+    error DeviationTooLarge();
+    error InvalidDeviation();
+    error InvalidRoundNumber();
+    error InvalidSource();
+    error InvalidToken();
 
     /**
      * @notice Contract constructor
+     * @param _token Address of the tRWA token this oracle is tied to
+     * @param _initialPrice Initial price value in USD (18 decimals)
      */
-    constructor() {
-        admin = msg.sender;
-        authorizedUpdaters[msg.sender] = true;
-    }
+    constructor(address _token, uint256 _initialPrice) {
+        if (_token == address(0)) revert InvalidAddress();
+        if (_initialPrice == 0) revert InvalidUnderlyingValue();
 
-    /**
-     * @notice Modifier to restrict function calls to admin
-     */
-    modifier onlyAdmin() {
-        if (msg.sender != admin) revert Unauthorized();
-        _;
+        _initializeOwner(msg.sender);
+        authorizedUpdaters[msg.sender] = true;
+        token = tRWA(_token);
+
+        // Set initial price
+        if (_initialPrice > 0) {
+            // Create initial price update
+            PriceUpdate memory initialUpdate = PriceUpdate({
+                roundNumber: 1,
+                price: _initialPrice,
+                timestamp: block.timestamp,
+                source: "Deployment"
+            });
+
+            // Store the initial update
+            latestPriceUpdate = initialUpdate;
+            priceUpdateHistory.push(initialUpdate);
+            currentRound = 1;
+
+            // Update token with initial price
+            token.updateUnderlyingValue(_initialPrice);
+
+            emit UnderlyingValueUpdated(1, _initialPrice, block.timestamp, "Deployment");
+        }
     }
 
     /**
@@ -50,18 +98,79 @@ contract NavOracle {
     }
 
     /**
-     * @notice Update the underlying value per token for a supported token
-     * @param _token Address of the tRWA token
-     * @param _newUnderlyingPerToken New underlying value per token in USD (18 decimals)
+     * @notice Update the underlying value per token
+     * @param _price New underlying value per token in USD (18 decimals)
+     * @param _source Source of the price data
      */
-    function updateUnderlyingValue(address _token, uint256 _newUnderlyingPerToken) external onlyAuthorizedUpdater {
-        if (!supportedTokens[_token]) revert UnsupportedToken();
-        if (_newUnderlyingPerToken == 0) revert InvalidUnderlyingValue();
+    function updateUnderlyingValue(
+        uint256 _price,
+        string calldata _source
+    ) external onlyAuthorizedUpdater {
+        if (_price == 0) revert InvalidUnderlyingValue();
+        if (bytes(_source).length == 0) revert InvalidSource();
 
-        tRWA token = tRWA(_token);
-        token.updateUnderlyingValue(_newUnderlyingPerToken);
+        // Check deviation from last price if this isn't the first update
+        if (latestPriceUpdate.timestamp > 0) {
+            // Calculate percentage deviation in basis points (10000 = 100%)
+            uint256 deviationBps;
+            if (_price > latestPriceUpdate.price) {
+                deviationBps = ((_price - latestPriceUpdate.price) * 10000) / latestPriceUpdate.price;
+            } else {
+                deviationBps = ((latestPriceUpdate.price - _price) * 10000) / latestPriceUpdate.price;
+            }
 
-        emit UnderlyingValueUpdated(_token, _newUnderlyingPerToken, block.timestamp);
+            // Check if deviation exceeds maximum allowed
+            if (deviationBps > maxDeviationBps) revert DeviationTooLarge();
+        }
+
+        // Increment round number
+        uint256 roundNumber = currentRound + 1;
+        currentRound = roundNumber;
+
+        // Create new price update
+        PriceUpdate memory newUpdate = PriceUpdate({
+            roundNumber: roundNumber,
+            price: _price,
+            timestamp: block.timestamp,
+            source: _source
+        });
+
+        // Store the update
+        latestPriceUpdate = newUpdate;
+        priceUpdateHistory.push(newUpdate);
+
+        // Update the token with the new price
+        token.updateUnderlyingValue(_price);
+
+        emit UnderlyingValueUpdated(roundNumber, _price, block.timestamp, _source);
+    }
+
+    /**
+     * @notice Get the price update at a specific round number
+     * @param _roundNumber Round number to retrieve
+     * @return PriceUpdate struct containing the requested price update
+     */
+    function getPriceUpdateAtRound(uint256 _roundNumber) external view returns (PriceUpdate memory) {
+        if (_roundNumber == 0 || _roundNumber > currentRound) revert InvalidRoundNumber();
+
+        // If accessing the history array is expensive, consider storing a mapping from round number to update instead
+        // This is simplified for demonstration purposes
+        for (uint256 i = 0; i < priceUpdateHistory.length; i++) {
+            if (priceUpdateHistory[i].roundNumber == _roundNumber) {
+                return priceUpdateHistory[i];
+            }
+        }
+
+        revert InvalidRoundNumber();
+    }
+
+    /**
+     * @notice Get the latest price update
+     * @return The latest price update
+     */
+    function getLatestPriceUpdate() external view returns (PriceUpdate memory) {
+        if (latestPriceUpdate.timestamp == 0) revert InvalidUnderlyingValue();
+        return latestPriceUpdate;
     }
 
     /**
@@ -69,7 +178,7 @@ contract NavOracle {
      * @param _updater Address of the updater
      * @param _isAuthorized Whether the address is authorized
      */
-    function setUpdaterStatus(address _updater, bool _isAuthorized) external onlyAdmin {
+    function setUpdaterStatus(address _updater, bool _isAuthorized) external onlyOwner {
         if (_updater == address(0)) revert InvalidAddress();
 
         authorizedUpdaters[_updater] = _isAuthorized;
@@ -78,28 +187,15 @@ contract NavOracle {
     }
 
     /**
-     * @notice Add or remove a supported token
-     * @param _token Address of the tRWA token
-     * @param _isSupported Whether the token is supported
+     * @notice Update the maximum allowed deviation in basis points
+     * @param _newMaxDeviationBps New maximum deviation (10000 = 100%)
      */
-    function setTokenStatus(address _token, bool _isSupported) external onlyAdmin {
-        if (_token == address(0)) revert InvalidAddress();
+    function updateMaxDeviation(uint256 _newMaxDeviationBps) external onlyOwner {
+        if (_newMaxDeviationBps == 0 || _newMaxDeviationBps > 5000) revert InvalidDeviation();
 
-        supportedTokens[_token] = _isSupported;
+        uint256 oldMaxDeviationBps = maxDeviationBps;
+        maxDeviationBps = _newMaxDeviationBps;
 
-        emit TokenStatusChanged(_token, _isSupported);
-    }
-
-    /**
-     * @notice Update the admin address
-     * @param _newAdmin Address of the new admin
-     */
-    function updateAdmin(address _newAdmin) external onlyAdmin {
-        if (_newAdmin == address(0)) revert InvalidAddress();
-
-        address oldAdmin = admin;
-        admin = _newAdmin;
-
-        emit AdminUpdated(oldAdmin, _newAdmin);
+        emit MaxDeviationUpdated(oldMaxDeviationBps, _newMaxDeviationBps);
     }
 }

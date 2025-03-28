@@ -23,13 +23,14 @@ contract tRWAFactory is Ownable {
     address[] public allTokens;
 
     // Events
-    event TokenDeployed(address indexed token, string name, string symbol, uint256 initialUnderlyingPerToken);
+    event TokenDeployed(address indexed token, string name, string symbol);
     event TransferApprovalApproved(address indexed module, bool approved);
     event OracleApproved(address indexed oracle, bool approved);
     event SubscriptionManagerApproved(address indexed manager, bool approved);
     event UnderlyingAssetApproved(address indexed asset, bool approved);
 
     // Errors
+    error InvalidAddress();
     error UnapprovedOracle();
     error UnapprovedSubscriptionManager();
     error UnapprovedUnderlyingAsset();
@@ -46,40 +47,31 @@ contract tRWAFactory is Ownable {
      * @notice Deploy a new tRWA token
      * @param _name Token name
      * @param _symbol Token symbol
-     * @param _initialUnderlyingPerToken Initial underlying value per token in USD (18 decimals)
      * @param _oracle Oracle to use for this token
      * @param _subscriptionManager Subscription manager to use for this token
      * @param _underlyingAsset Underlying asset to use for this token
      * @param _transferApproval Transfer approval module to use for this token (can be address(0) if not needed)
-     * @param _enableTransferApproval Whether to enable transfer approval for this token
      * @return token Address of the deployed token
      */
     function deployToken(
         string memory _name,
         string memory _symbol,
-        uint256 _initialUnderlyingPerToken,
         address _oracle,
         address _subscriptionManager,
         address _underlyingAsset,
         address _transferApproval
     ) external onlyOwner returns (address) {
-        if (_initialUnderlyingPerToken == 0) revert InvalidUnderlyingValue();
         if (!approvedOracles[_oracle]) revert UnapprovedOracle();
         if (!approvedSubscriptionManagers[_subscriptionManager]) revert UnapprovedSubscriptionManager();
         if (!approvedUnderlyingAssets[_underlyingAsset]) revert UnapprovedUnderlyingAsset();
-
-        // If transfer approval is provided and enabled, check it's approved
-        if (_transferApproval != address(0) && _enableTransferApproval) {
-            if (!approvedTransferApprovals[_transferApproval]) revert UnapprovedTransferApproval();
-        }
+        if (!approvedTransferApprovals[_transferApproval]) revert UnapprovedTransferApproval();
 
         // Create configuration struct
         ItRWA.ConfigurationStruct memory config = ItRWA.ConfigurationStruct({
             admin: owner(),
             priceAuthority: _oracle,
             subscriptionManager: _subscriptionManager,
-            underlyingAsset: _underlyingAsset,
-            initialUnderlyingPerToken: _initialUnderlyingPerToken
+            underlyingAsset: _underlyingAsset
         });
 
         // Deploy new tRWA token
@@ -94,10 +86,7 @@ contract tRWAFactory is Ownable {
         isRegisteredToken[tokenAddr] = true;
         allTokens.push(tokenAddr);
 
-        // Register token in the oracle
-        NavOracle(_oracle).setTokenStatus(tokenAddr, true);
-
-        emit TokenDeployed(tokenAddr, _name, _symbol, _initialUnderlyingPerToken);
+        emit TokenDeployed(tokenAddr, _name, _symbol);
 
         return tokenAddr;
     }
