@@ -14,11 +14,14 @@ import {ItRWA} from "../interfaces/ItRWA.sol";
  */
 contract tRWA is ERC4626, OwnableRoles, ItRWA {
     using FixedPointMathLib for uint256;
+    using SafeTransferLib for address;
 
     // Role definitions
     uint256 public constant PRICE_AUTHORITY_ROLE = 1 << 0;
     uint256 public constant ADMIN_ROLE = 1 << 1;
     uint256 public constant SUBSCRIPTION_ROLE = 1 << 2;
+    uint256 public constant REDEMPTION_ROLE = 1 << 3;
+    uint256 public constant MANAGER_ROLE = 1 << 4;
 
     // Internal storage for token metadata
     string internal _name;
@@ -32,6 +35,16 @@ contract tRWA is ERC4626, OwnableRoles, ItRWA {
 
     // Asset-related state
     uint256 public totalUnderlying; // Total value of underlying assets in USD (18 decimals)
+    uint256 public pendingDeposits; // Total amount of deposited assets waiting for manager withdrawal
+    uint256 public pendingWithdrawals; // Total amount of assets waiting to be claimed by redeemers
+
+    // Events
+    event PendingDepositsWithdrawn(address indexed manager, uint256 amount);
+    event PendingWithdrawalsFunded(address indexed manager, uint256 amount);
+    event WithdrawalProcessed(address indexed recipient, uint256 amount);
+
+    // Errors
+    error InsufficientWithdrawalFunds();
 
     /**
      * @notice Contract constructor
@@ -61,6 +74,7 @@ contract tRWA is ERC4626, OwnableRoles, ItRWA {
         _grantRoles(config.admin, ADMIN_ROLE);
         _grantRoles(config.priceAuthority, PRICE_AUTHORITY_ROLE);
         _grantRoles(config.subscriptionManager, SUBSCRIPTION_ROLE);
+        _grantRoles(config.admin, MANAGER_ROLE); // Default admin as manager
 
         lastValueUpdate = block.timestamp;
     }
@@ -137,6 +151,54 @@ contract tRWA is ERC4626, OwnableRoles, ItRWA {
     }
 
     /**
+     * @notice Withdraw pending deposits by a manager
+     * @param amount Amount of tokens to withdraw
+     * @param to Address to send the tokens to
+     */
+    function withdrawPendingDeposits(uint256 amount, address to) external onlyRoles(MANAGER_ROLE) {
+        if (to == address(0)) revert InvalidAddress();
+        if (amount == 0) revert ZeroAssets();
+        if (amount > pendingDeposits) revert WithdrawMoreThanMax();
+
+        pendingDeposits -= amount;
+        _asset.safeTransfer(to, amount);
+
+        emit PendingDepositsWithdrawn(msg.sender, amount);
+    }
+
+    /**
+     * @notice Fund the pending withdrawals pool for redemptions
+     * @param amount Amount of tokens to add to the pending withdrawals pool
+     */
+    function fundPendingWithdrawals(uint256 amount) external onlyRoles(MANAGER_ROLE) {
+        if (amount == 0) revert ZeroAssets();
+
+        // Transfer assets from the manager to this contract
+        _asset.safeTransferFrom(msg.sender, address(this), amount);
+
+        // Add to pendingWithdrawals pool
+        pendingWithdrawals += amount;
+
+        emit PendingWithdrawalsFunded(msg.sender, amount);
+    }
+
+    /**
+     * @notice Process a pending withdrawal for a receiver
+     * @param amount Amount of tokens to process from the pending withdrawals pool
+     * @param receiver Address to receive the withdrawal
+     */
+    function processWithdrawal(uint256 amount, address receiver) external onlyRoles(REDEMPTION_ROLE) {
+        if (receiver == address(0)) revert InvalidAddress();
+        if (amount == 0) revert ZeroAssets();
+        if (amount > pendingWithdrawals) revert InsufficientWithdrawalFunds();
+
+        pendingWithdrawals -= amount;
+        _asset.safeTransfer(receiver, amount);
+
+        emit WithdrawalProcessed(receiver, amount);
+    }
+
+    /**
      * @notice Override _beforeTokenTransfer to add transfer approval checks
      * @dev Called before any transfer, mint, or burn
      */
@@ -195,8 +257,11 @@ contract tRWA is ERC4626, OwnableRoles, ItRWA {
         shares = previewDeposit(assets);
         if (shares == 0) revert ZeroShares();
 
-        // Update the total underlying assets
-        totalUnderlying += assets;
+        // Transfer assets from the sender to this contract
+        _asset.safeTransferFrom(msg.sender, address(this), assets);
+
+        // Add to pending deposits bucket
+        pendingDeposits += assets;
 
         // Mint shares to receiver
         _mint(receiver, shares);
@@ -217,8 +282,11 @@ contract tRWA is ERC4626, OwnableRoles, ItRWA {
         assets = previewMint(shares);
         if (assets == 0) revert ZeroAssets();
 
-        // Update the total underlying assets
-        totalUnderlying += assets;
+        // Transfer assets from the sender to this contract
+        _asset.safeTransferFrom(msg.sender, address(this), assets);
+
+        // Add to pending deposits bucket
+        pendingDeposits += assets;
 
         // Mint shares to receiver
         _mint(receiver, shares);
@@ -249,6 +317,9 @@ contract tRWA is ERC4626, OwnableRoles, ItRWA {
         // Burn shares from owner
         _burn(owner, shares);
 
+        // Mark as pending withdrawal to be processed later
+        // Actual transfer of assets happens when processWithdrawal is called
+
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
     }
 
@@ -274,6 +345,9 @@ contract tRWA is ERC4626, OwnableRoles, ItRWA {
 
         // Burn shares from owner
         _burn(owner, shares);
+
+        // Mark as pending withdrawal to be processed later
+        // Actual transfer of assets happens when processWithdrawal is called
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
     }
