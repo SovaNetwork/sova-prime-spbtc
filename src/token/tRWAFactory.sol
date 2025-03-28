@@ -12,7 +12,7 @@ import {ItRWA} from "../interfaces/ItRWA.sol";
 contract tRWAFactory {
     address public admin;
     NavOracle public oracle;
-    address public complianceModule;
+    address public transferApproval;
     address public subscriptionManager;
     address public underlyingAsset;
     mapping(address => bool) public isRegisteredToken;
@@ -22,7 +22,7 @@ contract tRWAFactory {
     event TokenDeployed(address indexed token, string name, string symbol, uint256 initialUnderlyingPerToken);
     event AdminUpdated(address indexed oldAdmin, address indexed newAdmin);
     event OracleUpdated(address indexed oldOracle, address indexed newOracle);
-    event ComplianceModuleUpdated(address indexed oldModule, address indexed newModule);
+    event TransferApprovalUpdated(address indexed oldModule, address indexed newModule);
     event SubscriptionManagerUpdated(address indexed oldManager, address indexed newManager);
     event UnderlyingAssetUpdated(address indexed oldAsset, address indexed newAsset);
 
@@ -100,63 +100,6 @@ contract tRWAFactory {
     }
 
     /**
-     * @notice Deploy a new tRWA token with compliance
-     * @param _name Token name
-     * @param _symbol Token symbol
-     * @param _initialUnderlyingPerToken Initial underlying value per token in USD (18 decimals)
-     * @param _enableCompliance Whether to enable compliance for this token
-     * @return tokenAddress Address of the deployed token
-     */
-    function deployTokenWithCompliance(
-        string memory _name,
-        string memory _symbol,
-        uint256 _initialUnderlyingPerToken,
-        bool _enableCompliance
-    ) external onlyAdmin returns (address tokenAddress) {
-        if (_initialUnderlyingPerToken == 0) revert InvalidUnderlyingValue();
-
-        // Create configuration struct
-        ItRWA.ConfigurationStruct memory config = ItRWA.ConfigurationStruct({
-            admin: admin,
-            priceAuthority: address(oracle),
-            subscriptionManager: subscriptionManager,
-            underlyingAsset: underlyingAsset,
-            initialUnderlyingPerToken: _initialUnderlyingPerToken
-        });
-
-        // Deploy new tRWA token
-        tRWA newToken = new tRWA(
-            _name,
-            _symbol,
-            config
-        );
-
-        // Register token in the factory
-        address tokenAddr = address(newToken);
-        isRegisteredToken[tokenAddr] = true;
-        allTokens.push(tokenAddr);
-
-        // Register token in the oracle
-        oracle.setTokenStatus(tokenAddr, true);
-
-        // Set compliance module if available and enabled
-        if (complianceModule != address(0) && _enableCompliance) {
-            newToken.setTransferApproval(complianceModule);
-            newToken.toggleTransferApproval(true);
-
-            // Try to register token in compliance module using a safe call
-            (bool success, ) = complianceModule.call(
-                abi.encodeWithSignature("registerToken(address)", tokenAddr)
-            );
-            // Don't revert if this fails, it's not critical
-        }
-
-        emit TokenDeployed(tokenAddr, _name, _symbol, _initialUnderlyingPerToken);
-
-        return tokenAddr;
-    }
-
-    /**
      * @notice Update the admin address
      * @param _newAdmin Address of the new admin
      */
@@ -183,16 +126,16 @@ contract tRWAFactory {
     }
 
     /**
-     * @notice Set the compliance module
-     * @param _complianceModule Address of the compliance module
+     * @notice Set the transfer approval module
+     * @param _transferApproval Address of the transfer approval module
      */
-    function setComplianceModule(address _complianceModule) external onlyAdmin {
-        if (_complianceModule == address(0)) revert InvalidAddress();
+    function setTransferApproval(address _transferApproval) external onlyAdmin {
+        if (_transferApproval == address(0)) revert InvalidAddress();
 
-        address oldModule = complianceModule;
-        complianceModule = _complianceModule;
+        address oldModule = transferApproval;
+        transferApproval = _transferApproval;
 
-        emit ComplianceModuleUpdated(oldModule, _complianceModule);
+        emit TransferApprovalUpdated(oldModule, _transferApproval);
     }
 
     /**

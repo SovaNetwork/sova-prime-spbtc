@@ -5,7 +5,7 @@ import {Script, console2} from "forge-std/Script.sol";
 import {NavOracle} from "../src/token/NavOracle.sol";
 import {tRWAFactory} from "../src/token/tRWAFactory.sol";
 import {tRWA} from "../src/token/tRWA.sol";
-import {ComplianceModule} from "../src/token/ComplianceModule.sol";
+import {TransferApproval} from "../src/token/TransferApproval.sol";
 
 contract tRWADeployScript is Script {
     function run() public {
@@ -18,23 +18,26 @@ contract tRWADeployScript is Script {
         console2.log("NavOracle deployed at:", address(oracle));
 
         // Deploy compliance module with 100 token transfer limit
-        ComplianceModule compliance = new ComplianceModule(100e18, true);
-        console2.log("ComplianceModule deployed at:", address(compliance));
+        TransferApproval compliance = new TransferApproval(100e18, true);
+        console2.log("TransferApproval deployed at:", address(compliance));
+
+        // Create mock addresses for subscription manager and underlying asset
+        address subscriptionManager = address(this);
+        address underlyingAsset = address(0xDADA);
 
         // Deploy the factory
-        tRWAFactory factory = new tRWAFactory(address(oracle));
+        tRWAFactory factory = new tRWAFactory(address(oracle), subscriptionManager, underlyingAsset);
         console2.log("tRWAFactory deployed at:", address(factory));
 
         // Set compliance module in factory
-        factory.setComplianceModule(address(compliance));
+        factory.setTransferApproval(address(compliance));
         console2.log("Compliance module set in factory");
 
         // Deploy a sample token with compliance enabled
-        address tokenAddress = factory.deployTokenWithCompliance(
+        address tokenAddress = factory.deployToken(
             "Tokenized Real Estate Fund",
             "TREF",
-            1e18, // $1.00 per share
-            true  // Enable compliance
+            1e18 // $1.00 per share
         );
         console2.log("Sample token deployed at:", tokenAddress);
 

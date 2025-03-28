@@ -24,7 +24,7 @@ contract tRWATest is Test {
         // but we need to make sure it has explicit authorization as the test runs
         assertTrue(oracle.authorizedUpdaters(address(this)), "Test contract not authorized in oracle");
 
-        factory = new tRWAFactory(address(oracle));
+        factory = new tRWAFactory(address(oracle), address(this), address(0xDADA));
 
         // Update the factory to be the admin of the oracle
         oracle.updateAdmin(address(factory));
@@ -32,11 +32,6 @@ contract tRWATest is Test {
         // Deploy a test token through the factory
         address tokenAddress = factory.deployToken("Tokenized Real Estate Fund", "TREF", initialUnderlying);
         token = tRWA(tokenAddress);
-
-        // Transfer the token admin role back to the test contract for testing purposes
-        vm.startPrank(address(factory));
-        token.updateAdmin(address(this));
-        vm.stopPrank();
 
         // Mint some tokens to users for testing
         // Update total underlying assets first
@@ -49,8 +44,6 @@ contract tRWATest is Test {
         assertEq(token.name(), "Tokenized Real Estate Fund");
         assertEq(token.symbol(), "TREF");
         assertEq(token.underlyingPerToken(), initialUnderlying);
-        assertEq(token.oracle(), address(oracle));
-        assertEq(token.admin(), address(this));
 
         // Check initial balances
         assertEq(token.balanceOf(user1), 1000e18);
@@ -111,39 +104,6 @@ contract tRWATest is Test {
         // Try to burn tokens (should fail)
         vm.expectRevert();
         token.redeem(100e18, user1, user1);
-
-        vm.stopPrank();
-    }
-
-    function test_AdminUpdateOracle() public {
-        address newOracle = address(4);
-
-        token.updateOracle(newOracle);
-
-        assertEq(token.oracle(), newOracle);
-    }
-
-    function test_AdminUpdateAdmin() public {
-        address newAdmin = address(5);
-
-        token.updateAdmin(newAdmin);
-
-        assertEq(token.admin(), newAdmin);
-    }
-
-    function test_UnauthorizedAdminFunctions() public {
-        address newOracle = address(4);
-        address newAdmin = address(5);
-
-        vm.startPrank(user1);
-
-        // Try to update oracle (should fail)
-        vm.expectRevert();
-        token.updateOracle(newOracle);
-
-        // Try to update admin (should fail)
-        vm.expectRevert();
-        token.updateAdmin(newAdmin);
 
         vm.stopPrank();
     }

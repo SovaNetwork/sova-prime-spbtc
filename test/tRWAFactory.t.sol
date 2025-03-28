@@ -52,28 +52,9 @@ contract tRWAFactoryTest is Test {
         assertEq(token.asset(), mockUnderlyingAsset);
 
         // Check roles are correctly assigned
-        assertTrue(token.hasRole(address(factory), token.ADMIN_ROLE()));
-        assertTrue(token.hasRole(address(oracle), token.PRICE_AUTHORITY_ROLE()));
-        assertTrue(token.hasRole(mockSubscriptionManager, token.SUBSCRIPTION_ROLE()));
-    }
-
-    function test_DeployTokenWithCompliance() public {
-        // Set compliance module
-        address mockComplianceModule = address(0x789);
-        factory.setComplianceModule(mockComplianceModule);
-
-        // Deploy token with compliance
-        address tokenAddress = factory.deployTokenWithCompliance(
-            "Tokenized Real Estate Fund",
-            "TREF",
-            1e18,
-            true
-        );
-
-        // Verify token was deployed with compliance
-        tRWA token = tRWA(tokenAddress);
-        assertEq(token.transferApproval(), mockComplianceModule);
-        assertTrue(token.transferApprovalEnabled());
+        assertTrue(token.hasAnyRole(address(factory), token.ADMIN_ROLE()));
+        assertTrue(token.hasAnyRole(address(oracle), token.PRICE_AUTHORITY_ROLE()));
+        assertTrue(token.hasAnyRole(mockSubscriptionManager, token.SUBSCRIPTION_ROLE()));
     }
 
     function test_DeployMultipleTokens() public {
@@ -140,7 +121,7 @@ contract tRWAFactoryTest is Test {
 
         // Verify token uses new oracle as price authority
         tRWA token = tRWA(tokenAddress);
-        assertTrue(token.hasRole(address(newOracle), token.PRICE_AUTHORITY_ROLE()));
+        assertTrue(token.hasAnyRole(address(newOracle), token.PRICE_AUTHORITY_ROLE()));
     }
 
     function test_UpdateSubscriptionManager() public {
@@ -153,7 +134,7 @@ contract tRWAFactoryTest is Test {
         // Deploy a token and verify it uses the new subscription manager
         address tokenAddress = factory.deployToken("Test Token", "TEST", 1e18);
         tRWA token = tRWA(tokenAddress);
-        assertTrue(token.hasRole(newSubscriptionManager, token.SUBSCRIPTION_ROLE()));
+        assertTrue(token.hasAnyRole(newSubscriptionManager, token.SUBSCRIPTION_ROLE()));
     }
 
     function test_UpdateUnderlyingAsset() public {
