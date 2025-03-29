@@ -3,29 +3,41 @@ pragma solidity 0.8.25;
 
 import {BaseSubscriptionModule} from "./BaseSubscriptionModule.sol";
 import {ERC20} from "solady/tokens/ERC20.sol";
+import {ISubscriptionModule} from "../interfaces/ISubscriptionModule.sol";
+import {ItRWA} from "../interfaces/ItRWA.sol";
+import {SubscriptionHook} from "./SubscriptionHook.sol";
 
 /**
  * @title ApprovalSubscriptionModule
  * @notice Subscription module that requires admin approval before issuing tokens
  * @dev Extends BaseSubscriptionModule with approval workflow and transfer approval checks
  */
-contract ApprovalSubscriptionModule is BaseSubscriptionModule {
-    // Pending deposit tracking
-    struct PendingDeposit {
-        uint256 amount;
-        uint256 timestamp;
-    }
-    mapping(address => PendingDeposit[]) public pendingDeposits;
+contract ApprovalSubscriptionModule is BaseSubscriptionModule, ISubscriptionModule {
+    // Subscription hook
+    SubscriptionHook public subscriptionHook;
+
+    // Subscription request tracking
+    uint256 private _requestCounter;
+    mapping(uint256 => SubscriptionRequest) private _requests;
+    mapping(address => uint256[]) private _subscriberRequests;
+
+    // Status flags
+    bool public isOpen = true;
 
     // Events
-    event SubscriptionApproved(address indexed subscriber, uint256 amount, uint256 tokensMinted);
-    event DepositReceived(address indexed subscriber, uint256 amount, uint256 index);
-    event SubscriptionRejected(address indexed subscriber, uint256 amount, uint256 index);
+    event SubscriptionRequested(address indexed subscriber, uint256 indexed requestId, uint256 amount);
+    event SubscriptionApproved(address indexed subscriber, uint256 indexed requestId, uint256 amount);
+    event SubscriptionRejected(address indexed subscriber, uint256 indexed requestId, string reason);
+    event SubscriptionProcessed(address indexed subscriber, uint256 indexed requestId, uint256 sharesReceived);
+    event SubscriptionStatusChanged(bool isOpen);
+    event SubscriptionHookUpdated(address indexed oldHook, address indexed newHook);
 
-    // Errors
+    // Errors - keep only those that aren't in the interface
     error NoTransferApproval();
-    error InvalidDepositIndex();
-    error NoPendingDeposits();
+    error InvalidRequestId();
+    error SubscriptionClosed();
+    error InvalidStatus();
+    error ZeroAmount();
 
     /**
      * @notice Constructor for ApprovalSubscriptionModule
@@ -36,126 +48,160 @@ contract ApprovalSubscriptionModule is BaseSubscriptionModule {
     ) BaseSubscriptionModule(_token) {}
 
     /**
+     * @notice Set the subscription hook
+     * @param _hook The subscription hook address
+     */
+    function setSubscriptionHook(address _hook) external onlyOwner {
+        address oldHook = address(subscriptionHook);
+        subscriptionHook = SubscriptionHook(_hook);
+
+        emit SubscriptionHookUpdated(oldHook, _hook);
+    }
+
+    /**
+     * @notice Set whether subscriptions are open
+     * @param _isOpen Whether subscriptions are open
+     */
+    function setSubscriptionStatus(bool _isOpen) external onlyOwner {
+        isOpen = _isOpen;
+
+        emit SubscriptionStatusChanged(_isOpen);
+    }
+
+    /**
      * @notice Process a deposit to subscribe to the fund
+     * @param _subscriber Address subscribing to the fund
      * @param _amount Amount being deposited
+     * @return requestId Unique identifier for the subscription request
      */
-    function deposit(uint256 _amount) external payable virtual override {
-        // Record the pending deposit
-        pendingDeposits[msg.sender].push(PendingDeposit({
+    function deposit(address _subscriber, uint256 _amount) external payable override returns (uint256 requestId) {
+        if (!isOpen) revert SubscriptionClosed();
+        if (_amount == 0) revert ZeroAmount();
+
+        // Create new subscription request
+        requestId = ++_requestCounter;
+
+        _requests[requestId] = SubscriptionRequest({
+            subscriber: _subscriber,
             amount: _amount,
-            timestamp: block.timestamp
-        }));
+            timestamp: block.timestamp,
+            status: SubscriptionStatus.PENDING,
+            rejectionReason: ""
+        });
 
-        emit DepositReceived(msg.sender, _amount, pendingDeposits[msg.sender].length - 1);
+        _subscriberRequests[_subscriber].push(requestId);
+
+        // Transfer tokens from the subscriber to this contract
+        ERC20(ItRWA(token).asset()).transferFrom(_subscriber, address(this), _amount);
+
+        emit SubscriptionRequested(_subscriber, requestId, _amount);
     }
 
     /**
-     * @notice Approve a specific pending deposit for a subscriber
-     * @param _subscriber Address of the subscriber to approve
-     * @param _index Index of the pending deposit to approve
+     * @notice Approve a specific subscription request
+     * @param _requestId ID of the request to approve
      */
-    function approveSubscription(address _subscriber, uint256 _index) external onlyOwner {
-        PendingDeposit[] storage deposits = pendingDeposits[_subscriber];
-        if (_index >= deposits.length) revert InvalidDepositIndex();
+    function approveSubscription(uint256 _requestId) external onlyOwner {
+        SubscriptionRequest storage request = _requests[_requestId];
+        if (request.status != SubscriptionStatus.PENDING) revert InvalidStatus();
 
-        // Get the deposit amount and remove it from the array
-        uint256 amount = deposits[_index].amount;
-        deposits[_index] = deposits[deposits.length - 1];
-        deposits.pop();
+        // Update the request status
+        request.status = SubscriptionStatus.APPROVED;
 
-        // Call base implementation to handle token minting
-        token.deposit(amount, _subscriber);
-
-        emit SubscriptionApproved(_subscriber, amount, amount);
-    }
-
-    /**
-     * @notice Approve all pending deposits for a subscriber
-     * @param _subscriber Address of the subscriber to approve
-     */
-    function approveAllSubscriptions(address _subscriber) external onlyOwner {
-        PendingDeposit[] storage deposits = pendingDeposits[_subscriber];
-        if (deposits.length == 0) revert NoPendingDeposits();
-
-        uint256 totalAmount;
-        uint256 length = deposits.length;
-
-        // Calculate total amount
-        for (uint256 i = 0; i < length; i++) {
-            totalAmount += deposits[i].amount;
+        // Allow the subscriber to deposit directly to tRWA
+        if (address(subscriptionHook) != address(0)) {
+            subscriptionHook.setSubscriber(request.subscriber, true);
         }
 
-        // Clear all deposits
-        delete pendingDeposits[_subscriber];
+        // Approve the tRWA token to spend the asset
+        address asset = ItRWA(token).asset();
+        ERC20(asset).approve(token, request.amount);
 
-        // Process the total amount in a single deposit
-        token.deposit(totalAmount, _subscriber);
-        emit SubscriptionApproved(_subscriber, totalAmount, totalAmount);
+        emit SubscriptionApproved(request.subscriber, _requestId, request.amount);
     }
 
     /**
-     * @notice Reject a specific pending deposit for a subscriber
-     * @param _subscriber Address of the subscriber to reject
-     * @param _index Index of the pending deposit to reject
+     * @notice Process an approved subscription
+     * @param _requestId ID of the approved request to process
      */
-    function rejectSubscription(address _subscriber, uint256 _index) external onlyOwner {
-        PendingDeposit[] storage deposits = pendingDeposits[_subscriber];
-        if (_index >= deposits.length) revert InvalidDepositIndex();
+    function processSubscription(uint256 _requestId) external {
+        SubscriptionRequest storage request = _requests[_requestId];
+        if (request.status != SubscriptionStatus.APPROVED) revert InvalidStatus();
 
-        // Get the deposit amount and remove it from the array
-        uint256 amount = deposits[_index].amount;
-        deposits[_index] = deposits[deposits.length - 1];
-        deposits.pop();
+        // Update status
+        request.status = SubscriptionStatus.PROCESSED;
 
-        emit SubscriptionRejected(_subscriber, amount, _index);
-    }
+        // Process the deposit
+        address asset = ItRWA(token).asset();
 
-    /**
-     * @notice Reject all pending deposits for a subscriber
-     * @param _subscriber Address of the subscriber to reject
-     */
-    function rejectAllSubscriptions(address _subscriber) external onlyOwner {
-        PendingDeposit[] storage deposits = pendingDeposits[_subscriber];
-        if (deposits.length == 0) revert NoPendingDeposits();
+        // Transfer tokens to tRWA and mint shares
+        uint256 sharesBefore = ERC20(token).balanceOf(request.subscriber);
 
-        uint256 length = deposits.length;
-        uint256 totalAmount;
+        // The deposit will pull tokens from this contract
+        ItRWA(token).deposit(request.amount, request.subscriber);
 
-        // Calculate total amount and emit rejection events
-        for (uint256 i = 0; i < length; i++) {
-            totalAmount += deposits[i].amount;
-            emit SubscriptionRejected(_subscriber, deposits[i].amount, i);
+        uint256 sharesAfter = ERC20(token).balanceOf(request.subscriber);
+        uint256 sharesReceived = sharesAfter - sharesBefore;
+
+        // Disable subscriber after successful deposit
+        if (address(subscriptionHook) != address(0)) {
+            subscriptionHook.setSubscriber(request.subscriber, false);
         }
 
-        // Clear all deposits
-        delete pendingDeposits[_subscriber];
+        emit SubscriptionProcessed(request.subscriber, _requestId, sharesReceived);
     }
 
     /**
-     * @notice Get all pending deposits for a subscriber
-     * @param _subscriber Address of the subscriber
-     * @return amounts Array of pending deposit amounts
-     * @return timestamps Array of deposit timestamps
+     * @notice Reject a specific subscription request
+     * @param _requestId ID of the request to reject
+     * @param _reason Reason for rejection
      */
-    function getPendingDeposits(address _subscriber) external view returns (uint256[] memory amounts, uint256[] memory timestamps) {
-        PendingDeposit[] storage deposits = pendingDeposits[_subscriber];
-        uint256 length = deposits.length;
+    function rejectSubscription(uint256 _requestId, string calldata _reason) external onlyOwner {
+        SubscriptionRequest storage request = _requests[_requestId];
+        if (request.status != SubscriptionStatus.PENDING) revert InvalidStatus();
 
-        amounts = new uint256[](length);
-        timestamps = new uint256[](length);
+        // Update the request status
+        request.status = SubscriptionStatus.REJECTED;
+        request.rejectionReason = _reason;
 
-        for (uint256 i = 0; i < length; i++) {
-            amounts[i] = deposits[i].amount;
-            timestamps[i] = deposits[i].timestamp;
-        }
+        // Return tokens to the subscriber
+        address asset = ItRWA(token).asset();
+        ERC20(asset).transfer(request.subscriber, request.amount);
+
+        emit SubscriptionRejected(request.subscriber, _requestId, _reason);
     }
 
     /**
-     * @notice Get the number of pending deposits for a subscriber
-     * @param _subscriber Address of the subscriber
-     * @return count Number of pending deposits
+     * @notice Get details of a subscription request
+     * @param _requestId The ID of the subscription request
+     * @return The subscription request details
      */
-    function getPendingDepositCount(address _subscriber) external view returns (uint256) {
-        return pendingDeposits[_subscriber].length;
+    function getSubscriptionRequest(uint256 _requestId) external view override returns (SubscriptionRequest memory) {
+        return _requests[_requestId];
+    }
+
+    /**
+     * @notice Get the total number of subscription requests
+     * @return count The total number of subscription requests
+     */
+    function getRequestCount() external view override returns (uint256) {
+        return _requestCounter;
+    }
+
+    /**
+     * @notice Get all subscription requests for a subscriber
+     * @param _subscriber The address of the subscriber
+     * @return requestIds Array of request IDs for the subscriber
+     */
+    function getSubscriberRequests(address _subscriber) external view override returns (uint256[] memory requestIds) {
+        return _subscriberRequests[_subscriber];
+    }
+
+    /**
+     * @notice Check if the module is accepting new subscriptions
+     * @return isSubscriptionOpen Whether the module is accepting new subscriptions
+     */
+    function isSubscriptionOpen() external view override returns (bool) {
+        return isOpen;
     }
 }

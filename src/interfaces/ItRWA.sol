@@ -25,6 +25,9 @@ interface ItRWA {
     event TransferApprovalUpdated(address indexed oldModule, address indexed newModule);
     event TransferApprovalToggled(bool enabled);
     event TransferRejected(address indexed from, address indexed to, uint256 value, string reason);
+    event HookAdded(uint256 indexed hookId, address indexed hook);
+    event HookRemoved(uint256 indexed hookId);
+    event HookStatusChanged(uint256 indexed hookId, bool active);
 
     // Errors
     error InvalidAddress();
@@ -33,6 +36,9 @@ interface ItRWA {
     error InvalidTransferApprovalAddress();
     error TransferBlocked(string reason);
     error InvalidUnderlyingValue();
+    error HookReverted(uint256 hookId);
+    error WithdrawMoreThanMax();
+    error RedeemMoreThanMax();
 
     // Main interface functions
     function transferApproval() external view returns (address);
@@ -44,4 +50,10 @@ interface ItRWA {
     function updateUnderlyingValue(uint256 _newUnderlyingPerToken) external;
     function setTransferApproval(address _transferApproval) external;
     function toggleTransferApproval(bool _enabled) external;
+
+    // Hook management functions
+    function addHook(address hook) external returns (uint256);
+    function removeHook(uint256 hookId) external;
+    function setHookStatus(uint256 hookId, bool active) external;
+    function getHook(uint256 hookId) external view returns (address, bool);
 }
