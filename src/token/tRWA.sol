@@ -7,6 +7,7 @@ import {FixedPointMathLib} from "solady/utils/FixedPointMathLib.sol";
 import {OwnableRoles} from "solady/auth/OwnableRoles.sol";
 import {ItRWA} from "../interfaces/ItRWA.sol";
 import {ItRWAHook} from "../interfaces/ItRWAHook.sol";
+import {IRuleEngine} from "../interfaces/IRuleEngine.sol";
 
 /**
  * @title tRWA
@@ -17,45 +18,15 @@ contract tRWA is ERC4626, OwnableRoles, ItRWA {
     using FixedPointMathLib for uint256;
     using SafeTransferLib for address;
 
-    // Role definitions
-    uint256 public constant PRICE_AUTHORITY_ROLE = 1 << 0;
-    uint256 public constant ADMIN_ROLE = 1 << 1;
-    uint256 public constant SUBSCRIPTION_ROLE = 1 << 2;
-    uint256 public constant REDEMPTION_ROLE = 1 << 3;
-    uint256 public constant MANAGER_ROLE = 1 << 4;
-
     // Internal storage for token metadata
-    string internal _name;
-    string internal _symbol;
-    address internal _asset;
+    uint256 constant DECIMALS = 18;
+    string internal immutable _name;
+    string internal immutable _symbol;
+    ERC20 internal _asset;
 
-    // Hook management
-    struct HookInfo {
-        address hookAddress;
-        bool active;
-    }
-
-    mapping(uint256 => HookInfo) public hooks;
-    uint256 public nextHookId = 1;
-
-    // Legacy transfer approval (maintained for backward compatibility)
-    address public transferApproval;
-    uint256 public underlyingPerToken; // Value of underlying asset per token in USD (18 decimals)
-    uint256 public lastValueUpdate; // Timestamp of last underlying value update
-    bool public transferApprovalEnabled = false;
-
-    // Asset-related state
-    uint256 public totalUnderlying; // Total value of underlying assets in USD (18 decimals)
-    uint256 public pendingDeposits; // Total amount of deposited assets waiting for manager withdrawal
-    uint256 public pendingWithdrawals; // Total amount of assets waiting to be claimed by redeemers
-
-    // Events
-    event PendingDepositsWithdrawn(address indexed manager, uint256 amount);
-    event PendingWithdrawalsFunded(address indexed manager, uint256 amount);
-    event WithdrawalProcessed(address indexed recipient, uint256 amount);
-
-    // Errors - only keep those not defined in the interface
-    error InsufficientWithdrawalFunds();
+    // Logic contracts
+    IStrategy public strategy;
+    IRules public immutable rules;
 
     /**
      * @notice Contract constructor
@@ -64,30 +35,25 @@ contract tRWA is ERC4626, OwnableRoles, ItRWA {
      * @param config Configuration struct with all deployment parameters
      */
     constructor(
-        string memory name_,
-        string memory symbol_,
-        ConfigurationStruct memory config
+        string memory name,
+        string memory symbol,
+        address asset,
+        address strategy,
+        address rules
     ) {
         // Validate configuration parameters
-        if (config.underlyingAsset == address(0)) revert InvalidAddress();
-        if (config.priceAuthority == address(0)) revert InvalidAddress();
-        if (config.admin == address(0)) revert InvalidAddress();
-        if (config.subscriptionManager == address(0)) revert InvalidAddress();
+        if (asset == address(0)) revert InvalidAddress();
+        if (strategy == address(0)) revert InvalidAddress();
+        if (rules == address(0)) revert InvalidAddress();
 
-        _name = name_;
-        _symbol = symbol_;
-        _asset = config.underlyingAsset;
+        _name = name;
+        _symbol = symbol;
+        _asset = ERC20(asset);
 
-        // Initialize owner to the admin address from config
-        _initializeOwner(config.admin);
+        strategy = IStrategy(strategy);
+        rules = IRules(rules);
 
-        // Grant the roles as specified in the config
-        _grantRoles(config.admin, ADMIN_ROLE);
-        _grantRoles(config.priceAuthority, PRICE_AUTHORITY_ROLE);
-        _grantRoles(config.subscriptionManager, SUBSCRIPTION_ROLE);
-        _grantRoles(config.admin, MANAGER_ROLE); // Default admin as manager
-
-        lastValueUpdate = block.timestamp;
+        if (strategy.asset() != asset) revert AssetMismatch();
     }
 
     /**
@@ -108,7 +74,7 @@ contract tRWA is ERC4626, OwnableRoles, ItRWA {
      * @notice Returns the decimals places of the token
      */
     function decimals() public view virtual override returns (uint8) {
-        return 18;
+        return DECIMALS;
     }
 
     /**
@@ -120,93 +86,11 @@ contract tRWA is ERC4626, OwnableRoles, ItRWA {
     }
 
     /**
-     * @notice Update the underlying value per token
-     * @param _newUnderlyingPerToken New underlying value per token in USD (18 decimals)
+     * @notice Returns the total assets of the strategy
+     * @return Total assets in terms of _asset
      */
-    function updateUnderlyingValue(uint256 _newUnderlyingPerToken) external onlyRoles(PRICE_AUTHORITY_ROLE) {
-        if (_newUnderlyingPerToken == 0) revert InvalidUnderlyingValue();
-
-        // Calculate the total underlying value based on current shares
-        uint256 supply = totalSupply();
-        if (supply > 0) {
-            totalUnderlying = supply * _newUnderlyingPerToken / 1e18;
-        }
-
-        underlyingPerToken = _newUnderlyingPerToken;
-        lastValueUpdate = block.timestamp;
-
-        emit UnderlyingValueUpdated(_newUnderlyingPerToken, block.timestamp);
-    }
-
-    /**
-     * @notice Set or update the transfer approval module (legacy)
-     * @param _transferApproval Address of the transfer approval module
-     */
-    function setTransferApproval(address _transferApproval) external onlyOwnerOrRoles(ADMIN_ROLE) {
-        if (_transferApproval == address(0)) revert InvalidTransferApprovalAddress();
-
-        address oldModule = transferApproval;
-        transferApproval = _transferApproval;
-
-        emit TransferApprovalUpdated(oldModule, _transferApproval);
-    }
-
-    /**
-     * @notice Enable or disable transfer approval checks (legacy)
-     * @param _enabled Whether transfer approval is enabled
-     */
-    function toggleTransferApproval(bool _enabled) external onlyOwnerOrRoles(ADMIN_ROLE) {
-        transferApprovalEnabled = _enabled;
-
-        emit TransferApprovalToggled(_enabled);
-    }
-
-    /**
-     * @notice Withdraw pending deposits by a manager
-     * @param amount Amount of tokens to withdraw
-     * @param to Address to send the tokens to
-     */
-    function withdrawPendingDeposits(uint256 amount, address to) external onlyRoles(MANAGER_ROLE) {
-        if (to == address(0)) revert InvalidAddress();
-        if (amount == 0) revert ZeroAssets();
-        if (amount > pendingDeposits) revert WithdrawMoreThanMax();
-
-        pendingDeposits -= amount;
-        _asset.safeTransfer(to, amount);
-
-        emit PendingDepositsWithdrawn(msg.sender, amount);
-    }
-
-    /**
-     * @notice Fund the pending withdrawals pool for redemptions
-     * @param amount Amount of tokens to add to the pending withdrawals pool
-     */
-    function fundPendingWithdrawals(uint256 amount) external onlyRoles(MANAGER_ROLE) {
-        if (amount == 0) revert ZeroAssets();
-
-        // Transfer assets from the manager to this contract
-        _asset.safeTransferFrom(msg.sender, address(this), amount);
-
-        // Add to pendingWithdrawals pool
-        pendingWithdrawals += amount;
-
-        emit PendingWithdrawalsFunded(msg.sender, amount);
-    }
-
-    /**
-     * @notice Process a pending withdrawal for a receiver
-     * @param amount Amount of tokens to process from the pending withdrawals pool
-     * @param receiver Address to receive the withdrawal
-     */
-    function processWithdrawal(uint256 amount, address receiver) external onlyRoles(REDEMPTION_ROLE) {
-        if (receiver == address(0)) revert InvalidAddress();
-        if (amount == 0) revert ZeroAssets();
-        if (amount > pendingWithdrawals) revert InsufficientWithdrawalFunds();
-
-        pendingWithdrawals -= amount;
-        _asset.safeTransfer(receiver, amount);
-
-        emit WithdrawalProcessed(receiver, amount);
+    function totalAssets() public view override returns (uint256) {
+        return strategy.balance();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -370,6 +254,26 @@ contract tRWA is ERC4626, OwnableRoles, ItRWA {
                 }
             }
 
+            // New rules check
+            if (rulesEnabled && ruleEngine != address(0)) {
+                // Call checkTransfer which will revert with specific errors if not approved
+                (bool successCall,) = ruleEngine.staticcall(
+                    abi.encodeCall(
+                        IRuleEngine.checkTransfer,
+                        (from, to, amount)
+                    )
+                );
+
+                if (!successCall) {
+                    // If the call failed, it means one of the specific errors was thrown
+                    // We'll rethrow the same error
+                    assembly {
+                        returndatacopy(0, 0, returndatasize())
+                        revert(0, returndatasize())
+                    }
+                }
+            }
+
             // New hook-based transfer approval
             bytes memory data = abi.encode(from, to, amount);
             _executePreHooks(5, data);
@@ -414,6 +318,23 @@ contract tRWA is ERC4626, OwnableRoles, ItRWA {
         if (receiver == address(0)) revert InvalidAddress();
         if (assets == 0) revert ZeroAssets();
 
+        // Check rules before deposit if enabled
+        if (rulesEnabled && ruleEngine != address(0)) {
+            (bool successCall,) = ruleEngine.staticcall(
+                abi.encodeCall(
+                    IRuleEngine.checkDeposit,
+                    (msg.sender, assets, receiver)
+                )
+            );
+
+            if (!successCall) {
+                assembly {
+                    returndatacopy(0, 0, returndatasize())
+                    revert(0, returndatasize())
+                }
+            }
+        }
+
         // Check hooks before deposit
         bytes memory preData = abi.encode(msg.sender, assets, receiver);
         _executePreHooks(1, preData);
@@ -446,6 +367,23 @@ contract tRWA is ERC4626, OwnableRoles, ItRWA {
     function mint(uint256 shares, address receiver) public override returns (uint256 assets) {
         if (receiver == address(0)) revert InvalidAddress();
         if (shares == 0) revert ZeroShares();
+
+        // Check rules before mint if enabled
+        if (rulesEnabled && ruleEngine != address(0)) {
+            (bool successCall,) = ruleEngine.staticcall(
+                abi.encodeCall(
+                    IRuleEngine.checkMint,
+                    (msg.sender, shares, receiver)
+                )
+            );
+
+            if (!successCall) {
+                assembly {
+                    returndatacopy(0, 0, returndatasize())
+                    revert(0, returndatasize())
+                }
+            }
+        }
 
         // Check hooks before mint
         bytes memory preData = abi.encode(msg.sender, shares, receiver);
@@ -480,6 +418,23 @@ contract tRWA is ERC4626, OwnableRoles, ItRWA {
     function withdraw(uint256 assets, address receiver, address owner) public override returns (uint256 shares) {
         if (receiver == address(0)) revert InvalidAddress();
         if (assets == 0) revert ZeroAssets();
+
+        // Check rules before withdraw if enabled
+        if (rulesEnabled && ruleEngine != address(0)) {
+            (bool successCall,) = ruleEngine.staticcall(
+                abi.encodeCall(
+                    IRuleEngine.checkWithdraw,
+                    (msg.sender, assets, receiver, owner)
+                )
+            );
+
+            if (!successCall) {
+                assembly {
+                    returndatacopy(0, 0, returndatasize())
+                    revert(0, returndatasize())
+                }
+            }
+        }
 
         // Check hooks before withdraw
         bytes memory preData = abi.encode(msg.sender, assets, receiver, owner);
@@ -525,6 +480,23 @@ contract tRWA is ERC4626, OwnableRoles, ItRWA {
         if (receiver == address(0)) revert InvalidAddress();
         if (shares == 0) revert ZeroShares();
 
+        // Check rules before redeem if enabled
+        if (rulesEnabled && ruleEngine != address(0)) {
+            (bool successCall,) = ruleEngine.staticcall(
+                abi.encodeCall(
+                    IRuleEngine.checkRedeem,
+                    (msg.sender, shares, receiver, owner)
+                )
+            );
+
+            if (!successCall) {
+                assembly {
+                    returndatacopy(0, 0, returndatasize())
+                    revert(0, returndatasize())
+                }
+            }
+        }
+
         // Check hooks before redeem
         bytes memory preData = abi.encode(msg.sender, shares, receiver, owner);
         _executePreHooks(4, preData);
@@ -556,14 +528,5 @@ contract tRWA is ERC4626, OwnableRoles, ItRWA {
         // Execute hooks after redeem
         bytes memory postData = abi.encode(msg.sender, shares, receiver, owner, assets);
         _executePostHooks(4, postData);
-    }
-
-    /**
-     * @notice Calculate the USD value of a given number of shares
-     * @param _shares Number of shares
-     * @return usdValue USD value of the shares (18 decimals)
-     */
-    function getUsdValue(uint256 _shares) public view returns (uint256 usdValue) {
-        return convertToAssets(_shares);
     }
 }

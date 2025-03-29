@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
-import {OwnableRoles} from "solady/auth/OwnableRoles.sol";
 import {ERC20} from "solady/tokens/ERC20.sol";
 
 /**
@@ -10,7 +9,20 @@ import {ERC20} from "solady/tokens/ERC20.sol";
  *
  * Consider for future: Making BasicStrategy an ERC4337-compatible smart account
  */
-abstract contract BasicStrategy {
+abstract contract BasicStrategy is IStrategy {
+    /*//////////////////////////////////////////////////////////////
+                            STATE
+    //////////////////////////////////////////////////////////////*/
+
+    address public admin;
+    address public pendingAdmin;
+    address public manager;
+    ERC20 public asset;
+
+    /*//////////////////////////////////////////////////////////////
+                            EVENTS & ERRORS
+    //////////////////////////////////////////////////////////////*/
+
     // Errors
     error InvalidAddress();
     error Unauthorized();
@@ -23,29 +35,31 @@ abstract contract BasicStrategy {
     event ManagerChange(address indexed oldManager, address indexed newManager);
     event Call(address indexed target, uint256 value, bytes data);
 
-    // Contract variables
-    address public admin;
-    address public pendingAdmin;
-    address public manager;
+    /*//////////////////////////////////////////////////////////////
+                            CONSTRUCTOR
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Contract constructor
      * @param admin_ Address of the admin
      * @param manager_ Address of the manager
+     * @param asset_ Address of the underlying asset
      */
-    constructor(address admin_, address manager_) {
+    constructor(address admin_, address manager_, address asset_) {
         if (admin_ == address(0)) revert InvalidAddress();
         if (manager_ == address(0)) revert InvalidAddress();
+        if (asset_ == address(0)) revert InvalidAddress();
 
         // Let admin and manager be contract variables
         // and grant them the roles
         admin = admin_;
         manager = manager_;
+        asset = ERC20(asset_);
     }
 
-    ////////////////////////////////
-    // Admin Management
-    ////////////////////////////////
+    /*//////////////////////////////////////////////////////////////
+                            ADMIN MANAGEMENT
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Allow admin to change the manager
@@ -93,9 +107,9 @@ abstract contract BasicStrategy {
         emit NoAdminChange(admin, oldPendingAdmin);
     }
 
-    ////////////////////////////////
-    // Asset Management
-    ////////////////////////////////
+    /*//////////////////////////////////////////////////////////////
+                            ASSET MANAGEMENT
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Get the balance of the strategy
@@ -178,9 +192,9 @@ abstract contract BasicStrategy {
         (success, returnData) = target.delegatecall(data);
     }
 
-    ////////////////////////////////
-    // Modifiers
-    ////////////////////////////////
+    /*//////////////////////////////////////////////////////////////
+                            MODIFIERS
+    //////////////////////////////////////////////////////////////*/
 
     modifier onlyAdmin() {
         if (msg.sender != admin) revert Unauthorized();

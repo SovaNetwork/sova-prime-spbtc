@@ -9,14 +9,30 @@ import {BaseReporter} from "../reporter/BaseReporter.sol";
  * @notice A strategy contract that reports its underlying asset balance through an external oracle
  */
 contract ReportedStrategy is BasicStrategy {
+    /*//////////////////////////////////////////////////////////////
+                            STATE
+    //////////////////////////////////////////////////////////////*/
+
+    // Optional cache for the last reported balance
+    uint256 public lastReportedBalance;
+    uint256 public lastReportTimestamp;
+
     // The reporter contract
     BaseReporter public reporter;
+
+    /*//////////////////////////////////////////////////////////////
+                            EVENTS & ERRORS
+    //////////////////////////////////////////////////////////////*/
 
     // Errors
     error InvalidReporter();
 
     // Events
     event SetReporter(address indexed reporter);
+
+    /*//////////////////////////////////////////////////////////////
+                            CONSTRUCTOR
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Constructor
@@ -26,6 +42,10 @@ contract ReportedStrategy is BasicStrategy {
         if (_reporter == address(0)) revert InvalidReporter();
         reporter = BaseReporter(_reporter);
     }
+
+    /*//////////////////////////////////////////////////////////////
+                            STRATEGY FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Get the balance of the strategy

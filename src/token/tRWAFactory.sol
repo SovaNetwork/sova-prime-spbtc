@@ -14,12 +14,9 @@ contract tRWAFactory is Ownable {
     address public admin;
 
     // Registries for approved contracts
-    mapping(address => bool) public approvedOracles;
-    mapping(address => bool) public approvedSubscriptionManagers;
-    mapping(address => bool) public approvedUnderlyingAssets;
-    mapping(address => bool) public approvedTransferApprovals;
+    mapping(address => bool) public rules;
+    mapping(address => bool) public assets;
 
-    mapping(address => bool) public isRegisteredToken;
     address[] public allTokens;
 
     // Events

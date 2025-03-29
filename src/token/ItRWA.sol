@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
+import {IStrategy} from "../strategy/IStrategy.sol";
+import {IRules} from "../rules/IRules.sol";
+
 /**
  * @title ItRWA
  * @notice Interface for Tokenized Real World Asset (tRWA)
@@ -9,10 +12,11 @@ pragma solidity ^0.8.25;
 interface ItRWA {
     // Configuration struct for deployment
     struct ConfigurationStruct {
-        address admin;
-        address priceAuthority;
-        address subscriptionManager;
-        address underlyingAsset;
+        // The strategy contract
+        IStrategy strategy;
+
+        // The rules contract
+        IRules rules;
     }
 
     // Roles
@@ -28,9 +32,12 @@ interface ItRWA {
     event HookAdded(uint256 indexed hookId, address indexed hook);
     event HookRemoved(uint256 indexed hookId);
     event HookStatusChanged(uint256 indexed hookId, bool active);
+    event RuleEngineUpdated(address indexed oldEngine, address indexed newEngine);
+    event RulesToggled(bool enabled);
 
     // Errors
     error InvalidAddress();
+    error AssetMismatch();
     error ZeroAssets();
     error ZeroShares();
     error InvalidTransferApprovalAddress();
@@ -39,6 +46,7 @@ interface ItRWA {
     error HookReverted(uint256 hookId);
     error WithdrawMoreThanMax();
     error RedeemMoreThanMax();
+    error InvalidRuleEngine();
 
     // Main interface functions
     function transferApproval() external view returns (address);
@@ -47,9 +55,16 @@ interface ItRWA {
     function transferApprovalEnabled() external view returns (bool);
     function totalUnderlying() external view returns (uint256);
 
+    // Rule Engine functions
+    function ruleEngine() external view returns (address);
+    function rulesEnabled() external view returns (bool);
+
+    // Configuration functions
     function updateUnderlyingValue(uint256 _newUnderlyingPerToken) external;
     function setTransferApproval(address _transferApproval) external;
     function toggleTransferApproval(bool _enabled) external;
+    function setRuleEngine(address _ruleEngine) external;
+    function toggleRules(bool _enabled) external;
 
     // Hook management functions
     function addHook(address hook) external returns (uint256);

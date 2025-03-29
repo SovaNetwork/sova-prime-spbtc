@@ -9,6 +9,10 @@ import {Ownable} from "solady/auth/Ownable.sol";
  * @notice A reporter contract that allows a trusted party to update a price value
  */
 contract PriceOracleReporter is BaseReporter, Ownable {
+    /*//////////////////////////////////////////////////////////////
+                            STATE
+    //////////////////////////////////////////////////////////////*/
+
     // Maximum allowed percentage deviation (denominated in basis points, 10000 = 100%)
     uint256 public maxDeviationBps = 500; // Default 5% max deviation
 
@@ -24,7 +28,10 @@ contract PriceOracleReporter is BaseReporter, Ownable {
     // Mapping of authorized updaters
     mapping(address => bool) public authorizedUpdaters;
 
-    // Events
+    /*//////////////////////////////////////////////////////////////
+                            EVENTS & ERRORS
+    //////////////////////////////////////////////////////////////*/
+
     event PriceUpdated(uint256 roundNumber, uint256 price, string source);
     event SetUpdater(address indexed updater, bool isAuthorized);
     event SetMaxDeviation(uint256 newMaxDeviationBps);
@@ -33,6 +40,10 @@ contract PriceOracleReporter is BaseReporter, Ownable {
     error Unauthorized();
     error InvalidSource();
     error MaxDeviation();
+
+    /*//////////////////////////////////////////////////////////////
+                            CONSTRUCTOR
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Contract constructor
@@ -46,6 +57,10 @@ contract PriceOracleReporter is BaseReporter, Ownable {
         price = initialValue;
         lastPriceAt = block.timestamp;
     }
+
+    /*//////////////////////////////////////////////////////////////
+                            PUBLIC FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Update the reported value
@@ -85,6 +100,10 @@ contract PriceOracleReporter is BaseReporter, Ownable {
     function report() external view override returns (bytes memory) {
         return abi.encode(price);
     }
+
+    /*//////////////////////////////////////////////////////////////
+                            OWNER FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Set whether an address is authorized to update values
