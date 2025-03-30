@@ -5,5 +5,9 @@
     "solidity.remappings": [
         "forge-std/=lib/forge-std/src/",
         "solady/=lib/solady/src/"
-    ]
+    ],
+    "solidity.enabledAsYouTypeCompilationErrorCheck": true,
+    "solidity.validationDelay": 1500,
+    "editor.formatOnSave": true,
+    "solidity.formatter": "forge"
 }
