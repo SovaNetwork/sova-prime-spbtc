@@ -48,7 +48,7 @@ interface IRules {
         address from,
         address to,
         uint256 amount
-    ) external view returns (RuleResult memory result);
+    ) external returns (RuleResult memory result);
 
     /**
      * @notice Evaluates a deposit according to this rule
@@ -63,7 +63,7 @@ interface IRules {
         address user,
         uint256 assets,
         address receiver
-    ) external view returns (RuleResult memory result);
+    ) external returns (RuleResult memory result);
 
     /**
      * @notice Evaluates a withdraw according to this rule
@@ -80,5 +80,5 @@ interface IRules {
         uint256 assets,
         address receiver,
         address owner
-    ) external view returns (RuleResult memory result);
+    ) external returns (RuleResult memory result);
 }

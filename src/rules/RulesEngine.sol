@@ -197,7 +197,7 @@ contract RulesEngine is IRulesEngine, BaseRules, OwnableRoles {
         address from,
         address to,
         uint256 amount
-    ) external view override returns (RuleResult memory) {
+    ) public view override returns (RuleResult memory) {
         try this._evaluateOperation(
             OPERATION_TRANSFER,
             abi.encodeCall(IRules.evaluateTransfer, (token, from, to, amount))
@@ -221,7 +221,7 @@ contract RulesEngine is IRulesEngine, BaseRules, OwnableRoles {
         address user,
         uint256 assets,
         address receiver
-    ) external view override returns (RuleResult memory) {
+    ) public view override returns (RuleResult memory) {
         try this._evaluateOperation(
             OPERATION_DEPOSIT,
             abi.encodeCall(IRules.evaluateDeposit, (token, user, assets, receiver))
@@ -246,7 +246,7 @@ contract RulesEngine is IRulesEngine, BaseRules, OwnableRoles {
         uint256 assets,
         address receiver,
         address owner
-    ) external view override returns (RuleResult memory) {
+    ) public view override returns (RuleResult memory) {
         try this._evaluateOperation(
             OPERATION_WITHDRAW,
             abi.encodeCall(IRules.evaluateWithdraw, (token, user, assets, receiver, owner))
@@ -280,22 +280,18 @@ contract RulesEngine is IRulesEngine, BaseRules, OwnableRoles {
             if (!rule.active) continue;
 
             // Skip rules that don't apply to this operation
-            if ((rule.appliesTo & operationType) == 0) continue;
+            if ((IRules(rule.rule).appliesTo() & operationType) == 0) continue;
 
             // Call the rule with the appropriate evaluation function
-            (bool success, bytes memory returnData) = rule.ruleAddress.staticcall(callData);
+            (bool success, bytes memory returnData) = rule.rule.staticcall(callData);
 
             if (!success) {
                 // Rule execution failed
-                revert RuleEvaluationFailed(ruleId, returnData);
+                revert RuleEvaluationFailed(ruleId, abi.decode(returnData, (string)));
             }
 
             // Decode the result
             RuleResult memory result = abi.decode(returnData, (RuleResult));
-
-            // Emit event with evaluation result
-            // Note: This is a view function so events won't be emitted, but this helps with future compatibility
-            emit RuleEvaluationResult(ruleId, operationType, result.approved, result.reason);
 
             // If rule rejects, operation is not allowed
             if (!result.approved) {

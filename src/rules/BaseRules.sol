@@ -4,6 +4,8 @@ pragma solidity ^0.8.25;
 import {IRules} from "./IRules.sol";
 import {IRulesEngine} from "./IRulesEngine.sol";
 
+// TODO Remove "evaluate" prefix from methods
+
 /**
  * @title BaseRules
  * @notice Base implementation of the IRules interface
@@ -41,7 +43,7 @@ abstract contract BaseRules is IRules {
         address,
         address,
         uint256
-    ) external view virtual override returns (RuleResult memory) {
+    ) public virtual override returns (RuleResult memory) {
         return RuleResult({ approved: true, reason: "" });
     }
 
@@ -54,7 +56,7 @@ abstract contract BaseRules is IRules {
         address,
         uint256,
         address
-    ) external view virtual override returns (RuleResult memory) {
+    ) public virtual override returns (RuleResult memory) {
         return RuleResult({ approved: true, reason: "" });
     }
 
@@ -68,7 +70,7 @@ abstract contract BaseRules is IRules {
         uint256,
         address,
         address
-    ) external view virtual override returns (RuleResult memory) {
+    ) public virtual override returns (RuleResult memory) {
         return RuleResult({ approved: true, reason: "" });
     }
 }

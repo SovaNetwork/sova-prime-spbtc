@@ -2,7 +2,7 @@
 pragma solidity ^0.8.25;
 
 import {ERC20} from "solady/tokens/ERC20.sol";
-
+import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {IStrategy} from "./IStrategy.sol";
 
 /**
@@ -12,6 +12,8 @@ import {IStrategy} from "./IStrategy.sol";
  * Consider for future: Making BasicStrategy an ERC4337-compatible smart account
  */
 abstract contract BasicStrategy is IStrategy {
+    using SafeTransferLib for address;
+
     /*//////////////////////////////////////////////////////////////
                             STATE
     //////////////////////////////////////////////////////////////*/
@@ -118,7 +120,7 @@ abstract contract BasicStrategy is IStrategy {
      * @param amount The amount of tokens to send
      */
     function sendToken(address token, address to, uint256 amount) external onlyManager {
-        ERC20(token).safeTransfer(to, amount);
+        token.safeTransfer(to, amount);
     }
 
     /**
@@ -128,7 +130,7 @@ abstract contract BasicStrategy is IStrategy {
      * @param amount The amount of tokens to pull
      */
     function pullToken(address token, address from, uint256 amount) external onlyManager {
-        ERC20(token).safeTransferFrom(from, address(this), amount);
+        token.safeTransferFrom(from, address(this), amount);
     }
 
     /**

@@ -109,18 +109,16 @@ contract KycRules is BaseRules, Ownable {
 
     /**
      * @notice Evaluate transfer operation
-     * @param tRWAToken Address of the tRWA token
      * @param from Address sending tokens
      * @param to Address receiving tokens
-     * @param amount Amount of tokens being transferred
      * @return result Rule evaluation result
      */
     function evaluateTransfer(
-        address tRWAToken,
+        address,
         address from,
         address to,
-        uint256 amount
-    ) external view override returns (RuleResult memory result) {
+        uint256
+    ) public view override returns (RuleResult memory result) {
         // Check if the sender is allowed to transfer
         if (!isAllowed(from)) {
             return RuleResult({
@@ -143,18 +141,16 @@ contract KycRules is BaseRules, Ownable {
 
     /**
      * @notice Evaluate deposit operation
-     * @param tRWAToken Address of the tRWA token
      * @param user Address initiating the deposit
-         * @param assets Amount of assets being deposited
      * @param receiver Address receiving the shares
      * @return result Rule evaluation result
      */
     function evaluateDeposit(
-        address tRWAToken,
+        address,
         address user,
-        uint256 assets,
+        uint256,
         address receiver
-    ) external view override returns (RuleResult memory result) {
+    ) public view override returns (RuleResult memory result) {
         // Check if sender is allowed to deposit
         if (!isAllowed(user)) {
             return RuleResult({
@@ -177,20 +173,18 @@ contract KycRules is BaseRules, Ownable {
 
     /**
      * @notice Evaluate withdraw operation
-     * @param tRWAToken Address of the tRWA token
      * @param user Address initiating the withdrawal
-     * @param assets Amount of assets being withdrawn
      * @param receiver Address receiving the assets
      * @param owner Address owning the shares
      * @return result Rule evaluation result
      */
     function evaluateWithdraw(
-        address tRWAToken,
+        address,
         address user,
-        uint256 assets,
+        uint256,
         address receiver,
         address owner
-    ) external view override returns (RuleResult memory result) {
+    ) public view override returns (RuleResult memory result) {
         // Check if sender is allowed to withdraw
         if (!isAllowed(user)) {
             return RuleResult({

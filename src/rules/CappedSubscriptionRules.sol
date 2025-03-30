@@ -5,6 +5,7 @@ import {ERC20} from "solady/tokens/ERC20.sol";
 
 import {SubscriptionRules} from "./SubscriptionRules.sol";
 import {ItRWA} from "../token/ItRWA.sol";
+import {tRWA} from "../token/tRWA.sol";
 
 /**
  * @title CappedSubscriptionRules
@@ -53,16 +54,6 @@ contract CappedSubscriptionRules is SubscriptionRules {
     }
 
     /**
-     * @notice Record minted tokens to track against cap
-     * @param user Address that minted tokens
-     * @param amount Amount of tokens minted
-     */
-    function recordMint(address user, uint256 amount) external onlyOwnerOrRoles(SUBSCRIPTION_MANAGER_ROLE) {
-        totalMinted += amount;
-        emit TokensMinted(user, amount);
-    }
-
-    /**
      * @notice Get remaining cap available
      * @return Amount still available under the cap
      */
@@ -83,7 +74,7 @@ contract CappedSubscriptionRules is SubscriptionRules {
         address user,
         uint256 assets,
         address receiver
-    ) external view override returns (RuleResult memory result) {
+    ) public override returns (RuleResult memory result) {
         // First check subscription status using parent implementation
         RuleResult memory baseResult = super.evaluateDeposit(token, user, assets, receiver);
         if (!baseResult.approved) {
@@ -94,7 +85,7 @@ contract CappedSubscriptionRules is SubscriptionRules {
         uint256 available = remainingCap();
 
         // Increment the total minted
-        totalMinted += token.convertToShares(assets);
+        totalMinted += tRWA(token).convertToShares(assets);
 
         if (totalMinted > maxCap) {
             return RuleResult({

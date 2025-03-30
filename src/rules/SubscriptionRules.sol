@@ -94,18 +94,15 @@ contract SubscriptionRules is BaseRules, OwnableRoles {
 
     /**
      * @notice Evaluates a deposit according to subscription rules
-     * @param token Address of the tRWA token
-     * @param user Address initiating the deposit
-     * @param assets Amount of assets being deposited
      * @param receiver Address receiving the shares
      * @return result Rule evaluation result
      */
     function evaluateDeposit(
-        address token,
-        address user,
-        uint256 assets,
+        address,
+        address,
+        uint256,
         address receiver
-    ) external view virtual override returns (RuleResult memory result) {
+    ) public virtual override returns (RuleResult memory result) {
         // Check if subscriptions are open
         if (!isOpen) {
             return RuleResult({
@@ -115,7 +112,7 @@ contract SubscriptionRules is BaseRules, OwnableRoles {
         }
 
         // Check if the user is an approved subscriber
-        if (enforceApproval && !isSubscriptionApproved[user]) {
+        if (enforceApproval && !isSubscriptionApproved[receiver]) {
             return RuleResult({
                 approved: false,
                 reason: "Address is not approved for subscription"
