@@ -46,3 +46,8 @@ The Fountfi protocol enables tokenization of Real World Assets (RWA) with:
 - Registry enforces proper rules, assets, and reporters for deployment
 
 Consult [Foundry Book](https://book.getfoundry.sh/) for more development details.
+
+## Next Steps
+- Figure out how to handle pending deposits and withdrawals
+- Consider inflation attacks and MEV vectors
+- Work on rules for withdrawals, with LockupRule as first PoC
