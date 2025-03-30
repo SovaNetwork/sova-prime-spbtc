@@ -48,6 +48,11 @@ The Fountfi protocol enables tokenization of Real World Assets (RWA) with:
 Consult [Foundry Book](https://book.getfoundry.sh/) for more development details.
 
 ## Next Steps
-- Figure out how to handle pending deposits and withdrawals
-- Consider inflation attacks and MEV vectors
-- Work on rules for withdrawals, with LockupRule as first PoC
+- Implement complete withdrawal functionality in tRWA token (fix the TODO in the withdraw function)
+- Consider implications of inflation attacks and other MEV vectors
+- Create a RedemptionQueue contract for managing pending withdrawals with time delays
+- Develop additional rule modules:
+  - InvestorLimit rule to enforce maximum limits per investor
+  - LockupPeriodRule to enforce minimum holding periods
+- Add invariant testing using Foundry's property-based testing
+- Create comprehensive documentation and deployment guides
