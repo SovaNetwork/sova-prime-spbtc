@@ -14,24 +14,20 @@ contract tRWAFactory is Ownable {
     address public admin;
 
     // Registries for approved contracts
-    mapping(address => bool) public rules;
-    mapping(address => bool) public assets;
+    mapping(address => bool) public allowedRules;
+    mapping(address => bool) public allowedAssets;
 
     address[] public allTokens;
 
     // Events
-    event TokenDeployed(address indexed token, string name, string symbol);
-    event TransferApprovalApproved(address indexed module, bool approved);
-    event OracleApproved(address indexed oracle, bool approved);
-    event SubscriptionManagerApproved(address indexed manager, bool approved);
-    event UnderlyingAssetApproved(address indexed asset, bool approved);
+    event Deployed(address indexed token, string name, string symbol);
+    event SetRule(address indexed rule, bool approved);
+    event SetAsset(address indexed asset, bool approved);
 
     // Errors
     error InvalidAddress();
-    error UnapprovedOracle();
-    error UnapprovedSubscriptionManager();
-    error UnapprovedUnderlyingAsset();
-    error UnapprovedTransferApproval();
+    error UnapprovedRule();
+    error UnapprovedAsset();
 
     /**
      * @notice Contract constructor
@@ -53,15 +49,14 @@ contract tRWAFactory is Ownable {
     function deployToken(
         string memory _name,
         string memory _symbol,
-        address _oracle,
-        address _subscriptionManager,
-        address _underlyingAsset,
-        address _transferApproval
+        address _asset,
+        address _strategy,
+        address _rules
     ) external onlyOwner returns (address) {
-        if (!approvedOracles[_oracle]) revert UnapprovedOracle();
-        if (!approvedSubscriptionManagers[_subscriptionManager]) revert UnapprovedSubscriptionManager();
-        if (!approvedUnderlyingAssets[_underlyingAsset]) revert UnapprovedUnderlyingAsset();
-        if (!approvedTransferApprovals[_transferApproval]) revert UnapprovedTransferApproval();
+        // TODO: Have strategy deploy token?
+
+        if (!allowedRules[_rules]) revert UnapprovedRule();
+        if (!allowedAssets[_asset]) revert UnapprovedAsset();
 
         // Create configuration struct
         ItRWA.ConfigurationStruct memory config = ItRWA.ConfigurationStruct({
@@ -75,105 +70,36 @@ contract tRWAFactory is Ownable {
         tRWA newToken = new tRWA(
             _name,
             _symbol,
-            config
+            _asset,
+            _strategy,
+            _rules
         );
 
         // Register token in the factory
         address tokenAddr = address(newToken);
-        isRegisteredToken[tokenAddr] = true;
         allTokens.push(tokenAddr);
 
-        emit TokenDeployed(tokenAddr, _name, _symbol);
+        emit Deployed(tokenAddr, _name, _symbol);
 
         return tokenAddr;
     }
 
     /**
-     * @notice Approve or disapprove a transfer approval module
-     * @param _transferApproval Address of the transfer approval module
-     * @param _approved Whether to approve or disapprove
+     * @notice Approve a rule
+     * @param _rule Rule to approve
      */
-    function setTransferApprovalApproval(address _transferApproval, bool _approved) external onlyOwner {
-        if (_transferApproval == address(0)) revert InvalidAddress();
-
-        approvedTransferApprovals[_transferApproval] = _approved;
-
-        emit TransferApprovalApproved(_transferApproval, _approved);
+    function setRule(address _rule, bool _approved) external onlyOwner {
+        allowedRules[_rule] = _approved;
+        emit SetRule(_rule, _approved);
     }
 
     /**
-     * @notice Approve or disapprove an oracle
-     * @param _oracle Address of the oracle
-     * @param _approved Whether to approve or disapprove
+     * @notice Approve an asset
+     * @param _asset Asset to approve
      */
-    function setOracleApproval(address _oracle, bool _approved) external onlyOwner {
-        if (_oracle == address(0)) revert InvalidAddress();
-
-        approvedOracles[_oracle] = _approved;
-
-        emit OracleApproved(_oracle, _approved);
-    }
-
-    /**
-     * @notice Approve or disapprove a subscription manager
-     * @param _subscriptionManager Address of the subscription manager
-     * @param _approved Whether to approve or disapprove
-     */
-    function setSubscriptionManagerApproval(address _subscriptionManager, bool _approved) external onlyOwner {
-        if (_subscriptionManager == address(0)) revert InvalidAddress();
-
-        approvedSubscriptionManagers[_subscriptionManager] = _approved;
-
-        emit SubscriptionManagerApproved(_subscriptionManager, _approved);
-    }
-
-    /**
-     * @notice Approve or disapprove an underlying asset
-     * @param _underlyingAsset Address of the underlying asset
-     * @param _approved Whether to approve or disapprove
-     */
-    function setUnderlyingAssetApproval(address _underlyingAsset, bool _approved) external onlyOwner {
-        if (_underlyingAsset == address(0)) revert InvalidAddress();
-
-        approvedUnderlyingAssets[_underlyingAsset] = _approved;
-
-        emit UnderlyingAssetApproved(_underlyingAsset, _approved);
-    }
-
-    /**
-     * @notice Check if a transfer approval module is approved
-     * @param _transferApproval Address of the transfer approval module
-     * @return approved Whether the transfer approval module is approved
-     */
-    function isTransferApprovalApproved(address _transferApproval) external view returns (bool) {
-        return approvedTransferApprovals[_transferApproval];
-    }
-
-    /**
-     * @notice Check if an oracle is approved
-     * @param _oracle Address of the oracle
-     * @return approved Whether the oracle is approved
-     */
-    function isOracleApproved(address _oracle) external view returns (bool) {
-        return approvedOracles[_oracle];
-    }
-
-    /**
-     * @notice Check if a subscription manager is approved
-     * @param _subscriptionManager Address of the subscription manager
-     * @return approved Whether the subscription manager is approved
-     */
-    function isSubscriptionManagerApproved(address _subscriptionManager) external view returns (bool) {
-        return approvedSubscriptionManagers[_subscriptionManager];
-    }
-
-    /**
-     * @notice Check if an underlying asset is approved
-     * @param _underlyingAsset Address of the underlying asset
-     * @return approved Whether the underlying asset is approved
-     */
-    function isUnderlyingAssetApproved(address _underlyingAsset) external view returns (bool) {
-        return approvedUnderlyingAssets[_underlyingAsset];
+    function setAsset(address _asset, bool _approved) external onlyOwner {
+        allowedAssets[_asset] = _approved;
+        emit SetAsset(_asset, _approved);
     }
 
     /**

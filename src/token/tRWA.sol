@@ -4,10 +4,9 @@ pragma solidity ^0.8.25;
 import {ERC4626} from "solady/tokens/ERC4626.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solady/utils/FixedPointMathLib.sol";
-import {OwnableRoles} from "solady/auth/OwnableRoles.sol";
+import {IRules} from "../rules/IRules.sol";
 import {ItRWA} from "../interfaces/ItRWA.sol";
-import {ItRWAHook} from "../interfaces/ItRWAHook.sol";
-import {IRuleEngine} from "../interfaces/IRuleEngine.sol";
+
 
 /**
  * @title tRWA
@@ -86,7 +85,9 @@ contract tRWA is ERC4626, OwnableRoles, ItRWA {
      * @param shares Amount of shares to mint
      */
     function _deposit(address by, address to, uint256 assets, uint256 shares) internal override {
-        rules.evaluateDeposit(address(this), by, assets, to);
+        IRules.RuleResult memory result = rules.evaluateDeposit(address(this), by, assets, to);
+
+        if (!result.approved) revert RuleCheckFailed(result.reason);
 
         SafeTransferLib.safeTransferFrom(asset(), by, address(this), assets);
         _mint(to, shares);
@@ -102,7 +103,9 @@ contract tRWA is ERC4626, OwnableRoles, ItRWA {
      * @param owner Address of the owner
      */
     function _withdraw(address by, address to, address owner, uint256 assets, uint256 shares) internal override {
-       rules.evaluateWithdraw(address(this), by, assets, to, owner);
+       IRules.RuleResult memory result = rules.evaluateWithdraw(address(this), by, assets, to, owner);
+
+       if (!result.approved) revert RuleCheckFailed(result.reason);
 
        if (by != owner) {
            _spendAllowance(owner, by, shares);
