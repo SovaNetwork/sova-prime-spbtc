@@ -31,29 +31,36 @@ contract ReportedStrategy is BasicStrategy {
     event SetReporter(address indexed reporter);
 
     /*//////////////////////////////////////////////////////////////
-                            CONSTRUCTOR
+                            INITIALIZATION
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * @notice Constructor
+     * @notice Initialize the strategy
      * @param admin_ The admin address
      * @param manager_ The manager address
      * @param asset_ The asset address
-     * @param reporter_ The reporter contract
+     * @param rules_ Rules address
+     * @param name_ Token name
+     * @param symbol_ Token symbol
+     * @param initData Initialization data
      */
-    constructor(
+    function initialize(
+        string calldata name_,
+        string calldata symbol_,
         address admin_,
         address manager_,
         address asset_,
-        address reporter_
-    ) BasicStrategy(admin_, manager_, asset_) {
+        address rules_,
+        bytes memory initData
+    ) public override {
+        super.initialize(name_, symbol_, admin_, manager_, asset_, rules_, initData);
+
+        address reporter_ = abi.decode(initData, (address));
         if (reporter_ == address(0)) revert InvalidReporter();
         reporter = BaseReporter(reporter_);
-    }
 
-    /*//////////////////////////////////////////////////////////////
-                            STRATEGY FUNCTIONS
-    //////////////////////////////////////////////////////////////*/
+        emit SetReporter(reporter_);
+    }
 
     /**
      * @notice Get the balance of the strategy
@@ -67,7 +74,7 @@ contract ReportedStrategy is BasicStrategy {
      * @notice Set the reporter contract
      * @param _reporter The new reporter contract
      */
-    function setReporter(address _reporter) external onlyManager() {
+    function setReporter(address _reporter) external onlyManager {
         if (_reporter == address(0)) revert InvalidReporter();
 
         reporter = BaseReporter(_reporter);
