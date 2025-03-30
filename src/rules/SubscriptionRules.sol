@@ -105,7 +105,7 @@ contract SubscriptionRules is BaseRules, OwnableRoles {
         address user,
         uint256 assets,
         address receiver
-    ) external view override returns (RuleResult memory result) {
+    ) external view virtual override returns (RuleResult memory result) {
         // Check if subscriptions are open
         if (!isOpen) {
             return RuleResult({
@@ -133,7 +133,7 @@ contract SubscriptionRules is BaseRules, OwnableRoles {
      * @notice Returns which operations this rule applies to
      * @return Bitmap of operations this rule applies to
      */
-    function appliesTo() external pure returns (uint256) {
+    function appliesTo() external pure override returns (uint256) {
         return OPERATION_DEPOSIT;
     }
 }

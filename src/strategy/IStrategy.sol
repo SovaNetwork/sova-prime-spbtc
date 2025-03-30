@@ -23,6 +23,7 @@ interface IStrategy {
     function admin() external view returns (address);
     function pendingAdmin() external view returns (address);
     function manager() external view returns (address);
+    function asset() external view returns (address);
 
     function setManager(address newManager) external;
     function proposeAdmin(address newAdmin) external;

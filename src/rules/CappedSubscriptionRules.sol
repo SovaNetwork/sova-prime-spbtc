@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
-import {SubscriptionRules} from "./SubscriptionRules.sol";
 import {ERC20} from "solady/tokens/ERC20.sol";
-import {ItRWA} from "../interfaces/ItRWA.sol";
+
+import {SubscriptionRules} from "./SubscriptionRules.sol";
+import {ItRWA} from "../token/ItRWA.sol";
 
 /**
  * @title CappedSubscriptionRules

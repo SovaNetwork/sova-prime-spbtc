@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
+import {Ownable} from "solady/auth/Ownable.sol";
 
 import {tRWA} from "./tRWA.sol";
-import {NavOracle} from "./NavOracle.sol";
-import {ItRWA} from "../interfaces/ItRWA.sol";
-import {Ownable} from "solady/auth/Ownable.sol";
+import {ItRWA} from "./ItRWA.sol";
 
 /**
  * @title tRWAFactory
@@ -40,10 +39,9 @@ contract tRWAFactory is Ownable {
      * @notice Deploy a new tRWA token
      * @param _name Token name
      * @param _symbol Token symbol
-     * @param _oracle Oracle to use for this token
-     * @param _subscriptionManager Subscription manager to use for this token
-     * @param _underlyingAsset Underlying asset to use for this token
-     * @param _transferApproval Transfer approval module to use for this token (can be address(0) if not needed)
+     * @param _asset Asset address
+     * @param _strategy Strategy address
+     * @param _rules Rules address
      * @return token Address of the deployed token
      */
     function deployToken(
@@ -57,14 +55,6 @@ contract tRWAFactory is Ownable {
 
         if (!allowedRules[_rules]) revert UnapprovedRule();
         if (!allowedAssets[_asset]) revert UnapprovedAsset();
-
-        // Create configuration struct
-        ItRWA.ConfigurationStruct memory config = ItRWA.ConfigurationStruct({
-            admin: owner(),
-            priceAuthority: _oracle,
-            subscriptionManager: _subscriptionManager,
-            underlyingAsset: _underlyingAsset
-        });
 
         // Deploy new tRWA token
         tRWA newToken = new tRWA(

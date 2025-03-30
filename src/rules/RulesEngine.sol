@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
-
-import {IRulesEngine} from "../interfaces/IRulesEngine.sol";
-import {IRule} from "../interfaces/IRule.sol";
 import {OwnableRoles} from "solady/auth/OwnableRoles.sol";
 
+import {IRulesEngine} from "./IRulesEngine.sol";
+import {IRules} from "./IRules.sol";
+import {BaseRules} from "./BaseRules.sol";
 /**
  * @title RulesEngine
  * @notice Implementation of IRuleEngine for managing and evaluating rules
  * @dev Manages a collection of rules that determine if operations are allowed
  */
-contract RulesEngine is IRulesEngine, IRules, OwnableRoles {
+contract RulesEngine is IRulesEngine, BaseRules, OwnableRoles {
     /*//////////////////////////////////////////////////////////////
                             STATE
     //////////////////////////////////////////////////////////////*/
@@ -22,10 +22,10 @@ contract RulesEngine is IRulesEngine, IRules, OwnableRoles {
     uint256 constant OPERATION_TRANSFER = 1 << 0;
     uint256 constant OPERATION_DEPOSIT = 1 << 1;
     uint256 constant OPERATION_WITHDRAW = 1 << 2;
+    uint256 constant OPERATION_ALL = type(uint256).max;
 
-    // Rule registry
     struct RuleInfo {
-        IRule rule;
+        address rule;
         uint256 priority;
         bool active;
     }
@@ -43,11 +43,9 @@ contract RulesEngine is IRulesEngine, IRules, OwnableRoles {
     /**
      * @notice Constructor
      * @param _owner Address of the owner
-     * @param _tRWAToken Address of the associated tRWA token
      */
-    constructor(address _owner) {
+    constructor(address _owner) BaseRules("RulesEngine") {
         if (_owner == address(0)) revert InvalidRuleAddress();
-        if (_tRWAToken == address(0)) revert InvalidRuleAddress();
 
         _initializeOwner(_owner);
     }
@@ -62,21 +60,19 @@ contract RulesEngine is IRulesEngine, IRules, OwnableRoles {
      * @param priority Priority of the rule (lower numbers execute first)
      * @return ruleId Identifier of the added rule
      */
-    function addRule(address rule, uint256 priority, uint256 appliesTo) external onlyOwnerOrRoles(RULE_ADMIN_ROLE) returns (bytes32) {
+    function addRule(address rule, uint256 priority) external onlyOwnerOrRoles(RULE_ADMIN_ROLE) returns (bytes32) {
         if (rule == address(0)) revert InvalidRuleAddress();
 
         // Get rule ID from the rule contract
-        bytes32 id = IRule(rule).ruleId();
+        bytes32 id = IRules(rule).ruleId();
 
         // Make sure rule doesn't already exist
-        if (_rules[id].ruleAddress != address(0)) revert RuleAlreadyExists(id);
-
-        if (appliesTo == 0) revert EmptyRule();
+        if (_rules[id].rule != address(0)) revert RuleAlreadyExists(id);
+        if (IRules(rule).appliesTo() == 0) revert EmptyRule();
 
         // Store rule information
         _rules[id] = RuleInfo({
-            ruleAddress: rule,
-            appliesTo: appliesTo,
+            rule: rule,
             priority: priority,
             active: true
         });
@@ -94,7 +90,7 @@ contract RulesEngine is IRulesEngine, IRules, OwnableRoles {
      * @param ruleId Identifier of the rule to remove
      */
     function removeRule(bytes32 ruleId) external onlyOwnerOrRoles(RULE_ADMIN_ROLE) {
-        if (_rules[ruleId].ruleAddress == address(0)) revert RuleNotFound(ruleId);
+        if (_rules[ruleId].rule == address(0)) revert RuleNotFound(ruleId);
 
         // Remove from the rules mapping
         delete _rules[ruleId];
@@ -118,7 +114,7 @@ contract RulesEngine is IRulesEngine, IRules, OwnableRoles {
      * @param newPriority New priority for the rule
      */
     function changeRulePriority(bytes32 ruleId, uint256 newPriority) external onlyOwnerOrRoles(RULE_ADMIN_ROLE) {
-        if (_rules[ruleId].ruleAddress == address(0)) revert RuleNotFound(ruleId);
+        if (_rules[ruleId].rule == address(0)) revert RuleNotFound(ruleId);
 
         _rules[ruleId].priority = newPriority;
 
@@ -130,7 +126,7 @@ contract RulesEngine is IRulesEngine, IRules, OwnableRoles {
      * @param ruleId Identifier of the rule to enable
      */
     function enableRule(bytes32 ruleId) external onlyOwnerOrRoles(RULE_ADMIN_ROLE) {
-        if (_rules[ruleId].ruleAddress == address(0)) revert RuleNotFound(ruleId);
+        if (_rules[ruleId].rule == address(0)) revert RuleNotFound(ruleId);
 
         _rules[ruleId].active = true;
 
@@ -142,7 +138,7 @@ contract RulesEngine is IRulesEngine, IRules, OwnableRoles {
      * @param ruleId Identifier of the rule to disable
      */
     function disableRule(bytes32 ruleId) external onlyOwnerOrRoles(RULE_ADMIN_ROLE) {
-        if (_rules[ruleId].ruleAddress == address(0)) revert RuleNotFound(ruleId);
+        if (_rules[ruleId].rule == address(0)) revert RuleNotFound(ruleId);
 
         _rules[ruleId].active = false;
 
@@ -172,7 +168,7 @@ contract RulesEngine is IRulesEngine, IRules, OwnableRoles {
      * @return Rule contract address
      */
     function getRuleAddress(bytes32 ruleId) external view returns (address) {
-        return _rules[ruleId].ruleAddress;
+        return _rules[ruleId].rule;
     }
 
     /**
@@ -201,10 +197,10 @@ contract RulesEngine is IRulesEngine, IRules, OwnableRoles {
         address from,
         address to,
         uint256 amount
-    ) external view returns (RuleResult memory result) {
+    ) external view override returns (RuleResult memory) {
         try this._evaluateOperation(
             OPERATION_TRANSFER,
-            abi.encodeCall(IRule.evaluateTransfer, (token, from, to, amount))
+            abi.encodeCall(IRules.evaluateTransfer, (token, from, to, amount))
         ) returns (RuleResult memory result) {
             return result;
         } catch {
@@ -225,10 +221,10 @@ contract RulesEngine is IRulesEngine, IRules, OwnableRoles {
         address user,
         uint256 assets,
         address receiver
-    ) external view returns (RuleResult memory result) {
+    ) external view override returns (RuleResult memory) {
         try this._evaluateOperation(
             OPERATION_DEPOSIT,
-            abi.encodeCall(IRule.evaluateDeposit, (tRWAToken, user, assets, receiver))
+            abi.encodeCall(IRules.evaluateDeposit, (token, user, assets, receiver))
         ) returns (RuleResult memory result) {
             return result;
         } catch {
@@ -250,10 +246,10 @@ contract RulesEngine is IRulesEngine, IRules, OwnableRoles {
         uint256 assets,
         address receiver,
         address owner
-    ) external view returns (RuleResult memory result) {
+    ) external view override returns (RuleResult memory) {
         try this._evaluateOperation(
             OPERATION_WITHDRAW,
-            abi.encodeCall(IRule.evaluateWithdraw, (token, user, assets, receiver, owner))
+            abi.encodeCall(IRules.evaluateWithdraw, (token, user, assets, receiver, owner))
         ) returns (RuleResult memory result) {
             return result;
         } catch {
@@ -271,7 +267,7 @@ contract RulesEngine is IRulesEngine, IRules, OwnableRoles {
      * @param callData Encoded call data for the rule evaluation function
      * @return result Rule evaluation result
      */
-    function _evaluateOperation(uint256 operationType, bytes memory callData) external view returns (RuleResult memory result) {
+    function _evaluateOperation(uint256 operationType, bytes memory callData) external view returns (RuleResult memory) {
         // Get all rule IDs ordered by priority
         bytes32[] memory sortedRuleIds = _getSortedRuleIds();
 
@@ -295,7 +291,7 @@ contract RulesEngine is IRulesEngine, IRules, OwnableRoles {
             }
 
             // Decode the result
-            IRule.RuleResult memory result = abi.decode(returnData, (IRule.RuleResult));
+            RuleResult memory result = abi.decode(returnData, (RuleResult));
 
             // Emit event with evaluation result
             // Note: This is a view function so events won't be emitted, but this helps with future compatibility

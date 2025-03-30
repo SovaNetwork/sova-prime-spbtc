@@ -5,7 +5,8 @@ import {ERC4626} from "solady/tokens/ERC4626.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solady/utils/FixedPointMathLib.sol";
 import {IRules} from "../rules/IRules.sol";
-import {ItRWA} from "../interfaces/ItRWA.sol";
+import {IStrategy} from "../strategy/IStrategy.sol";
+import {ItRWA} from "./ItRWA.sol";
 
 
 /**
@@ -13,15 +14,15 @@ import {ItRWA} from "../interfaces/ItRWA.sol";
  * @notice Tokenized Real World Asset (tRWA) inheriting ERC4626 standard
  * @dev Each token represents a share in the underlying real-world fund
  */
-contract tRWA is ERC4626, OwnableRoles, ItRWA {
+contract tRWA is ERC4626, ItRWA {
     using FixedPointMathLib for uint256;
     using SafeTransferLib for address;
 
     // Internal storage for token metadata
-    uint256 constant DECIMALS = 18;
-    string public immutable symbol;
-    string public immutable name;
-    address public immutable asset;
+    uint8 private constant DECIMALS = 18;
+    string private _symbol;
+    string private _name;
+    address private immutable _asset;
 
     // Logic contracts
     IStrategy public strategy;
@@ -31,7 +32,9 @@ contract tRWA is ERC4626, OwnableRoles, ItRWA {
      * @notice Contract constructor
      * @param name_ Token name
      * @param symbol_ Token symbol
-     * @param config Configuration struct with all deployment parameters
+     * @param asset_ Asset address
+     * @param strategy_ Strategy address
+     * @param rules_ Rules address
      */
     constructor(
         string memory name_,
@@ -41,20 +44,44 @@ contract tRWA is ERC4626, OwnableRoles, ItRWA {
         address rules_
     ) {
         // Validate configuration parameters
-        if (asset == address(0)) revert InvalidAddress();
-        if (strategy == address(0)) revert InvalidAddress();
-        if (rules == address(0)) revert InvalidAddress();
+        if (asset_ == address(0)) revert InvalidAddress();
+        if (strategy_ == address(0)) revert InvalidAddress();
+        if (rules_ == address(0)) revert InvalidAddress();
 
-        name = name_;
-        symbol = symbol_;
-        asset = asset_;
+        _name = name_;
+        _symbol = symbol_;
+        _asset = asset_;
 
         strategy = IStrategy(strategy);
         rules = IRules(rules);
 
         // TODO: Stronger deploy-time coupling between strategy and asset
         //          - Potentially have strategy deploy the asset
-        if (strategy.asset() != asset) revert AssetMismatch();
+        if (strategy.asset() != _asset) revert AssetMismatch();
+    }
+
+    /**
+     * @notice Returns the name of the token
+     * @return Name of the token
+     */
+    function name() public view virtual override returns (string memory) {
+        return _name;
+    }
+
+    /**
+     * @notice Returns the symbol of the token
+     * @return Symbol of the token
+     */
+    function symbol() public view virtual override returns (string memory) {
+        return _symbol;
+    }
+
+    /**
+     * @notice Returns the asset of the token
+     * @return Asset of the token
+     */
+    function asset() public view virtual override returns (address) {
+        return _asset;
     }
 
     /**
@@ -98,9 +125,11 @@ contract tRWA is ERC4626, OwnableRoles, ItRWA {
 
     /**
      * @notice Withdraw assets from the token
-     * @param shares Amount of shares to withdraw
-     * @param receiver Address of the receiver
+     * @param by Address of the sender
+     * @param to Address of the receiver
      * @param owner Address of the owner
+     * @param assets Amount of assets to withdraw
+     * @param shares Amount of shares to withdraw
      */
     function _withdraw(address by, address to, address owner, uint256 assets, uint256 shares) internal override {
        IRules.RuleResult memory result = rules.evaluateWithdraw(address(this), by, assets, to, owner);

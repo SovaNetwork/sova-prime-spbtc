@@ -36,11 +36,19 @@ contract ReportedStrategy is BasicStrategy {
 
     /**
      * @notice Constructor
-     * @param _reporter The reporter contract
+     * @param admin_ The admin address
+     * @param manager_ The manager address
+     * @param asset_ The asset address
+     * @param reporter_ The reporter contract
      */
-    constructor(address _reporter) {
-        if (_reporter == address(0)) revert InvalidReporter();
-        reporter = BaseReporter(_reporter);
+    constructor(
+        address admin_,
+        address manager_,
+        address asset_,
+        address reporter_
+    ) BasicStrategy(admin_, manager_, asset_) {
+        if (reporter_ == address(0)) revert InvalidReporter();
+        reporter = BaseReporter(reporter_);
     }
 
     /*//////////////////////////////////////////////////////////////

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
-import {IRules} from "../interfaces/IRules.sol";
-import {IRulesEngine} from "../interfaces/IRulesEngine.sol";
+import {IRules} from "./IRules.sol";
+import {IRulesEngine} from "./IRulesEngine.sol";
 
 /**
  * @title BaseRules

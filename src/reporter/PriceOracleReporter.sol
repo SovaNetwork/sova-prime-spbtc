@@ -37,7 +37,6 @@ contract PriceOracleReporter is BaseReporter, Ownable {
     event SetMaxDeviation(uint256 newMaxDeviationBps);
 
     // Errors
-    error Unauthorized();
     error InvalidSource();
     error MaxDeviation();
 
@@ -64,7 +63,8 @@ contract PriceOracleReporter is BaseReporter, Ownable {
 
     /**
      * @notice Update the reported value
-     * @param newValue The new value to report
+     * @param price_ The new value to report
+     * @param source_ The source of the price update
      */
     function update(uint256 price_, string calldata source_) external {
         if (!authorizedUpdaters[msg.sender]) revert Unauthorized();

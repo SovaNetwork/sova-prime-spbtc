@@ -3,6 +3,8 @@ pragma solidity ^0.8.25;
 
 import {ERC20} from "solady/tokens/ERC20.sol";
 
+import {IStrategy} from "./IStrategy.sol";
+
 /**
  * @title BasicStrategy
  * @notice A basic strategy contract for managing tRWA assets
@@ -17,23 +19,7 @@ abstract contract BasicStrategy is IStrategy {
     address public admin;
     address public pendingAdmin;
     address public manager;
-    ERC20 public asset;
-
-    /*//////////////////////////////////////////////////////////////
-                            EVENTS & ERRORS
-    //////////////////////////////////////////////////////////////*/
-
-    // Errors
-    error InvalidAddress();
-    error Unauthorized();
-    error CallRevert(bytes returnData);
-
-    // Events
-    event PendingAdminChange(address indexed oldAdmin, address indexed newAdmin);
-    event AdminChange(address indexed oldAdmin, address indexed newAdmin);
-    event NoAdminChange(address indexed oldAdmin, address indexed cancelledAdmin);
-    event ManagerChange(address indexed oldManager, address indexed newManager);
-    event Call(address indexed target, uint256 value, bytes data);
+    address public asset;
 
     /*//////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -54,7 +40,7 @@ abstract contract BasicStrategy is IStrategy {
         // and grant them the roles
         admin = admin_;
         manager = manager_;
-        asset = ERC20(asset_);
+        asset = asset_;
     }
 
     /*//////////////////////////////////////////////////////////////

@@ -7,7 +7,7 @@ pragma solidity ^0.8.25;
  * @notice Interface for the Rule Engine that manages rules for tRWA tokens
  * @dev The Rule Engine maintains a registry of rules and executes them for various operations
  */
-interface IRuleEngine {
+interface IRulesEngine {
     // Events
     event RuleAdded(bytes32 indexed ruleId, address indexed rule);
     event RuleRemoved(bytes32 indexed ruleId);
