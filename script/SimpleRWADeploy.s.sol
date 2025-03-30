@@ -23,8 +23,12 @@ contract SimpleRWADeployScript is Script {
         // Mint tokens to deployer for testing
         usdToken.mint(deployer, 1_000_000_000); // 1,000 USDC with 6 decimals
 
+        console.log("Mock USD Token deployed.");
+
         // Deploy Registry
         Registry registry = new Registry();
+
+        console.log("Registry deployed.");
 
         // Allow USD token as an asset
         registry.setAsset(address(usdToken), true);
@@ -32,21 +36,31 @@ contract SimpleRWADeployScript is Script {
         // Deploy KYC Rules with default deny
         KycRules kycRules = new KycRules(deployer, false);
 
+        console.log("KYC Rules deployed.");
+
         // Add this rule to allowed rules in registry
         registry.setRules(address(kycRules), true);
 
         // Allow the deployer address in KYC rules
         kycRules.allowAddress(deployer);
 
+        console.log("Deployer allowed in KYC rules.");
+
         // Deploy Price Oracle Reporter with initial price of 1 USD (assuming 6 decimals)
         uint256 initialPrice = 1_000_000; // $1.00 with 6 decimals
         PriceOracleReporter priceOracle = new PriceOracleReporter(initialPrice, deployer);
 
+        console.log("Price Oracle Reporter deployed.");
+
         // Deploy ReportedStrategy implementation to be used as a template
         ReportedStrategy strategyImplementation = new ReportedStrategy();
 
+        console.log("ReportedStrategy implementation deployed.");
+
         // Register the strategy implementation in the registry
         registry.setStrategy(address(strategyImplementation), true);
+
+        console.log("Registry configured.");
 
         // Encode initialization data for the strategy
         // For a reported strategy, the init data is the reporter address
