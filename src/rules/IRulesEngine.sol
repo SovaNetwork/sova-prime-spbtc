@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
-import {IRule} from "./IRule.sol";
 
 /**
  * @title IRuleEngine
@@ -33,7 +32,7 @@ interface IRuleEngine {
 
     /**
      * @notice Add a new rule to the engine
-     * @param rule Address of the rule contract implementing IRule
+     * @param rule Address of the rule contract implementing IRules
      * @param priority Priority of the rule (lower numbers execute first)
      * @return ruleId Identifier of the added rule
      */

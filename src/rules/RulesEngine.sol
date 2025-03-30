@@ -21,9 +21,7 @@ contract RulesEngine is IRulesEngine, IRules, OwnableRoles {
     // Operation type constants
     uint256 constant OPERATION_TRANSFER = 1 << 0;
     uint256 constant OPERATION_DEPOSIT = 1 << 1;
-    uint256 constant OPERATION_MINT = 1 << 2;
-    uint256 constant OPERATION_WITHDRAW = 1 << 3;
-    uint256 constant OPERATION_REDEEM = 1 << 4;
+    uint256 constant OPERATION_WITHDRAW = 1 << 2;
 
     // Rule registry
     struct RuleInfo {
@@ -239,29 +237,6 @@ contract RulesEngine is IRulesEngine, IRules, OwnableRoles {
     }
 
     /**
-     * @notice Evaluate mint operation against rules
-     * @param user Address initiating the mint
-     * @param shares Amount of shares being minted
-     * @param receiver Address receiving the shares
-     * @return result Rule evaluation result
-     */
-    function evaluateMint(
-        address token,
-        address user,
-        uint256 shares,
-        address receiver
-    ) external view returns (RuleResult memory result) {
-        try this._evaluateOperation(
-            OPERATION_MINT,
-            abi.encodeCall(IRule.evaluateMint, (token, user, shares, receiver))
-        ) returns (RuleResult memory result) {
-            return result;
-        } catch {
-            revert OperationNotAllowed(OPERATION_MINT, "Rule evaluation failed");
-        }
-    }
-
-    /**
      * @notice Evaluate withdraw operation against rules
      * @param user Address initiating the withdrawal
      * @param assets Amount of assets being withdrawn
@@ -283,31 +258,6 @@ contract RulesEngine is IRulesEngine, IRules, OwnableRoles {
             return result;
         } catch {
             revert OperationNotAllowed(OPERATION_WITHDRAW, "Rule evaluation failed");
-        }
-    }
-
-    /**
-     * @notice Evaluate redeem operation against rules
-     * @param user Address initiating the redemption
-     * @param shares Amount of shares being redeemed
-     * @param receiver Address receiving the assets
-     * @param owner Address owning the shares
-     * @return result Rule evaluation result
-     */
-    function evaluateRedeem(
-        address token,
-        address user,
-        uint256 shares,
-        address receiver,
-        address owner
-    ) external view returns (RuleResult memory result) {
-        try this._evaluateOperation(
-            OPERATION_REDEEM,
-            abi.encodeCall(IRule.evaluateRedeem, (token, user, shares, receiver, owner))
-        ) returns (RuleResult memory result) {
-            return result;
-        } catch {
-            revert OperationNotAllowed(OPERATION_REDEEM, "Rule evaluation failed");
         }
     }
 
@@ -334,8 +284,7 @@ contract RulesEngine is IRulesEngine, IRules, OwnableRoles {
             if (!rule.active) continue;
 
             // Skip rules that don't apply to this operation
-            uint256 appliesTo = IRule(rule.ruleAddress).appliesTo();
-            if ((appliesTo & operationType) == 0) continue;
+            if ((rule.appliesTo & operationType) == 0) continue;
 
             // Call the rule with the appropriate evaluation function
             (bool success, bytes memory returnData) = rule.ruleAddress.staticcall(callData);

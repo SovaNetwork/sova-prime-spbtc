@@ -30,6 +30,12 @@ interface IRules {
     function ruleName() external view returns (string memory);
 
     /**
+     * @notice Returns the bitmap of operations this rule applies to
+     * @return Bitmap of operations
+     */
+    function appliesTo() external view returns (uint256);
+
+    /**
      * @notice Evaluates a transfer according to this rule
      * @param token Address of the tRWA token
      * @param from Address sending tokens
@@ -60,21 +66,6 @@ interface IRules {
     ) external view returns (RuleResult memory result);
 
     /**
-     * @notice Evaluates a mint according to this rule
-     * @param token Address of the tRWA token
-     * @param user Address initiating the mint
-     * @param shares Amount of shares being minted
-     * @param receiver Address receiving the shares
-     * @return result Rule evaluation result
-     */
-    function evaluateMint(
-        address token,
-        address user,
-        uint256 shares,
-        address receiver
-    ) external view returns (RuleResult memory result);
-
-    /**
      * @notice Evaluates a withdraw according to this rule
      * @param token Address of the tRWA token
      * @param user Address initiating the withdrawal
@@ -87,23 +78,6 @@ interface IRules {
         address token,
         address user,
         uint256 assets,
-        address receiver,
-        address owner
-    ) external view returns (RuleResult memory result);
-
-    /**
-     * @notice Evaluates a redeem according to this rule
-     * @param token Address of the tRWA token
-     * @param user Address initiating the redemption
-     * @param shares Amount of shares being redeemed
-     * @param receiver Address receiving the assets
-     * @param owner Address owning the shares
-     * @return result Rule evaluation result
-     */
-    function evaluateRedeem(
-        address token,
-        address user,
-        uint256 shares,
         address receiver,
         address owner
     ) external view returns (RuleResult memory result);

@@ -176,40 +176,6 @@ contract KycRules is BaseRules, Ownable {
     }
 
     /**
-     * @notice Evaluate mint operation
-     * @param tRWAToken Address of the tRWA token
-     * @param user Address initiating the mint
-     * @param shares Amount of shares being minted
-     * @param receiver Address receiving the shares
-     * @return result Rule evaluation result
-     */
-    function evaluateMint(
-        address tRWAToken,
-        address user,
-        uint256 shares,
-        address receiver
-    ) external view override returns (RuleResult memory result) {
-        // Check if sender is allowed to mint
-        if (!isAllowed(user)) {
-            return RuleResult({
-                approved: false,
-                reason: "KycRules: sender"
-            });
-        }
-
-        // Check if the receiver is allowed to receive
-        if (!isAllowed(receiver)) {
-            return RuleResult({
-                approved: false,
-                reason: "KycRules: receiver"
-            });
-        }
-
-        // Both minter and receiver are allowed
-        return RuleResult({ approved: true, reason: "" });
-    }
-
-    /**
      * @notice Evaluate withdraw operation
      * @param tRWAToken Address of the tRWA token
      * @param user Address initiating the withdrawal
@@ -238,42 +204,6 @@ contract KycRules is BaseRules, Ownable {
             return RuleResult({
                 approved: false,
                 reason: "KycRules: owner"
-            });
-        }
-
-        // Check if the receiver is allowed
-        if (!isAllowed(receiver)) {
-            return RuleResult({
-                approved: false,
-                reason: "KycRules: receiver"
-            });
-        }
-
-        // All parties are allowed
-        return RuleResult({ approved: true, reason: "" });
-    }
-
-    /**
-     * @notice Evaluate redeem operation
-     * @param tRWAToken Address of the tRWA token
-     * @param user Address initiating the redemption
-     * @param shares Amount of shares being redeemed
-     * @param receiver Address receiving the assets
-     * @param owner Address owning the shares
-     * @return result Rule evaluation result
-     */
-    function evaluateRedeem(
-        address tRWAToken,
-        address user,
-        uint256 shares,
-        address receiver,
-        address owner
-    ) external view override returns (RuleResult memory result) {
-        // Check if sender is allowed to redeem
-        if (!isAllowed(user)) {
-            return RuleResult({
-                approved: false,
-                reason: "KycRules: sender"
             });
         }
 
