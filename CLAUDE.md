@@ -48,6 +48,7 @@ The Fountfi protocol enables tokenization of Real World Assets (RWA) with:
 Consult [Foundry Book](https://book.getfoundry.sh/) for more development details.
 
 ## Next Steps
+- Upgrade rules to hooks, which are fully generalized.
 - Implement complete withdrawal functionality in tRWA token (fix the TODO in the withdraw function)
 - Consider implications of inflation attacks and other MEV vectors
 - Create a RedemptionQueue contract for managing pending withdrawals with time delays

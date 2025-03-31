@@ -54,10 +54,6 @@ contract tRWA is ERC4626, ItRWA {
 
         strategy = IStrategy(strategy);
         rules = IRules(rules);
-
-        // TODO: Stronger deploy-time coupling between strategy and asset
-        //          - Potentially have strategy deploy the asset
-        if (strategy.asset() != _asset) revert AssetMismatch();
     }
 
     /**

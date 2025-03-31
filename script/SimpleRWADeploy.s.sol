@@ -79,7 +79,7 @@ contract SimpleRWADeployScript is Script {
         );
 
         // Log deployed contract addresses
-        console.log("Deployed contracts:");
+        console.log("\nDeployed contracts:");
         console.log("Mock USD Token:", address(usdToken));
         console.log("Registry:", address(registry));
         console.log("KYC Rules:", address(kycRules));
