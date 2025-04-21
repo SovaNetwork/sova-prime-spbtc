@@ -26,7 +26,7 @@ contract Registry is Ownable {
     event SetStrategy(address indexed implementation, bool allowed);
     event SetRules(address indexed implementation, bool allowed);
     event SetAsset(address indexed asset, bool allowed);
-    event Deploy(address indexed strategy, address indexed sToken, address indexed implementation);
+    event Deploy(address indexed strategy, address indexed sToken, address indexed asset);
 
     // Errors
     error ZeroAddress();

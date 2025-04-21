@@ -8,6 +8,23 @@ import {IRules} from "../rules/IRules.sol";
 import {IStrategy} from "../strategy/IStrategy.sol";
 import {ItRWA} from "./ItRWA.sol";
 
+/**
+ * @title ICallbackReceiver
+ * @notice Interface for contracts that want to receive token operation callbacks
+ */
+interface ICallbackReceiver {
+    /**
+     * @notice Callback function for token operations
+     * @param operationType Type of operation (keccak256 of operation name)
+     * @param success Whether the operation was successful
+     * @param data Additional data passed from the caller
+     */
+    function operationCallback(
+        bytes32 operationType,
+        bool success,
+        bytes memory data
+    ) external;
+}
 
 /**
  * @title tRWA
@@ -27,6 +44,9 @@ contract tRWA is ERC4626, ItRWA {
     // Logic contracts
     IStrategy public strategy;
     IRules public immutable rules;
+
+    // Events for withdrawal queueing
+    event WithdrawalQueued(address indexed user, uint256 assets, uint256 shares);
 
     /**
      * @notice Contract constructor
@@ -96,9 +116,172 @@ contract tRWA is ERC4626, ItRWA {
     }
 
     /*//////////////////////////////////////////////////////////////
-                            ERC4626 OVERRIDES
+                            CALLBACK OPERATIONS
     //////////////////////////////////////////////////////////////*/
 
+    /**
+     * @notice Extended deposit function with callback support
+     * @param assets Amount of assets to deposit
+     * @param receiver Address receiving the shares
+     * @param useCallback Whether to use callback
+     * @param callbackData Data to pass to the callback
+     * @return shares Amount of shares minted
+     */
+    function deposit(
+        uint256 assets,
+        address receiver,
+        bool useCallback,
+        bytes calldata callbackData
+    ) external returns (uint256 shares) {
+        // Execute the standard deposit
+        shares = deposit(assets, receiver);
+        
+        // Execute callback if requested
+        if (useCallback && msg.sender.code.length > 0) {
+            _executeCallback(keccak256("DEPOSIT"), true, callbackData);
+        }
+        
+        return shares;
+    }
+    
+    /**
+     * @notice Extended mint function with callback support
+     * @param shares Amount of shares to mint
+     * @param receiver Address receiving the shares
+     * @param useCallback Whether to use callback
+     * @param callbackData Data to pass to the callback
+     * @return assets Amount of assets deposited
+     */
+    function mint(
+        uint256 shares,
+        address receiver,
+        bool useCallback,
+        bytes calldata callbackData
+    ) external returns (uint256 assets) {
+        // Execute the standard mint
+        assets = mint(shares, receiver);
+        
+        // Execute callback if requested
+        if (useCallback && msg.sender.code.length > 0) {
+            _executeCallback(keccak256("MINT"), true, callbackData);
+        }
+        
+        return assets;
+    }
+    
+    /**
+     * @notice Extended withdraw function with callback support
+     * @param assets Amount of assets to withdraw
+     * @param receiver Address receiving the assets
+     * @param owner Address owning the shares
+     * @param useCallback Whether to use callback
+     * @param callbackData Data to pass to the callback
+     * @return shares Amount of shares burned
+     */
+    function withdraw(
+        uint256 assets,
+        address receiver,
+        address owner,
+        bool useCallback,
+        bytes calldata callbackData
+    ) external returns (uint256 shares) {
+        bool success = false;
+        
+        try this.withdraw(assets, receiver, owner) returns (uint256 _shares) {
+            shares = _shares;
+            success = true;
+        } catch Error(string memory reason) {
+            // Check if withdrawal was queued
+            if (keccak256(bytes(reason)) == keccak256(bytes("RuleCheckFailed(Direct withdrawals not supported. Withdrawal request created in queue.)"))) {
+                // This is a successful queuing, not a failure
+                shares = 0;
+                success = true;
+                
+                // Need to calculate shares for the callback
+                shares = previewWithdraw(assets);
+            } else {
+                // Other error occurred
+                success = false;
+                shares = 0;
+            }
+        }
+        
+        // Execute callback if requested
+        if (useCallback && msg.sender.code.length > 0) {
+            _executeCallback(keccak256("WITHDRAW"), success, callbackData);
+        }
+        
+        return shares;
+    }
+    
+    /**
+     * @notice Extended redeem function with callback support
+     * @param shares Amount of shares to redeem
+     * @param receiver Address receiving the assets
+     * @param owner Address owning the shares
+     * @param useCallback Whether to use callback
+     * @param callbackData Data to pass to the callback
+     * @return assets Amount of assets redeemed
+     */
+    function redeem(
+        uint256 shares,
+        address receiver,
+        address owner,
+        bool useCallback,
+        bytes calldata callbackData
+    ) external returns (uint256 assets) {
+        bool success = false;
+        
+        try this.redeem(shares, receiver, owner) returns (uint256 _assets) {
+            assets = _assets;
+            success = true;
+        } catch Error(string memory reason) {
+            // Check if withdrawal was queued
+            if (keccak256(bytes(reason)) == keccak256(bytes("RuleCheckFailed(Direct withdrawals not supported. Withdrawal request created in queue.)"))) {
+                // This is a successful queuing, not a failure
+                assets = 0;
+                success = true;
+                
+                // Need to calculate assets for the callback
+                assets = previewRedeem(shares);
+            } else {
+                // Other error occurred
+                success = false;
+                assets = 0;
+            }
+        }
+        
+        // Execute callback if requested
+        if (useCallback && msg.sender.code.length > 0) {
+            _executeCallback(keccak256("REDEEM"), success, callbackData);
+        }
+        
+        return assets;
+    }
+    
+    /**
+     * @notice Helper function to execute callbacks
+     * @param operationType Type of operation
+     * @param success Whether operation was successful
+     * @param callbackData Data to pass to callback
+     */
+    function _executeCallback(
+        bytes32 operationType,
+        bool success,
+        bytes memory callbackData
+    ) internal {
+        try ICallbackReceiver(msg.sender).operationCallback(
+            operationType,
+            success,
+            callbackData
+        ) {} catch {
+            // Silently handle callback errors to avoid affecting main operations
+        }
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                            ERC4626 OVERRIDES
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Deposit assets into the token
@@ -118,7 +301,6 @@ contract tRWA is ERC4626, ItRWA {
         emit Deposit(by, to, assets, shares);
     }
 
-
     /**
      * @notice Withdraw assets from the token
      * @param by Address of the sender
@@ -130,7 +312,16 @@ contract tRWA is ERC4626, ItRWA {
     function _withdraw(address by, address to, address owner, uint256 assets, uint256 shares) internal override {
        IRules.RuleResult memory result = rules.evaluateWithdraw(address(this), by, assets, to, owner);
 
-       if (!result.approved) revert RuleCheckFailed(result.reason);
+       if (!result.approved) {
+           // Special case for withdrawal queue
+           if (keccak256(bytes(result.reason)) == keccak256(bytes("Direct withdrawals not supported. Withdrawal request created in queue."))) {
+               // Emit event for withdrawal queueing
+               emit WithdrawalQueued(owner, assets, shares);
+           }
+           
+           // Always revert with the rule's reason
+           revert RuleCheckFailed(result.reason);
+       }
 
        if (by != owner) {
            _spendAllowance(owner, by, shares);
@@ -141,8 +332,24 @@ contract tRWA is ERC4626, ItRWA {
 
        _burn(owner, shares);
 
-       // TODO: Do not transfer any asset here, for now
+       // Safe transfer the assets to the recipient
+       SafeTransferLib.safeTransfer(asset(), to, assets);
 
        emit Withdraw(by, to, owner, assets, shares);
+    }
+    
+    /**
+     * @notice Utility function to burn tokens
+     * @param from Address to burn from
+     * @param amount Amount to burn
+     */
+    function burn(address from, uint256 amount) external {
+        // Only the strategy or authorized contracts can call this
+        if (msg.sender != address(strategy) && 
+            !rules.evaluateTransfer(address(this), from, address(0), amount).approved) {
+            revert Unauthorized();
+        }
+        
+        _burn(from, amount);
     }
 }
