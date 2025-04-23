@@ -37,7 +37,6 @@ contract ReportedStrategy is BasicStrategy {
 
     /**
      * @notice Initialize the strategy
-     * @param admin_ The admin address
      * @param manager_ The manager address
      * @param asset_ The asset address
      * @param rules_ Rules address
@@ -48,13 +47,12 @@ contract ReportedStrategy is BasicStrategy {
     function initialize(
         string calldata name_,
         string calldata symbol_,
-        address admin_,
         address manager_,
         address asset_,
         address rules_,
         bytes memory initData
     ) public override {
-        super.initialize(name_, symbol_, admin_, manager_, asset_, rules_, initData);
+        super.initialize(name_, symbol_, manager_, asset_, rules_, initData);
 
         address reporter_ = abi.decode(initData, (address));
         if (reporter_ == address(0)) revert InvalidReporter();
@@ -82,7 +80,7 @@ contract ReportedStrategy is BasicStrategy {
 
         emit SetReporter(_reporter);
     }
-    
+
     /**
      * @notice Transfer assets from the strategy to a user
      * @param user Address to transfer assets to

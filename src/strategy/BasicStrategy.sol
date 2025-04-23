@@ -5,6 +5,7 @@ import {ERC20} from "solady/tokens/ERC20.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {IStrategy} from "./IStrategy.sol";
 import {tRWA} from "../token/tRWA.sol";
+import {RoleManaged} from "../auth/RoleManaged.sol";
 
 /**
  * @title BasicStrategy
@@ -13,15 +14,13 @@ import {tRWA} from "../token/tRWA.sol";
  *
  * Consider for future: Making BasicStrategy an ERC4337-compatible smart account
  */
-abstract contract BasicStrategy is IStrategy {
+abstract contract BasicStrategy is IStrategy, RoleManaged {
     using SafeTransferLib for address;
 
     /*//////////////////////////////////////////////////////////////
                             STATE
     //////////////////////////////////////////////////////////////*/
 
-    address public admin;
-    address public pendingAdmin;
     address public manager;
     address public asset;
     address public sToken;
@@ -37,13 +36,12 @@ abstract contract BasicStrategy is IStrategy {
      * @notice Initialize the strategy implementation
      * @dev Empty constructor for implementation contract
      */
-    constructor() {}
+    constructor(address _roleManager) RoleManaged(_roleManager) {}
 
     /**
      * @notice Initialize the strategy
      * @param name_ Token name
      * @param symbol_ Token symbol
-     * @param admin_ Address of the admin
      * @param manager_ Address of the manager
      * @param asset_ Address of the underlying asset
      * @param rules_ Rules address
@@ -51,7 +49,6 @@ abstract contract BasicStrategy is IStrategy {
     function initialize(
         string calldata name_,
         string calldata symbol_,
-        address admin_,
         address manager_,
         address asset_,
         address rules_,
@@ -61,13 +58,12 @@ abstract contract BasicStrategy is IStrategy {
         if (_initialized) revert AlreadyInitialized();
         _initialized = true;
 
-        if (admin_ == address(0)) revert InvalidAddress();
         if (manager_ == address(0)) revert InvalidAddress();
         if (asset_ == address(0)) revert InvalidAddress();
         if (rules_ == address(0)) revert InvalidRules();
 
         // Set up strategy configuration
-        admin = admin_;
+        // Unlike other protocol roles, only a single manager is allowed
         manager = manager_;
         asset = asset_;
 
@@ -82,7 +78,7 @@ abstract contract BasicStrategy is IStrategy {
 
         sToken = address(newToken);
 
-        emit StrategyInitialized(admin_, manager_, asset_, sToken);
+        emit StrategyInitialized(manager_, asset_, sToken);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -93,46 +89,11 @@ abstract contract BasicStrategy is IStrategy {
      * @notice Allow admin to change the manager
      * @param newManager The new manager
      */
-    function setManager(address newManager) external onlyAdmin {
+    function setManager(address newManager) external onlyRole(roleManager.STRATEGY_ADMIN()) {
         // Can set to 0 to disable manager
         manager = newManager;
 
         emit ManagerChange(manager, newManager);
-    }
-
-    /**
-     * @notice First step of admin change - propose new admin
-     * @param newAdmin The proposed new admin
-     */
-    function proposeAdmin(address newAdmin) external onlyAdmin {
-        pendingAdmin = newAdmin;
-
-        emit PendingAdminChange(admin, newAdmin);
-    }
-
-    /**
-     * @notice Second step of admin change - accept admin role
-     */
-    function acceptAdmin() external {
-        if (msg.sender != pendingAdmin) revert Unauthorized();
-
-        address oldAdmin = admin;
-        admin = pendingAdmin;
-        pendingAdmin = address(0);
-
-        emit AdminChange(oldAdmin, admin);
-    }
-
-    /**
-     * @notice Cancel the pending admin change
-     */
-    function cancelAdminChange() external {
-        if (msg.sender != admin && msg.sender != pendingAdmin) revert Unauthorized();
-
-        address oldPendingAdmin = pendingAdmin;
-        pendingAdmin = address(0);
-
-        emit NoAdminChange(admin, oldPendingAdmin);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -144,7 +105,7 @@ abstract contract BasicStrategy is IStrategy {
      * @return The balance of the strategy in the underlying asset
      */
     function balance() external view virtual returns (uint256);
-    
+
     /**
      * @notice Transfer assets from the strategy to a user
      * @param user Address to transfer assets to
@@ -230,11 +191,6 @@ abstract contract BasicStrategy is IStrategy {
     /*//////////////////////////////////////////////////////////////
                             MODIFIERS
     //////////////////////////////////////////////////////////////*/
-
-    modifier onlyAdmin() {
-        if (msg.sender != admin) revert Unauthorized();
-        _;
-    }
 
     modifier onlyManager() {
         if (msg.sender != manager) revert Unauthorized();

@@ -9,19 +9,18 @@ import {OwnableRoles} from "solady/auth/OwnableRoles.sol";
 contract RoleManager is OwnableRoles {
     // Root role
     uint256 public constant PROTOCOL_ADMIN = _ROLE_0;
-    
+
     // Functional roles
-    uint256 public constant REGISTRY_ADMIN = _ROLE_1;
-    uint256 public constant STRATEGY_ADMIN = _ROLE_2;
-    uint256 public constant KYC_ADMIN = _ROLE_3;
-    uint256 public constant REPORTER_ADMIN = _ROLE_4;
-    uint256 public constant SUBSCRIPTION_ADMIN = _ROLE_5;
-    uint256 public constant WITHDRAWAL_ADMIN = _ROLE_6;
-    
+    uint256 public constant STRATEGY_ADMIN = _ROLE_1;
+    uint256 public constant KYC_ADMIN = _ROLE_2;
+    uint256 public constant REPORTER_ADMIN = _ROLE_3;
+    uint256 public constant SUBSCRIPTION_ADMIN = _ROLE_4;
+    uint256 public constant WITHDRAWAL_ADMIN = _ROLE_5;
+
     // Operational roles
-    uint256 public constant STRATEGY_MANAGER = _ROLE_7;
-    uint256 public constant KYC_OPERATOR = _ROLE_8;
-    uint256 public constant DATA_PROVIDER = _ROLE_9;
+    uint256 public constant STRATEGY_MANAGER = _ROLE_6;
+    uint256 public constant KYC_OPERATOR = _ROLE_7;
+    uint256 public constant DATA_PROVIDER = _ROLE_8;
 
     // Custom errors
     error InvalidRole();
@@ -42,11 +41,11 @@ contract RoleManager is OwnableRoles {
     /// @dev Initializes the owner and grants PROTOCOL_ADMIN role to the deployer
     constructor() {
         if (msg.sender == address(0)) revert InvalidRole();
-        
+
         _initializeOwner(msg.sender);
         // Grant PROTOCOL_ADMIN to deployer
         _grantRoles(msg.sender, PROTOCOL_ADMIN);
-        
+
         // Emit event for easier off-chain tracking
         emit RoleGranted(msg.sender, PROTOCOL_ADMIN, address(0));
     }
@@ -57,10 +56,10 @@ contract RoleManager is OwnableRoles {
     function grantRole(address user, uint256 role) public payable virtual {
         // Check if authorized to grant this role
         _validateRoleGrant(role);
-        
+
         // Grant the role
         _grantRoles(user, role);
-        
+
         // Emit event
         emit RoleGranted(user, role, msg.sender);
     }
@@ -71,19 +70,19 @@ contract RoleManager is OwnableRoles {
     function revokeRole(address user, uint256 role) public payable virtual {
         // Check if authorized to revoke this role
         _validateRoleRevoke(role);
-        
+
         // Revoke the role
         _removeRoles(user, role);
-        
+
         // Emit event
         emit RoleRevoked(user, role, msg.sender);
     }
-    
+
     /// @notice Allows a user to renounce their own role
     /// @param role The role to renounce
     function renounceRole(uint256 role) public payable virtual {
         _removeRoles(msg.sender, role);
-        
+
         // Emit event
         emit RoleRevoked(msg.sender, role, msg.sender);
     }
@@ -95,7 +94,7 @@ contract RoleManager is OwnableRoles {
     function hasRole(address user, uint256 role) public view virtual returns (bool) {
         return hasAnyRole(user, role);
     }
-    
+
     /// @notice Batch checking if a user has any of the specified roles
     /// @param user The address of the user to check
     /// @param roles An array of roles to check for
@@ -108,7 +107,7 @@ contract RoleManager is OwnableRoles {
         }
         return false;
     }
-    
+
     /// @notice Batch checking if a user has all of the specified roles
     /// @param user The address of the user to check
     /// @param roles An array of roles to check for
@@ -131,15 +130,15 @@ contract RoleManager is OwnableRoles {
         if (manager == owner() || hasRole(manager, PROTOCOL_ADMIN)) {
             return true;
         }
-        
+
         // Check if the manager is an operational role (KYC_OPERATOR, STRATEGY_MANAGER, DATA_PROVIDER)
         // Operational roles can NEVER manage other roles
-        if (hasRole(manager, KYC_OPERATOR) || 
-            hasRole(manager, STRATEGY_MANAGER) || 
+        if (hasRole(manager, KYC_OPERATOR) ||
+            hasRole(manager, STRATEGY_MANAGER) ||
             hasRole(manager, DATA_PROVIDER)) {
             return false;
         }
-        
+
         // Special cases for functional admins that can manage their operational roles
         if (role == KYC_OPERATOR && hasRole(manager, KYC_ADMIN)) {
             return true;
@@ -148,7 +147,7 @@ contract RoleManager is OwnableRoles {
         } else if (role == STRATEGY_MANAGER && hasRole(manager, STRATEGY_ADMIN)) {
             return true;
         }
-        
+
         return false;
     }
 
@@ -159,7 +158,7 @@ contract RoleManager is OwnableRoles {
             revert Unauthorized();
         }
     }
-    
+
     /// @notice Internal function to validate if a user can revoke a role
     /// @param role The role to check revoking permissions for
     function _validateRoleRevoke(uint256 role) internal view virtual {

@@ -24,7 +24,7 @@ function generateLeaf(requestId, user, assets) {
         ['uint256', 'address', 'uint256'],
         [requestId, user, assets]
     );
-    
+
     // Hash the packed data
     return keccak256(packedData);
 }
@@ -41,7 +41,7 @@ function generateMerkleTree(requests) {
         req.user,
         req.assets
     ));
-    
+
     // Create the Merkle tree
     return new MerkleTree(leaves, keccak256, { sort: true });
 }
@@ -76,10 +76,10 @@ function getMerkleRoot(tree) {
 function processWithdrawalBatch(requests) {
     // Generate the tree
     const tree = generateMerkleTree(requests);
-    
+
     // Get the Merkle root
     const root = getMerkleRoot(tree);
-    
+
     // Generate proofs for each request
     const proofs = requests.map(req => ({
         id: req.id,
@@ -87,7 +87,7 @@ function processWithdrawalBatch(requests) {
         assets: req.assets,
         proof: generateProof(tree, req.id, req.user, req.assets)
     }));
-    
+
     return {
         tree,
         root,

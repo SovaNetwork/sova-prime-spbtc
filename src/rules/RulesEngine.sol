@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
-import {OwnableRoles} from "solady/auth/OwnableRoles.sol";
-
+import {RoleManaged} from "../auth/RoleManaged.sol";
 import {IRulesEngine} from "./IRulesEngine.sol";
 import {IRules} from "./IRules.sol";
 import {BaseRules} from "./BaseRules.sol";
@@ -10,7 +9,7 @@ import {BaseRules} from "./BaseRules.sol";
  * @notice Implementation of IRuleEngine for managing and evaluating rules
  * @dev Manages a collection of rules that determine if operations are allowed
  */
-contract RulesEngine is IRulesEngine, BaseRules, OwnableRoles {
+contract RulesEngine is IRulesEngine, BaseRules, RoleManaged {
     /*//////////////////////////////////////////////////////////////
                             STATE
     //////////////////////////////////////////////////////////////*/
@@ -42,13 +41,9 @@ contract RulesEngine is IRulesEngine, BaseRules, OwnableRoles {
 
     /**
      * @notice Constructor
-     * @param _owner Address of the owner
+     * @param _roleManager Address of the role manager
      */
-    constructor(address _owner) BaseRules("RulesEngine") {
-        if (_owner == address(0)) revert InvalidRuleAddress();
-
-        _initializeOwner(_owner);
-    }
+    constructor(address _roleManager) BaseRules("RulesEngine") RoleManaged(_roleManager) {}
 
     /*//////////////////////////////////////////////////////////////
                             ENGINE IMPLEMENTATION
@@ -60,7 +55,7 @@ contract RulesEngine is IRulesEngine, BaseRules, OwnableRoles {
      * @param priority Priority of the rule (lower numbers execute first)
      * @return ruleId Identifier of the added rule
      */
-    function addRule(address rule, uint256 priority) external onlyOwnerOrRoles(RULE_ADMIN_ROLE) returns (bytes32) {
+    function addRule(address rule, uint256 priority) external onlyRoles(_getKycOperatorRoles()) returns (bytes32) {
         if (rule == address(0)) revert InvalidRuleAddress();
 
         // Get rule ID from the rule contract
@@ -89,7 +84,7 @@ contract RulesEngine is IRulesEngine, BaseRules, OwnableRoles {
      * @notice Remove a rule from the engine
      * @param ruleId Identifier of the rule to remove
      */
-    function removeRule(bytes32 ruleId) external onlyOwnerOrRoles(RULE_ADMIN_ROLE) {
+    function removeRule(bytes32 ruleId) external onlyRoles(_getKycOperatorRoles()) {
         if (_rules[ruleId].rule == address(0)) revert RuleNotFound(ruleId);
 
         // Remove from the rules mapping
@@ -113,7 +108,7 @@ contract RulesEngine is IRulesEngine, BaseRules, OwnableRoles {
      * @param ruleId Identifier of the rule
      * @param newPriority New priority for the rule
      */
-    function changeRulePriority(bytes32 ruleId, uint256 newPriority) external onlyOwnerOrRoles(RULE_ADMIN_ROLE) {
+    function changeRulePriority(bytes32 ruleId, uint256 newPriority) external onlyRoles(_getKycOperatorRoles()) {
         if (_rules[ruleId].rule == address(0)) revert RuleNotFound(ruleId);
 
         _rules[ruleId].priority = newPriority;
@@ -125,7 +120,7 @@ contract RulesEngine is IRulesEngine, BaseRules, OwnableRoles {
      * @notice Enable a rule
      * @param ruleId Identifier of the rule to enable
      */
-    function enableRule(bytes32 ruleId) external onlyOwnerOrRoles(RULE_ADMIN_ROLE) {
+    function enableRule(bytes32 ruleId) external onlyRoles(_getKycOperatorRoles()) {
         if (_rules[ruleId].rule == address(0)) revert RuleNotFound(ruleId);
 
         _rules[ruleId].active = true;
@@ -137,7 +132,7 @@ contract RulesEngine is IRulesEngine, BaseRules, OwnableRoles {
      * @notice Disable a rule
      * @param ruleId Identifier of the rule to disable
      */
-    function disableRule(bytes32 ruleId) external onlyOwnerOrRoles(RULE_ADMIN_ROLE) {
+    function disableRule(bytes32 ruleId) external onlyRoles(_getKycOperatorRoles()) {
         if (_rules[ruleId].rule == address(0)) revert RuleNotFound(ruleId);
 
         _rules[ruleId].active = false;
@@ -179,6 +174,15 @@ contract RulesEngine is IRulesEngine, BaseRules, OwnableRoles {
     function getRulePriority(bytes32 ruleId) external view returns (uint256) {
         return _rules[ruleId].priority;
     }
+
+    /**
+     * @notice Get roles array for KYC operations (admin and operator)
+     * @return roles Array containing KYC_ADMIN and KYC_OPERATOR roles
+     */
+    function _getKycOperatorRoles() internal view returns (uint256[] memory) {
+        return _getRolesArray(roleManager.KYC_ADMIN(), roleManager.KYC_OPERATOR());
+    }
+
 
     /*//////////////////////////////////////////////////////////////
                             RULE IMPLEMENTATION

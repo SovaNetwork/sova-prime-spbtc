@@ -135,15 +135,15 @@ contract tRWA is ERC4626, ItRWA {
     ) external returns (uint256 shares) {
         // Execute the standard deposit
         shares = deposit(assets, receiver);
-        
+
         // Execute callback if requested
         if (useCallback && msg.sender.code.length > 0) {
             _executeCallback(keccak256("DEPOSIT"), true, callbackData);
         }
-        
+
         return shares;
     }
-    
+
     /**
      * @notice Extended mint function with callback support
      * @param shares Amount of shares to mint
@@ -160,15 +160,15 @@ contract tRWA is ERC4626, ItRWA {
     ) external returns (uint256 assets) {
         // Execute the standard mint
         assets = mint(shares, receiver);
-        
+
         // Execute callback if requested
         if (useCallback && msg.sender.code.length > 0) {
             _executeCallback(keccak256("MINT"), true, callbackData);
         }
-        
+
         return assets;
     }
-    
+
     /**
      * @notice Extended withdraw function with callback support
      * @param assets Amount of assets to withdraw
@@ -186,7 +186,7 @@ contract tRWA is ERC4626, ItRWA {
         bytes calldata callbackData
     ) external returns (uint256 shares) {
         bool success = false;
-        
+
         try this.withdraw(assets, receiver, owner) returns (uint256 _shares) {
             shares = _shares;
             success = true;
@@ -196,7 +196,7 @@ contract tRWA is ERC4626, ItRWA {
                 // This is a successful queuing, not a failure
                 shares = 0;
                 success = true;
-                
+
                 // Need to calculate shares for the callback
                 shares = previewWithdraw(assets);
             } else {
@@ -205,15 +205,15 @@ contract tRWA is ERC4626, ItRWA {
                 shares = 0;
             }
         }
-        
+
         // Execute callback if requested
         if (useCallback && msg.sender.code.length > 0) {
             _executeCallback(keccak256("WITHDRAW"), success, callbackData);
         }
-        
+
         return shares;
     }
-    
+
     /**
      * @notice Extended redeem function with callback support
      * @param shares Amount of shares to redeem
@@ -231,7 +231,7 @@ contract tRWA is ERC4626, ItRWA {
         bytes calldata callbackData
     ) external returns (uint256 assets) {
         bool success = false;
-        
+
         try this.redeem(shares, receiver, owner) returns (uint256 _assets) {
             assets = _assets;
             success = true;
@@ -241,7 +241,7 @@ contract tRWA is ERC4626, ItRWA {
                 // This is a successful queuing, not a failure
                 assets = 0;
                 success = true;
-                
+
                 // Need to calculate assets for the callback
                 assets = previewRedeem(shares);
             } else {
@@ -250,15 +250,15 @@ contract tRWA is ERC4626, ItRWA {
                 assets = 0;
             }
         }
-        
+
         // Execute callback if requested
         if (useCallback && msg.sender.code.length > 0) {
             _executeCallback(keccak256("REDEEM"), success, callbackData);
         }
-        
+
         return assets;
     }
-    
+
     /**
      * @notice Helper function to execute callbacks
      * @param operationType Type of operation
@@ -318,7 +318,7 @@ contract tRWA is ERC4626, ItRWA {
                // Emit event for withdrawal queueing
                emit WithdrawalQueued(owner, assets, shares);
            }
-           
+
            // Always revert with the rule's reason
            revert RuleCheckFailed(result.reason);
        }
@@ -337,7 +337,7 @@ contract tRWA is ERC4626, ItRWA {
 
        emit Withdraw(by, to, owner, assets, shares);
     }
-    
+
     /**
      * @notice Utility function to burn tokens
      * @param from Address to burn from
@@ -345,11 +345,11 @@ contract tRWA is ERC4626, ItRWA {
      */
     function burn(address from, uint256 amount) external {
         // Only the strategy or authorized contracts can call this
-        if (msg.sender != address(strategy) && 
+        if (msg.sender != address(strategy) &&
             !rules.evaluateTransfer(address(this), from, address(0), amount).approved) {
             revert tRWAUnauthorized();
         }
-        
+
         _burn(from, amount);
     }
 }

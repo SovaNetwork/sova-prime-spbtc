@@ -23,6 +23,13 @@
 - **Error handling**: Use custom errors with revert or require statements
 - **Documentation**: SPDX license identifier required for all files
 - **Events**: Emit events for important state changes
+- **Commits**: Single-line, brief commits explaining code changes.
+
+## Guidelines for Claude
+
+- When fixing tests, try to only change the test files. If it's necessary to update the smart contracts, stop, explain why, and confirm before proceeding.
+- If a prompt mentions that code was changed, always re-read the file.
+- Commit often, so that we always have checkpoints to return to.
 
 ## Protocol Overview
 The Fountfi protocol enables tokenization of Real World Assets (RWA) with:

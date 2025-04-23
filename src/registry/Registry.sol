@@ -1,17 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
-import {Ownable} from "solady/auth/Ownable.sol";
 import {LibClone} from "solady/utils/LibClone.sol";
 import {IStrategy} from "../strategy/IStrategy.sol";
 import {IRules} from "../rules/IRules.sol";
-
+import {RoleManaged} from "../auth/RoleManaged.sol";
 /**
  * @title Registry
  * @notice Central registry for strategies, rules, assets, and reporters
  * @dev Uses minimal proxy pattern for cloning templates
  */
-contract Registry is Ownable {
+contract Registry is RoleManaged {
     using LibClone for address;
 
     // Registry mappings
@@ -38,16 +37,14 @@ contract Registry is Ownable {
     /**
      * @notice Constructor
      */
-    constructor() {
-        _initializeOwner(msg.sender);
-    }
+    constructor(address _roleManager) RoleManaged(_roleManager) {}
 
     /**
      * @notice Register a strategy implementation template
      * @param implementation Address of the strategy implementation
      * @param allowed Whether the implementation is allowed
      */
-    function setStrategy(address implementation, bool allowed) external onlyOwner {
+    function setStrategy(address implementation, bool allowed) external onlyRole(roleManager.STRATEGY_ADMIN()) {
         if (implementation == address(0)) revert ZeroAddress();
         allowedStrategies[implementation] = allowed;
         emit SetStrategy(implementation, allowed);
@@ -58,7 +55,7 @@ contract Registry is Ownable {
      * @param implementation Address of the rules implementation
      * @param allowed Whether the implementation is allowed
      */
-    function setRules(address implementation, bool allowed) external onlyOwner {
+    function setRules(address implementation, bool allowed) external onlyRole(roleManager.RULES_ADMIN()) {
         if (implementation == address(0)) revert ZeroAddress();
         allowedRules[implementation] = allowed;
         emit SetRules(implementation, allowed);
@@ -69,7 +66,7 @@ contract Registry is Ownable {
      * @param asset Address of the asset
      * @param allowed Whether the asset is allowed
      */
-    function setAsset(address asset, bool allowed) external onlyOwner {
+    function setAsset(address asset, bool allowed) external onlyRole(roleManager.PROTOCOL_ADMIN()) {
         if (asset == address(0)) revert ZeroAddress();
         allowedAssets[asset] = allowed;
         emit SetAsset(asset, allowed);

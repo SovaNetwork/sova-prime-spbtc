@@ -137,7 +137,7 @@ contract KycRules is BaseRules, RoleManaged {
 
         emit BatchAddressRestrictionRemoved(length, msg.sender);
     }
-    
+
     /**
      * @notice Get roles array for KYC operations (admin and operator)
      * @return roles Array containing KYC_ADMIN and KYC_OPERATOR roles
@@ -153,17 +153,12 @@ contract KycRules is BaseRules, RoleManaged {
      */
     function isAllowed(address account) public view returns (bool) {
         // If explicitly denied, always return false (blacklist supersedes whitelist)
-        if (isAddressDenied[account]) {
+        if (isAddressDenied[account] || !isAddressAllowed[account]) {
             return false;
         }
 
         // If explicitly allowed, return true
-        if (isAddressAllowed[account]) {
-            return true;
-        }
-
-        // Otherwise, return false (blacklist-default)
-        return false;
+        return true;
     }
 
     /**
