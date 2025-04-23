@@ -23,7 +23,7 @@ contract RulesTest is BaseFountfiTest {
         
         // Deploy rules
         rulesEngine = new RulesEngine(owner);
-        kycRules = new KycRules(owner, false); // Default deny
+        kycRules = new KycRules(owner); // Default deny
         subRules = new SubscriptionRules(owner, true, true); // Enforce approval, initially open
         cappedRules = new CappedSubscriptionRules(owner, 10_000 * 10**6, true, true);
         
@@ -38,38 +38,31 @@ contract RulesTest is BaseFountfiTest {
         
         // Allow Alice
         vm.prank(owner);
-        kycRules.allowAddress(alice);
+        kycRules.allow(alice);
         
         // Verify Alice is allowed
         assertTrue(kycRules.isAllowed(alice));
         
         // Deny Alice
         vm.prank(owner);
-        kycRules.denyAddress(alice);
+        kycRules.deny(alice);
         
         // Verify Alice is denied
         assertFalse(kycRules.isAllowed(alice));
         
-        // Remove restriction
+        // Reset address
         vm.prank(owner);
-        kycRules.removeAddressRestriction(alice);
+        kycRules.reset(alice);
         
         // Verify Alice is back to default (deny)
         assertFalse(kycRules.isAllowed(alice));
-        
-        // Change default to allow
-        vm.prank(owner);
-        kycRules.setDefaultAllow(true);
-        
-        // Verify Alice is now allowed by default
-        assertTrue(kycRules.isAllowed(alice));
     }
     
     function test_KycRules_TransferRules() public {
         // Setup KYC status
         vm.startPrank(owner);
-        kycRules.allowAddress(alice);
-        kycRules.allowAddress(bob);
+        kycRules.allow(alice);
+        kycRules.allow(bob);
         vm.stopPrank();
         
         // Test transfer between allowed addresses
@@ -82,7 +75,7 @@ contract RulesTest is BaseFountfiTest {
         
         // Deny Charlie
         vm.prank(owner);
-        kycRules.denyAddress(charlie);
+        kycRules.deny(charlie);
         
         // Test transfer to denied address
         result = kycRules.evaluateTransfer(
@@ -250,8 +243,8 @@ contract RulesTest is BaseFountfiTest {
         vm.startPrank(owner);
         
         // Setup rules
-        kycRules.allowAddress(alice);
-        kycRules.allowAddress(bob);
+        kycRules.allow(alice);
+        kycRules.allow(bob);
         subRules.setSubscriber(alice, true);
         
         // Add rules to engine

@@ -127,7 +127,7 @@ abstract contract BaseFountfiTest is Test {
         registry.setAsset(address(usdc), true);
 
         // Deploy rules
-        kycRules = new KycRules(owner, true); // Default to allow
+        kycRules = new KycRules(owner); // Default is deny
         registry.setRules(address(kycRules), true);
 
         // Create reporter

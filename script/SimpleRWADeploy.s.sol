@@ -33,8 +33,8 @@ contract SimpleRWADeployScript is Script {
         // Allow USD token as an asset
         registry.setAsset(address(usdToken), true);
 
-        // Deploy KYC Rules with default deny
-        KycRules kycRules = new KycRules(deployer, false);
+        // Deploy KYC Rules
+        KycRules kycRules = new KycRules(deployer);
 
         console.log("KYC Rules deployed.");
 
@@ -42,7 +42,7 @@ contract SimpleRWADeployScript is Script {
         registry.setRules(address(kycRules), true);
 
         // Allow the deployer address in KYC rules
-        kycRules.allowAddress(deployer);
+        kycRules.allow(deployer);
 
         console.log("Deployer allowed in KYC rules.");
 
