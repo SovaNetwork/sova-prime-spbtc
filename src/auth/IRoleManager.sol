@@ -6,12 +6,12 @@ pragma solidity 0.8.25;
 interface IRoleManager {
     // Role constants (must match RoleManager implementation)
     function PROTOCOL_ADMIN() external view returns (uint256);
-    function REGISTRY_ADMIN() external view returns (uint256);
     function STRATEGY_ADMIN() external view returns (uint256);
     function KYC_ADMIN() external view returns (uint256);
     function REPORTER_ADMIN() external view returns (uint256);
     function SUBSCRIPTION_ADMIN() external view returns (uint256);
     function WITHDRAWAL_ADMIN() external view returns (uint256);
+    function RULES_ADMIN() external view returns (uint256);
     function STRATEGY_MANAGER() external view returns (uint256);
     function KYC_OPERATOR() external view returns (uint256);
     function DATA_PROVIDER() external view returns (uint256);

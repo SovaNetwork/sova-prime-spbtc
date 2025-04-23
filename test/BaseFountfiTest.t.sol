@@ -12,7 +12,7 @@ import {Registry} from "../src/registry/Registry.sol";
 import {RulesEngine} from "../src/rules/RulesEngine.sol";
 import {KycRules} from "../src/rules/KycRules.sol";
 import {SubscriptionRules} from "../src/rules/SubscriptionRules.sol";
-import {CappedSubscriptionRules} from "../src/rules/CappedSubscriptionRules.sol";
+import {MockCappedSubscriptionRules} from "../src/mocks/MockCappedSubscriptionRules.sol";
 import {BaseRules} from "../src/rules/BaseRules.sol";
 import {IRules} from "../src/rules/IRules.sol";
 import {PriceOracleReporter} from "../src/reporter/PriceOracleReporter.sol";
@@ -69,10 +69,10 @@ abstract contract BaseFountfiTest is Test {
         // Deploy mocks
         mockRules = new MockRules(true, "Mock rejection");
         mockReporter = new MockReporter(1000 * 10**6); // 1000 USDC initial value
-        mockStrategy = new MockStrategy();
+        mockStrategy = new MockStrategy(owner);
 
-        // Deploy Registry
-        registry = new Registry();
+        // Deploy Registry with the owner as role manager
+        registry = new Registry(owner);
         vm.stopPrank();
     }
 
@@ -88,11 +88,10 @@ abstract contract BaseFountfiTest is Test {
         MockRules mockRulesLocal = new MockRules(true, "Test rejection");
         
         // Deploy a new strategy
-        MockStrategy strategy = new MockStrategy();
+        MockStrategy strategy = new MockStrategy(owner);
         strategy.initialize(
             name,
             symbol,
-            admin,
             manager,
             address(usdc),
             address(mockRulesLocal),
@@ -142,7 +141,7 @@ abstract contract BaseFountfiTest is Test {
         reporter = new MockReporter(1000 * 10**6);
 
         // Setup an implementation of MockStrategy
-        MockStrategy strategyImpl = new MockStrategy();
+        MockStrategy strategyImpl = new MockStrategy(owner);
         registry.setStrategy(address(strategyImpl), true);
 
         // Deploy via registry
@@ -152,7 +151,6 @@ abstract contract BaseFountfiTest is Test {
             address(strategyImpl),
             address(usdc),
             address(kycRules),
-            admin,
             manager,
             ""
         );

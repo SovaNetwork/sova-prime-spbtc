@@ -9,8 +9,7 @@ import {tRWA} from "../token/tRWA.sol";
  * @notice A simple strategy implementation for testing
  */
 contract MockStrategy is IStrategy {
-    address public admin;
-    address public pendingAdmin;
+    constructor(address _roleManager) {}
     address public manager;
     address public asset;
     address public sToken;
@@ -21,7 +20,6 @@ contract MockStrategy is IStrategy {
      * @notice Initialize the strategy
      * @param name_ Token name
      * @param symbol_ Token symbol
-     * @param admin_ Address of the admin
      * @param manager_ Address of the manager
      * @param asset_ Address of the underlying asset
      * @param rules_ Rules address
@@ -29,7 +27,6 @@ contract MockStrategy is IStrategy {
     function initialize(
         string calldata name_,
         string calldata symbol_,
-        address admin_,
         address manager_,
         address asset_,
         address rules_,
@@ -38,12 +35,10 @@ contract MockStrategy is IStrategy {
         if (_initialized) revert AlreadyInitialized();
         _initialized = true;
 
-        if (admin_ == address(0)) revert InvalidAddress();
         if (manager_ == address(0)) revert InvalidAddress();
         if (asset_ == address(0)) revert InvalidAddress();
         if (rules_ == address(0)) revert InvalidRules();
 
-        admin = admin_;
         manager = manager_;
         asset = asset_;
 
@@ -58,7 +53,7 @@ contract MockStrategy is IStrategy {
         sToken = address(newToken);
         _balance = 0;
 
-        emit StrategyInitialized(admin_, manager_, asset_, sToken);
+        emit StrategyInitialized(address(0), manager_, asset_, sToken);
     }
 
     /**
@@ -83,8 +78,8 @@ contract MockStrategy is IStrategy {
      * @param amount Amount of assets to transfer
      */
     function transferAssets(address user, uint256 amount) external {
-        // Only callable by token or admin
-        if (msg.sender != sToken && msg.sender != admin) revert Unauthorized();
+        // Only callable by token or manager
+        if (msg.sender != sToken && msg.sender != manager) revert Unauthorized();
         
         // Simulate asset transfer
         _balance -= amount;
@@ -93,33 +88,12 @@ contract MockStrategy is IStrategy {
         // In a real implementation, this would use SafeTransferLib to transfer the asset
     }
 
-    function setManager(address newManager) external onlyAdmin {
+    function setManager(address newManager) external {
+        // In a real implementation, this would be restricted to the appropriate role
+        if (msg.sender != manager) revert Unauthorized();
+        
+        address oldManager = manager;
         manager = newManager;
-        emit ManagerChange(manager, newManager);
-    }
-
-    function proposeAdmin(address newAdmin) external onlyAdmin {
-        pendingAdmin = newAdmin;
-        emit PendingAdminChange(admin, newAdmin);
-    }
-
-    function acceptAdmin() external {
-        if (msg.sender != pendingAdmin) revert Unauthorized();
-        address oldAdmin = admin;
-        admin = pendingAdmin;
-        pendingAdmin = address(0);
-        emit AdminChange(oldAdmin, admin);
-    }
-
-    function cancelAdminChange() external {
-        if (msg.sender != admin && msg.sender != pendingAdmin) revert Unauthorized();
-        address oldPendingAdmin = pendingAdmin;
-        pendingAdmin = address(0);
-        emit NoAdminChange(admin, oldPendingAdmin);
-    }
-
-    modifier onlyAdmin() {
-        if (msg.sender != admin) revert Unauthorized();
-        _;
+        emit ManagerChange(oldManager, newManager);
     }
 }

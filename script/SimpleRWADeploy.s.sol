@@ -25,8 +25,8 @@ contract SimpleRWADeployScript is Script {
 
         console.log("Mock USD Token deployed.");
 
-        // Deploy Registry
-        Registry registry = new Registry();
+        // Deploy Registry with deployer as the role manager
+        Registry registry = new Registry(deployer);
 
         console.log("Registry deployed.");
 
@@ -53,7 +53,7 @@ contract SimpleRWADeployScript is Script {
         console.log("Price Oracle Reporter deployed.");
 
         // Deploy ReportedStrategy implementation to be used as a template
-        ReportedStrategy strategyImplementation = new ReportedStrategy();
+        ReportedStrategy strategyImplementation = new ReportedStrategy(deployer);
 
         console.log("ReportedStrategy implementation deployed.");
 
@@ -73,7 +73,6 @@ contract SimpleRWADeployScript is Script {
             address(strategyImplementation),
             address(usdToken),
             address(kycRules),
-            deployer,
             deployer,
             initData
         );

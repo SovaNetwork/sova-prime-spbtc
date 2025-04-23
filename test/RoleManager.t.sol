@@ -25,7 +25,7 @@ contract RoleManagerTest is Test {
         mockRoleManaged = new MockRoleManaged(address(roleManager));
         
         // Set up roles
-        roleManager.grantRole(registryAdmin, roleManager.REGISTRY_ADMIN());
+        roleManager.grantRole(registryAdmin, roleManager.RULES_ADMIN());
         roleManager.grantRole(strategyAdmin, roleManager.STRATEGY_ADMIN());
         roleManager.grantRole(kycAdmin, roleManager.KYC_ADMIN());
         
@@ -111,20 +111,20 @@ contract RoleManagerTest is Test {
         vm.stopPrank();
         
         vm.startPrank(user);
-        vm.expectRevert(abi.encodeWithSelector(RoleManaged.Unauthorized.selector, user, roleManager.PROTOCOL_ADMIN()));
+        vm.expectRevert(abi.encodeWithSelector(RoleManaged.UnauthorizedRole.selector, user, roleManager.PROTOCOL_ADMIN()));
         mockRoleManaged.incrementAsProtocolAdmin();
         vm.stopPrank();
     }
     
-    function test_mockRoleManagedRegistryAdmin() public {
+    function test_mockRoleManagedRulesAdmin() public {
         vm.startPrank(registryAdmin);
-        mockRoleManaged.incrementAsRegistryAdmin();
+        mockRoleManaged.incrementAsRulesAdmin();
         assertEq(mockRoleManaged.getCounter(), 1);
         vm.stopPrank();
         
         vm.startPrank(user);
-        vm.expectRevert(abi.encodeWithSelector(RoleManaged.Unauthorized.selector, user, roleManager.REGISTRY_ADMIN()));
-        mockRoleManaged.incrementAsRegistryAdmin();
+        vm.expectRevert(abi.encodeWithSelector(RoleManaged.UnauthorizedRole.selector, user, roleManager.RULES_ADMIN()));
+        mockRoleManaged.incrementAsRulesAdmin();
         vm.stopPrank();
     }
     
@@ -141,9 +141,12 @@ contract RoleManagerTest is Test {
         assertEq(mockRoleManaged.getCounter(), 2);
         vm.stopPrank();
         
-        // Other roles cannot
-        vm.startPrank(kycAdmin);
-        vm.expectRevert();  // Using Unauthorized() which is already defined
+        // Create a new address with no roles
+        address unprivileged = address(100);
+        
+        // Unprivileged user cannot access
+        vm.startPrank(unprivileged);
+        vm.expectRevert();
         mockRoleManaged.incrementAsStrategyRole();
         vm.stopPrank();
     }

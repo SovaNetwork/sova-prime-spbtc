@@ -78,7 +78,6 @@ contract Registry is RoleManaged {
      * @param _symbol Token symbol
      * @param _asset Asset address
      * @param _rules Rules address
-     * @param _admin Admin address for the strategy
      * @param _manager Manager address for the strategy
      * @param _initData Initialization data
      * @return strategy Address of the deployed strategy
@@ -90,10 +89,9 @@ contract Registry is RoleManaged {
         address _implementation,
         address _asset,
         address _rules,
-        address _admin,
         address _manager,
         bytes memory _initData
-    ) external onlyOwner returns (address strategy, address token) {
+    ) external onlyRole(roleManager.STRATEGY_ADMIN()) returns (address strategy, address token) {
         if (!allowedRules[_rules]) revert UnauthorizedRule();
         if (!allowedAssets[_asset]) revert UnauthorizedAsset();
         if (!allowedStrategies[_implementation]) revert UnauthorizedStrategy();
@@ -102,7 +100,7 @@ contract Registry is RoleManaged {
         strategy = _implementation.clone();
 
         // Initialize the strategy
-        IStrategy(strategy).initialize(_name, _symbol, _admin, _manager, _asset, _rules, _initData);
+        IStrategy(strategy).initialize(_name, _symbol, _manager, _asset, _rules, _initData);
 
         // Register strategy in the factory
         allStrategies.push(strategy);

@@ -115,7 +115,7 @@ contract ModifiedRegistry is Ownable {
         strategy = _implementation.clone();
 
         // Initialize the strategy
-        IStrategy(strategy).initialize(_name, _symbol, _admin, _manager, _asset, _rules, _initData);
+        IStrategy(strategy).initialize(_name, _symbol, _manager, _asset, _rules, _initData);
 
         // Register strategy in the factory
         allStrategies.push(strategy);
@@ -161,7 +161,7 @@ contract RegistryCoverageTest is Test {
         // Deploy mock contracts
         asset = new MockERC20("USD Coin", "USDC", 6);
         rules = new MockRules(true, "Mock rejection");
-        strategyImpl = new MockStrategy();
+        strategyImpl = new MockStrategy(owner);
         
         // Register all components
         registry.setStrategy(address(strategyImpl), true);

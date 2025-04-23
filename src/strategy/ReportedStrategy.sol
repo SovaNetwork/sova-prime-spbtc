@@ -10,6 +10,7 @@ import {ERC20} from "solady/tokens/ERC20.sol";
  * @notice A strategy contract that reports its underlying asset balance through an external oracle
  */
 contract ReportedStrategy is BasicStrategy {
+    constructor(address _roleManager) BasicStrategy(_roleManager) {}
     /*//////////////////////////////////////////////////////////////
                             STATE
     //////////////////////////////////////////////////////////////*/

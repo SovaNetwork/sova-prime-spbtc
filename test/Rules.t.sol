@@ -5,7 +5,7 @@ import {BaseFountfiTest} from "./BaseFountfiTest.t.sol";
 import {RulesEngine} from "../src/rules/RulesEngine.sol";
 import {KycRules} from "../src/rules/KycRules.sol";
 import {SubscriptionRules} from "../src/rules/SubscriptionRules.sol";
-import {CappedSubscriptionRules} from "../src/rules/CappedSubscriptionRules.sol";
+import {MockCappedSubscriptionRules} from "../src/mocks/MockCappedSubscriptionRules.sol";
 import {IRules} from "../src/rules/IRules.sol";
 import {tRWA} from "../src/token/tRWA.sol";
 import {MockStrategy} from "../src/mocks/MockStrategy.sol";
@@ -15,7 +15,7 @@ contract RulesTest is BaseFountfiTest {
     RulesEngine public rulesEngine;
     KycRules public kycRules;
     SubscriptionRules public subRules;
-    CappedSubscriptionRules public cappedRules;
+    MockCappedSubscriptionRules public cappedRules;
     
     MockRoleManager public mockRoleManager;
     
@@ -28,10 +28,10 @@ contract RulesTest is BaseFountfiTest {
         mockRoleManager = new MockRoleManager(owner);
         
         // Deploy rules
-        rulesEngine = new RulesEngine(owner);
+        rulesEngine = new RulesEngine(address(mockRoleManager));
         kycRules = new KycRules(address(mockRoleManager)); // Default deny with role manager
         subRules = new SubscriptionRules(owner, true, true); // Enforce approval, initially open
-        cappedRules = new CappedSubscriptionRules(owner, 10_000 * 10**6, true, true);
+        cappedRules = new MockCappedSubscriptionRules(owner, 10_000 * 10**6, true, true);
         
         // Grant owner the KYC roles
         mockRoleManager.grantRole(owner, mockRoleManager.KYC_ADMIN());
@@ -182,8 +182,7 @@ contract RulesTest is BaseFountfiTest {
     // === Capped Subscription Rules Tests ===
     
     function test_CappedRules_Limits() public {
-        // For the CappedSubscriptionRules, we'll just test the basic cap management functions
-        // without trying to execute the evaluateDeposit method which requires a valid tRWA token
+        // For the MockCappedSubscriptionRules, we'll test the basic cap management functions
         
         // Initial cap should be 10_000 * 10**6
         assertEq(cappedRules.maxCap(), 10_000 * 10**6);
@@ -203,12 +202,41 @@ contract RulesTest is BaseFountfiTest {
         vm.prank(owner);
         cappedRules.setSubscriber(bob, true);
         
-        // Test cap update without trying to trigger a revert
+        // Test cap update
         vm.prank(owner);
         cappedRules.updateCap(30_000 * 10**6);
         
         // Verify cap was updated again
         assertEq(cappedRules.maxCap(), 30_000 * 10**6);
+    }
+    
+    function test_CappedRules_Deposit() public {
+        // Approve bob for subscription
+        vm.prank(owner);
+        cappedRules.setSubscriber(bob, true);
+        
+        // Initial cap is 10_000 * 10**6
+        
+        // Test deposit within cap
+        IRules.RuleResult memory result = cappedRules.evaluateDeposit(
+            address(0), bob, 5_000 * 10**6, bob
+        );
+        
+        assertTrue(result.approved);
+        
+        // Check remaining cap
+        assertEq(cappedRules.remainingCap(), 5_000 * 10**6);
+        
+        // Test deposit that exceeds cap
+        result = cappedRules.evaluateDeposit(
+            address(0), bob, 6_000 * 10**6, bob
+        );
+        
+        assertFalse(result.approved);
+        assertEq(result.reason, "Deposit exceeds remaining cap");
+        
+        // Remaining cap should be unchanged
+        assertEq(cappedRules.remainingCap(), 5_000 * 10**6);
     }
     
     // === Rules Engine Tests ===

@@ -19,8 +19,8 @@ contract MockRoleManaged is RoleManaged {
         emit CounterIncremented(msg.sender, counter);
     }
     
-    /// @notice Function that can only be called by REGISTRY_ADMIN
-    function incrementAsRegistryAdmin() external onlyRole(roleManager.REGISTRY_ADMIN()) {
+    /// @notice Function that can only be called by RULES_ADMIN
+    function incrementAsRulesAdmin() external onlyRole(roleManager.RULES_ADMIN()) {
         counter++;
         emit CounterIncremented(msg.sender, counter);
     }

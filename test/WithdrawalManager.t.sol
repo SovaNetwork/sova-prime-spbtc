@@ -49,11 +49,10 @@ contract WithdrawalManagerTest is BaseFountfiTest {
         rules = new MockRules(true, "");
         
         // Deploy strategy
-        strategy = new MockStrategy();
+        strategy = new MockStrategy(owner);
         strategy.initialize(
             "Tokenized RWA",
             "tRWA",
-            owner, // Use owner as admin for testing
             manager,
             address(usdc),
             address(rules),

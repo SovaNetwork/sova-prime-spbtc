@@ -11,7 +11,7 @@ abstract contract RoleManaged {
     IRoleManager public immutable roleManager;
     
     // Custom errors
-    error Unauthorized(address caller, uint256 roleRequired);
+    error UnauthorizedRole(address caller, uint256 roleRequired);
     error InvalidRoleManager();
     
     // Events
@@ -28,7 +28,7 @@ abstract contract RoleManaged {
     /// @param role The role required to access the function
     modifier onlyRole(uint256 role) {
         if (!roleManager.hasRole(msg.sender, role)) {
-            revert Unauthorized(msg.sender, role);
+            revert UnauthorizedRole(msg.sender, role);
         }
         emit RoleCheckPassed(msg.sender, role);
         _;
@@ -38,7 +38,7 @@ abstract contract RoleManaged {
     /// @param roles An array of roles, any of which allows access
     modifier onlyRoles(uint256[] memory roles) {
         if (!roleManager.hasAnyOfRoles(msg.sender, roles)) {
-            revert Unauthorized(msg.sender, 0); // Generic unauthorized error for multiple roles
+            revert UnauthorizedRole(msg.sender, 0); // Generic unauthorized error for multiple roles
         }
         emit RoleCheckPassed(msg.sender, 0); // Zero means multiple roles were checked
         _;

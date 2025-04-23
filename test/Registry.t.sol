@@ -4,6 +4,7 @@ pragma solidity ^0.8.25;
 import {Test} from "forge-std/Test.sol";
 import {Registry} from "../src/registry/Registry.sol";
 import {MockERC20} from "../src/mocks/MockERC20.sol";
+import {RoleManager} from "../src/auth/RoleManager.sol";
 
 /**
  * @title RegistryTest
@@ -11,13 +12,21 @@ import {MockERC20} from "../src/mocks/MockERC20.sol";
  */
 contract RegistryTest is Test {
     Registry public registry;
+    RoleManager public roleManager;
     address public owner;
     
     function setUp() public {
         owner = makeAddr("owner");
         
         vm.startPrank(owner);
-        registry = new Registry();
+        roleManager = new RoleManager();
+        registry = new Registry(address(roleManager));
+        
+        // Grant necessary roles to owner
+        roleManager.grantRole(owner, roleManager.PROTOCOL_ADMIN());
+        roleManager.grantRole(owner, roleManager.STRATEGY_ADMIN());
+        roleManager.grantRole(owner, roleManager.RULES_ADMIN());
+        
         vm.stopPrank();
     }
     

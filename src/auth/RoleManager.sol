@@ -11,7 +11,7 @@ contract RoleManager is OwnableRoles {
     uint256 private constant LEVEL_ROOT = 0xF00000; // Level 15 (highest)
     uint256 private constant LEVEL_ADMIN = 0xA00000; // Level 10
     uint256 private constant LEVEL_OPERATOR = 0x500000; // Level 5
-
+    
     // Function domains (bits 8-15)
     uint256 public constant DOMAIN_PROTOCOL = 0x0100; // Domain 1
     uint256 public constant DOMAIN_STRATEGY = 0x0200; // Domain 2
@@ -20,11 +20,12 @@ contract RoleManager is OwnableRoles {
     uint256 public constant DOMAIN_SUBSCRIPTION = 0x0500; // Domain 5
     uint256 public constant DOMAIN_WITHDRAWAL = 0x0600; // Domain 6
     uint256 public constant DOMAIN_RULES = 0x0700; // Domain 7
-
+    
     // Base role identifiers (bits 0-7)
     uint256 private constant ID_ADMIN = 0x01;
     uint256 private constant ID_OPERATOR = 0x02;
-
+    uint256 private constant ID_MANAGER = 0x03;
+    
     // Root role
     uint256 public constant PROTOCOL_ADMIN = LEVEL_ROOT | DOMAIN_PROTOCOL | ID_ADMIN;
 
@@ -139,14 +140,14 @@ contract RoleManager is OwnableRoles {
         }
         return true;
     }
-
+    
     /// @notice Check if a role is an admin role
     /// @param role The role to check
     /// @return True if the role is an admin role
     function isAdminRole(uint256 role) public pure returns (bool) {
         return _getRoleLevel(role) >= LEVEL_ADMIN;
     }
-
+    
     /// @notice Check if two roles are in the same domain
     /// @param role1 First role
     /// @param role2 Second role
@@ -154,8 +155,7 @@ contract RoleManager is OwnableRoles {
     function isSameDomain(uint256 role1, uint256 role2) public pure returns (bool) {
         return _getRoleDomain(role1) == _getRoleDomain(role2);
     }
-
-
+    
     /// @notice Get the domain value for a role
     /// @param role The role to get the domain for
     /// @return The domain value
@@ -169,21 +169,21 @@ contract RoleManager is OwnableRoles {
     function _getRoleLevel(uint256 role) internal pure returns (uint256) {
         return role & 0xF00000;
     }
-
+    
     /// @notice Helper to get the function domain from a role
     /// @param role The role to extract the domain from
     /// @return The function domain of the role
     function _getRoleDomain(uint256 role) internal pure returns (uint256) {
         return role & 0x00FF00;
     }
-
+    
     /// @notice Helper to get the role identifier from a role
     /// @param role The role to extract the ID from
     /// @return The identifier of the role
     function _getRoleId(uint256 role) internal pure returns (uint256) {
         return role & 0x0000FF;
     }
-
+    
     /// @notice Internal function to check if an address can manage a specific role
     /// @param manager The address to check for management permission
     /// @param role The role being managed
@@ -193,42 +193,31 @@ contract RoleManager is OwnableRoles {
         if (manager == owner()) {
             return true;
         }
-
-        // Get all roles the manager has
-        uint256 managerRoles = roles[manager];
-        if (managerRoles == 0) {
-            return false;
-        }
-
+        
         // Check if manager has PROTOCOL_ADMIN role
-        if (managerRoles & PROTOCOL_ADMIN != 0) {
+        if (hasRole(manager, PROTOCOL_ADMIN)) {
             return true;
         }
-
+        
         // Get the target role components
         uint256 targetLevel = _getRoleLevel(role);
         uint256 targetDomain = _getRoleDomain(role);
-
-        // Iterate through possible roles the manager might have
-        // This is a bit brute force but works for a small number of roles
-        // and avoids complex state management
-
-        // Check if manager has functional admin role for the same domain
-        // and the target role is of lower level
-        for (uint256 i = 0; i < 64; i++) {  // Max 64 roles as a practical limit
-            uint256 checkRole = 1 << i;
-            if (managerRoles & checkRole != 0) {
-                uint256 managerLevel = _getRoleLevel(checkRole);
-                uint256 managerDomain = _getRoleDomain(checkRole);
-
-                // If manager's role has higher privilege than target role
-                // and in the same domain, they can manage it
-                if (managerLevel > targetLevel && managerDomain == targetDomain) {
-                    return true;
-                }
-            }
+        
+        // Check admin roles based on domain
+        if (targetDomain == DOMAIN_STRATEGY && hasRole(manager, STRATEGY_ADMIN)) {
+            return _getRoleLevel(STRATEGY_ADMIN) > targetLevel;
+        } else if (targetDomain == DOMAIN_KYC && hasRole(manager, KYC_ADMIN)) {
+            return _getRoleLevel(KYC_ADMIN) > targetLevel;
+        } else if (targetDomain == DOMAIN_REPORTER && hasRole(manager, REPORTER_ADMIN)) {
+            return _getRoleLevel(REPORTER_ADMIN) > targetLevel;
+        } else if (targetDomain == DOMAIN_SUBSCRIPTION && hasRole(manager, SUBSCRIPTION_ADMIN)) {
+            return _getRoleLevel(SUBSCRIPTION_ADMIN) > targetLevel;
+        } else if (targetDomain == DOMAIN_WITHDRAWAL && hasRole(manager, WITHDRAWAL_ADMIN)) {
+            return _getRoleLevel(WITHDRAWAL_ADMIN) > targetLevel;
+        } else if (targetDomain == DOMAIN_RULES && hasRole(manager, RULES_ADMIN)) {
+            return _getRoleLevel(RULES_ADMIN) > targetLevel;
         }
-
+        
         return false;
     }
 
@@ -236,7 +225,7 @@ contract RoleManager is OwnableRoles {
     /// @param role The role to check granting permissions for
     function _validateRoleGrant(uint256 role) internal view virtual {
         if (!_canManageRole(msg.sender, role)) {
-            revert Unauthorized();
+            revert("Unauthorized");
         }
     }
 
@@ -244,7 +233,18 @@ contract RoleManager is OwnableRoles {
     /// @param role The role to check revoking permissions for
     function _validateRoleRevoke(uint256 role) internal view virtual {
         if (!_canManageRole(msg.sender, role)) {
-            revert Unauthorized();
+            revert("Unauthorized");
         }
+    }
+    
+    /// @notice Helper to create a role array from two roles
+    /// @param role1 First role
+    /// @param role2 Second role
+    /// @return Array containing both roles
+    function _getRolesArray(uint256 role1, uint256 role2) internal pure returns (uint256[] memory) {
+        uint256[] memory roles = new uint256[](2);
+        roles[0] = role1;
+        roles[1] = role2;
+        return roles;
     }
 }

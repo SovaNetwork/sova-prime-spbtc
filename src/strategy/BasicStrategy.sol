@@ -78,7 +78,7 @@ abstract contract BasicStrategy is IStrategy, RoleManaged {
 
         sToken = address(newToken);
 
-        emit StrategyInitialized(manager_, asset_, sToken);
+        emit StrategyInitialized(address(0), manager_, asset_, sToken);
     }
 
     /*//////////////////////////////////////////////////////////////
