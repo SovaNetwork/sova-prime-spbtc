@@ -1,0 +1,128 @@
+Compiling 62 files with Solc 0.8.25
+Solc 0.8.25 finished in 2.94s
+Compiler run successful with warnings:
+Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+  --> src/mocks/MockStrategy.sol:85:29:
+   |
+85 |     function transferAssets(address user, uint256 amount) external {
+   |                             ^^^^^^^^^^^^
+
+Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+  --> src/rules/WithdrawalQueueRule.sol:84:9:
+   |
+84 |         address user,
+   |         ^^^^^^^^^^^^
+
+Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+  --> src/rules/WithdrawalQueueRule.sol:86:9:
+   |
+86 |         address receiver,
+   |         ^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/Rules.t.sol:258:9:
+    |
+258 |         bytes32 kycId = rulesEngine.addRule(address(kycRules), 1);
+    |         ^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/WithdrawalManager.t.sol:218:9:
+    |
+218 |         uint256 periodId = withdrawalManager.openWithdrawalPeriod(
+    |         ^^^^^^^^^^^^^^^^
+
+Warning (2018): Function state mutability can be restricted to pure
+  --> src/rules/WithdrawalQueueRule.sol:64:5:
+   |
+64 |     function evaluateDeposit(
+   |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to view
+  --> test/Reporter.t.sol:21:5:
+   |
+21 |     function test_Initialization() public {
+   |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to view
+  --> test/Strategy.t.sol:35:5:
+   |
+35 |     function test_TokenBasics() public {
+   |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Analysing contracts...
+Running tests...
+
+Ran 1 test for test/Strategy.t.sol:StrategyTest
+[PASS] test_TokenBasics() (gas: 28862)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 638.08µs (110.96µs CPU time)
+
+Ran 1 test for test/Integration.t.sol:IntegrationTest
+[PASS] test_CompleteFlow() (gas: 42004)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 1.07ms (111.88µs CPU time)
+
+Ran 1 test for test/tRWA.t.sol:TRWATest
+[PASS] test_TokenBasics() (gas: 65754)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 840.29µs (134.54µs CPU time)
+
+Ran 3 tests for test/Registry.t.sol:RegistryTest
+[PASS] test_DeployRequiresAuthorization() (gas: 1212114)
+[PASS] test_RegistrationChecks() (gas: 22949)
+[PASS] test_RegistrationFunctions() (gas: 1240103)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 973.38µs (742.96µs CPU time)
+
+Ran 5 tests for test/Reporter.t.sol:ReporterTest
+[PASS] test_DeviationLimits() (gas: 56105)
+[PASS] test_Initialization() (gas: 24759)
+[PASS] test_PriceUpdates() (gas: 38343)
+[PASS] test_SourceValidation() (gas: 14305)
+[PASS] test_UpdaterManagement() (gas: 80879)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 2.02ms (768.71µs CPU time)
+
+Ran 7 tests for test/SubscriptionManager.t.sol:SubscriptionManagerTest
+[FAIL: Unauthorized()] test_BatchProcessPayments() (gas: 337686)
+[FAIL: Unauthorized()] test_CancelSubscription() (gas: 337740)
+[FAIL: Unauthorized()] test_CreateSubscription() (gas: 337740)
+[FAIL: Unauthorized()] test_PaymentCallbacks() (gas: 337784)
+[FAIL: Unauthorized()] test_ProcessPayment() (gas: 337785)
+[FAIL: Unauthorized()] test_SubscriptionRound() (gas: 185558)
+[FAIL: Unauthorized()] test_UpdateSubscription() (gas: 337753)
+Suite result: FAILED. 0 passed; 7 failed; 0 skipped; finished in 2.52ms (1.27ms CPU time)
+
+Ran 5 tests for test/WithdrawalManager.t.sol:WithdrawalManagerTest
+[FAIL: Unauthorized()] test_InvalidMerkleProof() (gas: 13728)
+[FAIL: Unauthorized()] test_RequestWithdrawal() (gas: 13735)
+[FAIL: Unauthorized()] test_WithdrawalApprovalAndExecution() (gas: 13729)
+[FAIL: Unauthorized()] test_WithdrawalCallbacks() (gas: 13737)
+[FAIL: Unauthorized()] test_WithdrawalPeriodExpiry() (gas: 13729)
+Suite result: FAILED. 0 passed; 5 failed; 0 skipped; finished in 2.55ms (422.46µs CPU time)
+
+Ran 7 tests for test/Rules.t.sol:RulesTest
+[PASS] test_CappedRules_Limits() (gas: 62983)
+[PASS] test_KycRules_AllowDeny() (gas: 82292)
+[PASS] test_KycRules_TransferRules() (gas: 121783)
+[PASS] test_RulesEngine_Evaluation() (gas: 380285)
+[PASS] test_RulesEngine_Management() (gas: 209496)
+[PASS] test_SubscriptionRules_Approval() (gas: 81265)
+[PASS] test_SubscriptionRules_BatchApproval() (gas: 115881)
+Suite result: ok. 7 passed; 0 failed; 0 skipped; finished in 3.30ms (1.96ms CPU time)
+
+Ran 8 test suites in 138.66ms (13.90ms CPU time): 18 tests passed, 12 failed, 0 skipped (30 total tests)
+
+Failing tests:
+Encountered 7 failing tests in test/SubscriptionManager.t.sol:SubscriptionManagerTest
+[FAIL: Unauthorized()] test_BatchProcessPayments() (gas: 337686)
+[FAIL: Unauthorized()] test_CancelSubscription() (gas: 337740)
+[FAIL: Unauthorized()] test_CreateSubscription() (gas: 337740)
+[FAIL: Unauthorized()] test_PaymentCallbacks() (gas: 337784)
+[FAIL: Unauthorized()] test_ProcessPayment() (gas: 337785)
+[FAIL: Unauthorized()] test_SubscriptionRound() (gas: 185558)
+[FAIL: Unauthorized()] test_UpdateSubscription() (gas: 337753)
+
+Encountered 5 failing tests in test/WithdrawalManager.t.sol:WithdrawalManagerTest
+[FAIL: Unauthorized()] test_InvalidMerkleProof() (gas: 13728)
+[FAIL: Unauthorized()] test_RequestWithdrawal() (gas: 13735)
+[FAIL: Unauthorized()] test_WithdrawalApprovalAndExecution() (gas: 13729)
+[FAIL: Unauthorized()] test_WithdrawalCallbacks() (gas: 13737)
+[FAIL: Unauthorized()] test_WithdrawalPeriodExpiry() (gas: 13729)
+
+Encountered a total of 12 failing tests, 18 tests succeeded
