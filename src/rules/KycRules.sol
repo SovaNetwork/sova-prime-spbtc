@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.25;
+pragma solidity 0.8.25;
 
 import {BaseRules} from "./BaseRules.sol";
-import {Ownable} from "solady/auth/Ownable.sol";
+import {RoleManaged} from "../auth/RoleManaged.sol";
 
 /**
  * @title KycRule
  * @notice Rule that restricts transfers based on sender/receiver addresses
  * @dev Uses allow/deny lists to determine if transfers are permitted
  */
-contract KycRules is BaseRules, Ownable {
+contract KycRules is BaseRules, RoleManaged {
     // Errors
     error ZeroAddress();
     error AddressAlreadyDenied();
@@ -20,69 +20,89 @@ contract KycRules is BaseRules, Ownable {
     mapping(address => bool) public isAddressDenied;
 
     // Events
-    event AddressAllowed(address indexed account);
-    event AddressDenied(address indexed account);
-    event AddressRestrictionRemoved(address indexed account);
-    event BatchAddressAllowed(uint256 count);
-    event BatchAddressDenied(uint256 count);
-    event BatchAddressRestrictionRemoved(uint256 count);
+    event AddressAllowed(address indexed account, address indexed operator);
+    event AddressDenied(address indexed account, address indexed operator);
+    event AddressRestrictionRemoved(address indexed account, address indexed operator);
+    event BatchAddressAllowed(uint256 count, address indexed operator);
+    event BatchAddressDenied(uint256 count, address indexed operator);
+    event BatchAddressRestrictionRemoved(uint256 count, address indexed operator);
 
     /**
      * @notice Constructor
-     * @param admin Address of the admin
+     * @param _roleManager Address of the role manager contract
      */
-    constructor(address admin)
+    constructor(address _roleManager)
         BaseRules("KycRule")
-    {
-        if (admin == address(0)) revert ZeroAddress();
-
-        _initializeOwner(admin);
-    }
+        RoleManaged(_roleManager)
+    {}
 
     /**
      * @notice Allow an address to transfer/receive tokens
      * @param account Address to allow
      */
-    function allow(address account) external onlyOwner {
+    function allow(address account) external {
+        // Check if caller has KYC_ADMIN or KYC_OPERATOR role
+        if (!hasRole(msg.sender, roleManager.KYC_ADMIN()) && 
+            !hasRole(msg.sender, roleManager.KYC_OPERATOR())) {
+            revert("Unauthorized");
+        }
+
         if (account == address(0)) revert ZeroAddress();
         if (isAddressDenied[account]) revert AddressAlreadyDenied();
 
         isAddressAllowed[account] = true;
 
-        emit AddressAllowed(account);
+        emit AddressAllowed(account, msg.sender);
     }
 
     /**
      * @notice Deny an address from transferring/receiving tokens
      * @param account Address to deny
      */
-    function deny(address account) external onlyOwner {
+    function deny(address account) external {
+        // Check if caller has KYC_ADMIN or KYC_OPERATOR role
+        if (!hasRole(msg.sender, roleManager.KYC_ADMIN()) && 
+            !hasRole(msg.sender, roleManager.KYC_OPERATOR())) {
+            revert("Unauthorized");
+        }
+
         if (account == address(0)) revert ZeroAddress();
 
         isAddressAllowed[account] = false;
         isAddressDenied[account] = true;
 
-        emit AddressDenied(account);
+        emit AddressDenied(account, msg.sender);
     }
 
     /**
      * @notice Reset an address by removing it from both allow and deny lists
      * @param account Address to reset
      */
-    function reset(address account) external onlyOwner {
+    function reset(address account) external {
+        // Only KYC_ADMIN can reset addresses (higher permission than operators)
+        if (!hasRole(msg.sender, roleManager.KYC_ADMIN())) {
+            revert("Unauthorized");
+        }
+
         if (account == address(0)) revert ZeroAddress();
 
         isAddressAllowed[account] = false;
         isAddressDenied[account] = false;
 
-        emit AddressRestrictionRemoved(account);
+        emit AddressRestrictionRemoved(account, msg.sender);
     }
 
     /**
      * @notice Batch allow addresses to transfer/receive tokens
      * @param accounts Array of addresses to allow
      */
-    function batchAllow(address[] calldata accounts) external onlyOwner {
+    function batchAllow(address[] calldata accounts) external {
+        // Check if caller has KYC_ADMIN or KYC_OPERATOR role
+        if (!hasRole(msg.sender, roleManager.KYC_ADMIN()) && 
+            !hasRole(msg.sender, roleManager.KYC_OPERATOR())) {
+            revert("Unauthorized");
+        }
+
         uint256 length = accounts.length;
         if (length == 0) revert InvalidArrayLength();
 
@@ -93,17 +113,23 @@ contract KycRules is BaseRules, Ownable {
 
             isAddressAllowed[account] = true;
 
-            emit AddressAllowed(account);
+            emit AddressAllowed(account, msg.sender);
         }
 
-        emit BatchAddressAllowed(length);
+        emit BatchAddressAllowed(length, msg.sender);
     }
 
     /**
      * @notice Batch deny addresses from transferring/receiving tokens
      * @param accounts Array of addresses to deny
      */
-    function batchDeny(address[] calldata accounts) external onlyOwner {
+    function batchDeny(address[] calldata accounts) external {
+        // Check if caller has KYC_ADMIN or KYC_OPERATOR role
+        if (!hasRole(msg.sender, roleManager.KYC_ADMIN()) && 
+            !hasRole(msg.sender, roleManager.KYC_OPERATOR())) {
+            revert("Unauthorized");
+        }
+
         uint256 length = accounts.length;
         if (length == 0) revert InvalidArrayLength();
 
@@ -114,17 +140,22 @@ contract KycRules is BaseRules, Ownable {
             isAddressAllowed[account] = false;
             isAddressDenied[account] = true;
 
-            emit AddressDenied(account);
+            emit AddressDenied(account, msg.sender);
         }
 
-        emit BatchAddressDenied(length);
+        emit BatchAddressDenied(length, msg.sender);
     }
 
     /**
      * @notice Batch reset addresses by removing them from both allow and deny lists
      * @param accounts Array of addresses to reset
      */
-    function batchReset(address[] calldata accounts) external onlyOwner {
+    function batchReset(address[] calldata accounts) external {
+        // Only KYC_ADMIN can reset addresses (higher permission than operators)
+        if (!hasRole(msg.sender, roleManager.KYC_ADMIN())) {
+            revert("Unauthorized");
+        }
+
         uint256 length = accounts.length;
         if (length == 0) revert InvalidArrayLength();
 
@@ -135,10 +166,10 @@ contract KycRules is BaseRules, Ownable {
             isAddressAllowed[account] = false;
             isAddressDenied[account] = false;
 
-            emit AddressRestrictionRemoved(account);
+            emit AddressRestrictionRemoved(account, msg.sender);
         }
 
-        emit BatchAddressRestrictionRemoved(length);
+        emit BatchAddressRestrictionRemoved(length, msg.sender);
     }
 
     /**
