@@ -3,6 +3,7 @@ pragma solidity ^0.8.25;
 
 import {BasicStrategy} from "./BasicStrategy.sol";
 import {BaseReporter} from "../reporter/BaseReporter.sol";
+import {ERC20} from "solady/tokens/ERC20.sol";
 
 /**
  * @title ReportedStrategy
@@ -80,5 +81,15 @@ contract ReportedStrategy is BasicStrategy {
         reporter = BaseReporter(_reporter);
 
         emit SetReporter(_reporter);
+    }
+    
+    /**
+     * @notice Transfer assets from the strategy to a user
+     * @param user Address to transfer assets to
+     * @param amount Amount of assets to transfer
+     */
+    function transferAssets(address user, uint256 amount) external override onlyManager {
+        // Transfer the asset to the user
+        ERC20(asset).transfer(user, amount);
     }
 }

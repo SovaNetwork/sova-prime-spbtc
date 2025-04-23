@@ -56,7 +56,7 @@ contract WithdrawalManager is IWithdrawalManager, OwnableRoles {
         if (_token == address(0) || _admin == address(0)) revert InvalidAddress();
 
         token = _token;
-        strategy = tRWA(_token).strategy();
+        strategy = address(tRWA(_token).strategy());
         asset = tRWA(_token).asset();
 
         _initializeOwner(_admin);
@@ -211,7 +211,7 @@ contract WithdrawalManager is IWithdrawalManager, OwnableRoles {
 
         // Check permissions
         if (!hasAnyRole(msg.sender, WITHDRAWAL_ADMIN_ROLE) && block.timestamp <= period.endTime) {
-            revert Unauthorized();
+            revert WithdrawalUnauthorized();
         }
 
         if (!period.active) revert WithdrawalPeriodInactive();
@@ -329,7 +329,7 @@ contract WithdrawalManager is IWithdrawalManager, OwnableRoles {
      * @return hasRole Whether the address has the role
      */
     function hasRole(address user, uint256 role) public view returns (bool) {
-        return OwnableRoles.hasRole(user, role);
+        return hasAnyRole(user, role);
     }
 
     /**
@@ -347,6 +347,6 @@ contract WithdrawalManager is IWithdrawalManager, OwnableRoles {
      * @param role The role to revoke
      */
     function revokeRole(address user, uint256 role) external onlyOwner {
-        _revokeRoles(user, role);
+        _removeRoles(user, role);
     }
 }

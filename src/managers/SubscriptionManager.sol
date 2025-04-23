@@ -79,7 +79,7 @@ contract SubscriptionManager is ISubscriptionManager, OwnableRoles {
         }
 
         token = _token;
-        strategy = tRWA(_token).strategy();
+        strategy = address(tRWA(_token).strategy());
         asset = tRWA(_token).asset();
         subRules = _subRules;
         feeRecipient = _feeRecipient;
@@ -147,7 +147,7 @@ contract SubscriptionManager is ISubscriptionManager, OwnableRoles {
         
         // Check that caller is subscription owner
         if (sub.user != msg.sender && !hasAnyRole(msg.sender, SUBSCRIPTION_ADMIN_ROLE)) {
-            revert Unauthorized();
+            revert SubscriptionUnauthorized();
         }
 
         if (!sub.active) revert InactiveSubscription();
@@ -178,7 +178,15 @@ contract SubscriptionManager is ISubscriptionManager, OwnableRoles {
         // Process deposit with fee
         address assetToken = asset;
         
-        try SafeTransferLib.safeTransferFrom(assetToken, sub.user, address(this), sub.amount) {
+        // Try to transfer funds using a try/catch pattern
+        bool transferSuccess = false;
+        try this.executeTransfer(assetToken, sub.user, sub.amount) returns (bool result) {
+            transferSuccess = result;
+        } catch {
+            transferSuccess = false;
+        }
+        
+        if (transferSuccess) {
             // Pay fee to fee recipient if configured
             if (fee > 0 && feeRecipient != address(0)) {
                 SafeTransferLib.safeTransfer(assetToken, feeRecipient, fee);
@@ -192,7 +200,7 @@ contract SubscriptionManager is ISubscriptionManager, OwnableRoles {
 
             emit PaymentProcessed(subscriptionId, sub.user, sub.amount, fee);
             return true;
-        } catch {
+        } else {
             emit PaymentFailed(subscriptionId, sub.user, "Transfer failed");
             return false;
         }
@@ -388,7 +396,7 @@ contract SubscriptionManager is ISubscriptionManager, OwnableRoles {
      * @return hasRole Whether the address has the role
      */
     function hasRole(address user, uint256 role) public view returns (bool) {
-        return OwnableRoles.hasRole(user, role);
+        return hasAnyRole(user, role);
     }
 
     /**
@@ -406,6 +414,22 @@ contract SubscriptionManager is ISubscriptionManager, OwnableRoles {
      * @param role The role to revoke
      */
     function revokeRole(address user, uint256 role) external onlyOwner {
-        _revokeRoles(user, role);
+        _removeRoles(user, role);
+    }
+    
+    /**
+     * @notice Helper function to execute a transfer with try/catch
+     * @param tokenAddress The token to transfer
+     * @param from The address to transfer from
+     * @param amount The amount to transfer
+     * @return success Whether the transfer was successful
+     */
+    function executeTransfer(address tokenAddress, address from, uint256 amount) external returns (bool) {
+        // Only callable by this contract
+        require(msg.sender == address(this), "Only self");
+        
+        // Execute the transfer
+        SafeTransferLib.safeTransferFrom(tokenAddress, from, address(this), amount);
+        return true;
     }
 }

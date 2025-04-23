@@ -38,22 +38,22 @@ The Fountfi protocol enables tokenization of Real World Assets (RWA) with:
 - **sToken**: Each strategy's tRWA token (share token)
 - **Rules**: Components enforcing compliance requirements
 - **Reporters**: Oracle contracts providing asset valuation
+- **Managers**: Handle subscriptiona nd withdrawal logic (investor caps, lockups, redemption queues)
 
 ## Implementation Notes
-- Uses the Clones pattern (minimal proxies) for gas-efficient deployment
 - Each strategy deploys its own token during initialization
-- Strategy implementations are registered in the registry and cloned
+- Strategy implementations are registered in the registry and cloned using the Clones pattern.
 - Registry enforces proper rules, assets, and reporters for deployment
 
 Consult [Foundry Book](https://book.getfoundry.sh/) for more development details.
 
 ## Next Steps
-- Upgrade rules to hooks, which are fully generalized.
+- Implement full manager functionality for subscriptios and redemptions.
 - Implement complete withdrawal functionality in tRWA token (fix the TODO in the withdraw function)
-- Consider implications of inflation attacks and other MEV vectors
 - Create a RedemptionQueue contract for managing pending withdrawals with time delays
 - Develop additional rule modules:
   - InvestorLimit rule to enforce maximum limits per investor
   - LockupPeriodRule to enforce minimum holding periods
+- Consider implications of inflation attacks and other MEV vectors
 - Add invariant testing using Foundry's property-based testing
 - Create comprehensive documentation and deployment guides

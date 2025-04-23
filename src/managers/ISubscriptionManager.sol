@@ -45,7 +45,7 @@ interface ISubscriptionManager {
     error InvalidCapacity();
     error InvalidTimeRange();
     error InactiveSubscription();
-    error Unauthorized();
+    error SubscriptionUnauthorized();
     error PaymentNotDue();
     error TransferFailed();
     error RoundAlreadyActive();

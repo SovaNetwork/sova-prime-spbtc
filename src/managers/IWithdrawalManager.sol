@@ -40,7 +40,7 @@ interface IWithdrawalManager {
     error InvalidWithdrawalRequest();
     error WithdrawalPeriodInactive();
     error WithdrawalPeriodActive();
-    error Unauthorized();
+    error WithdrawalUnauthorized();
     error InvalidMerkleProof();
     error WithdrawalAlreadyExecuted();
     error InsufficientFunds();

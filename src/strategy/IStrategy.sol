@@ -47,4 +47,7 @@ interface IStrategy {
 
     // Asset Management
     function balance() external view returns (uint256);
+    
+    // Transfer assets from the strategy to a user
+    function transferAssets(address user, uint256 amount) external;
 }

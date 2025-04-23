@@ -347,7 +347,7 @@ contract tRWA is ERC4626, ItRWA {
         // Only the strategy or authorized contracts can call this
         if (msg.sender != address(strategy) && 
             !rules.evaluateTransfer(address(this), from, address(0), amount).approved) {
-            revert Unauthorized();
+            revert tRWAUnauthorized();
         }
         
         _burn(from, amount);

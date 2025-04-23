@@ -24,7 +24,7 @@ contract WithdrawalQueueRule is BaseRules, OwnableRoles {
     // Errors
     error InvalidAddress();
     error InvalidWithdrawalManager();
-    error Unauthorized();
+    error QueueUnauthorized();
 
     /**
      * @notice Constructor
@@ -119,7 +119,7 @@ contract WithdrawalQueueRule is BaseRules, OwnableRoles {
      * @param role Role to revoke
      */
     function revokeRole(address user, uint256 role) external onlyOwner {
-        _revokeRoles(user, role);
+        _removeRoles(user, role);
     }
 
     /**

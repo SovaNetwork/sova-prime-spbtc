@@ -76,6 +76,22 @@ contract MockStrategy is IStrategy {
     function balance() external view returns (uint256) {
         return _balance;
     }
+    
+    /**
+     * @notice Transfer assets to a user
+     * @param user Address to transfer assets to
+     * @param amount Amount of assets to transfer
+     */
+    function transferAssets(address user, uint256 amount) external {
+        // Only callable by token or admin
+        if (msg.sender != sToken && msg.sender != admin) revert Unauthorized();
+        
+        // Simulate asset transfer
+        _balance -= amount;
+        
+        // Mock the actual transfer since this is a test contract
+        // In a real implementation, this would use SafeTransferLib to transfer the asset
+    }
 
     function setManager(address newManager) external onlyAdmin {
         manager = newManager;
