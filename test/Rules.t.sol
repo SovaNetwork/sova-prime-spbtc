@@ -9,6 +9,7 @@ import {CappedSubscriptionRules} from "../src/rules/CappedSubscriptionRules.sol"
 import {IRules} from "../src/rules/IRules.sol";
 import {tRWA} from "../src/token/tRWA.sol";
 import {MockStrategy} from "../src/mocks/MockStrategy.sol";
+import {MockRoleManager} from "../src/mocks/MockRoleManager.sol";
 
 contract RulesTest is BaseFountfiTest {
     RulesEngine public rulesEngine;
@@ -16,16 +17,25 @@ contract RulesTest is BaseFountfiTest {
     SubscriptionRules public subRules;
     CappedSubscriptionRules public cappedRules;
     
+    MockRoleManager public mockRoleManager;
+    
     function setUp() public override {
         super.setUp();
         
         vm.startPrank(owner);
         
+        // Deploy mock role manager
+        mockRoleManager = new MockRoleManager(owner);
+        
         // Deploy rules
         rulesEngine = new RulesEngine(owner);
-        kycRules = new KycRules(owner); // Default deny
+        kycRules = new KycRules(address(mockRoleManager)); // Default deny with role manager
         subRules = new SubscriptionRules(owner, true, true); // Enforce approval, initially open
         cappedRules = new CappedSubscriptionRules(owner, 10_000 * 10**6, true, true);
+        
+        // Grant owner the KYC roles
+        mockRoleManager.grantRole(owner, mockRoleManager.KYC_ADMIN());
+        mockRoleManager.grantRole(owner, mockRoleManager.KYC_OPERATOR());
         
         vm.stopPrank();
     }

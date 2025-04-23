@@ -6,6 +6,7 @@ import {MockERC20} from "../src/mocks/MockERC20.sol";
 import {MockRules} from "../src/mocks/MockRules.sol";
 import {MockReporter} from "../src/mocks/MockReporter.sol";
 import {MockStrategy} from "../src/mocks/MockStrategy.sol";
+import {MockRoleManager} from "../src/mocks/MockRoleManager.sol";
 import {tRWA} from "../src/token/tRWA.sol";
 import {Registry} from "../src/registry/Registry.sol";
 import {RulesEngine} from "../src/rules/RulesEngine.sol";
@@ -126,8 +127,15 @@ abstract contract BaseFountfiTest is Test {
         // Setup Registry
         registry.setAsset(address(usdc), true);
 
-        // Deploy rules
-        kycRules = new KycRules(owner); // Default is deny
+        // Deploy mock role manager
+        MockRoleManager roleManager = new MockRoleManager(owner);
+        
+        // Deploy rules with mock role manager
+        kycRules = new KycRules(address(roleManager));
+        
+        // Grant KYC roles to the owner for testing
+        roleManager.grantRole(owner, roleManager.KYC_ADMIN());
+        roleManager.grantRole(owner, roleManager.KYC_OPERATOR());
         registry.setRules(address(kycRules), true);
 
         // Create reporter
