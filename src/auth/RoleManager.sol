@@ -39,7 +39,10 @@ contract RoleManager is OwnableRoles {
     event RoleRevoked(address indexed user, uint256 indexed role, address indexed sender);
 
     /// @notice Constructor that sets up the initial roles
+    /// @dev Initializes the owner and grants PROTOCOL_ADMIN role to the deployer
     constructor() {
+        if (msg.sender == address(0)) revert InvalidRole();
+        
         _initializeOwner(msg.sender);
         // Grant PROTOCOL_ADMIN to deployer
         _grantRoles(msg.sender, PROTOCOL_ADMIN);
@@ -119,43 +122,49 @@ contract RoleManager is OwnableRoles {
         return true;
     }
 
+    /// @notice Internal function to check if an address can manage a specific role
+    /// @param manager The address to check for management permission
+    /// @param role The role being managed
+    /// @return True if the manager can grant/revoke the role
+    function _canManageRole(address manager, uint256 role) internal view virtual returns (bool) {
+        // Owner or PROTOCOL_ADMIN can manage any role
+        if (manager == owner() || hasRole(manager, PROTOCOL_ADMIN)) {
+            return true;
+        }
+        
+        // Check if the manager is an operational role (KYC_OPERATOR, STRATEGY_MANAGER, DATA_PROVIDER)
+        // Operational roles can NEVER manage other roles
+        if (hasRole(manager, KYC_OPERATOR) || 
+            hasRole(manager, STRATEGY_MANAGER) || 
+            hasRole(manager, DATA_PROVIDER)) {
+            return false;
+        }
+        
+        // Special cases for functional admins that can manage their operational roles
+        if (role == KYC_OPERATOR && hasRole(manager, KYC_ADMIN)) {
+            return true;
+        } else if (role == DATA_PROVIDER && hasRole(manager, REPORTER_ADMIN)) {
+            return true;
+        } else if (role == STRATEGY_MANAGER && hasRole(manager, STRATEGY_ADMIN)) {
+            return true;
+        }
+        
+        return false;
+    }
+
     /// @notice Internal function to validate if a user can grant a role
     /// @param role The role to check granting permissions for
     function _validateRoleGrant(uint256 role) internal view virtual {
-        // Owner or PROTOCOL_ADMIN can grant any role
-        if (msg.sender == owner() || hasRole(msg.sender, PROTOCOL_ADMIN)) {
-            return;
+        if (!_canManageRole(msg.sender, role)) {
+            revert Unauthorized();
         }
-        
-        // Special cases for operational roles that can be granted by their functional admins
-        if (role == KYC_OPERATOR && hasRole(msg.sender, KYC_ADMIN)) {
-            return;
-        } else if (role == DATA_PROVIDER && hasRole(msg.sender, REPORTER_ADMIN)) {
-            return;
-        } else if (role == STRATEGY_MANAGER && hasRole(msg.sender, STRATEGY_ADMIN)) {
-            return;
-        }
-        
-        revert Unauthorized();
     }
     
     /// @notice Internal function to validate if a user can revoke a role
     /// @param role The role to check revoking permissions for
     function _validateRoleRevoke(uint256 role) internal view virtual {
-        // Owner or PROTOCOL_ADMIN can revoke any role
-        if (msg.sender == owner() || hasRole(msg.sender, PROTOCOL_ADMIN)) {
-            return;
+        if (!_canManageRole(msg.sender, role)) {
+            revert Unauthorized();
         }
-        
-        // Special cases for operational roles that can be revoked by their functional admins
-        if (role == KYC_OPERATOR && hasRole(msg.sender, KYC_ADMIN)) {
-            return;
-        } else if (role == DATA_PROVIDER && hasRole(msg.sender, REPORTER_ADMIN)) {
-            return;
-        } else if (role == STRATEGY_MANAGER && hasRole(msg.sender, STRATEGY_ADMIN)) {
-            return;
-        }
-        
-        revert Unauthorized();
     }
 }

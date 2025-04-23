@@ -10,11 +10,17 @@ abstract contract RoleManaged {
     // Role manager reference
     IRoleManager public immutable roleManager;
     
-    // Custom errors already defined in OwnableRoles
+    // Custom errors
+    error Unauthorized(address caller, uint256 roleRequired);
+    error InvalidRoleManager();
+    
+    // Events
+    event RoleCheckPassed(address indexed user, uint256 indexed role);
     
     /// @notice Constructor that sets the role manager reference
     /// @param _roleManager Address of the role manager contract
     constructor(address _roleManager) {
+        if (_roleManager == address(0)) revert InvalidRoleManager();
         roleManager = IRoleManager(_roleManager);
     }
     
@@ -22,8 +28,9 @@ abstract contract RoleManaged {
     /// @param role The role required to access the function
     modifier onlyRole(uint256 role) {
         if (!roleManager.hasRole(msg.sender, role)) {
-            revert("Unauthorized");
+            revert Unauthorized(msg.sender, role);
         }
+        emit RoleCheckPassed(msg.sender, role);
         _;
     }
     
@@ -31,8 +38,9 @@ abstract contract RoleManaged {
     /// @param roles An array of roles, any of which allows access
     modifier onlyRoles(uint256[] memory roles) {
         if (!roleManager.hasAnyOfRoles(msg.sender, roles)) {
-            revert("Unauthorized");
+            revert Unauthorized(msg.sender, 0); // Generic unauthorized error for multiple roles
         }
+        emit RoleCheckPassed(msg.sender, 0); // Zero means multiple roles were checked
         _;
     }
     
@@ -50,5 +58,17 @@ abstract contract RoleManaged {
     /// @return True if the user has any of the roles, false otherwise
     function hasAnyRole(address user, uint256[] memory roles) public view returns (bool) {
         return roleManager.hasAnyOfRoles(user, roles);
+    }
+    
+    /// @notice Get an array containing roles for common role combinations
+    /// @dev Helper function to reduce code duplication when creating role arrays
+    /// @param role1 First role to include
+    /// @param role2 Second role to include
+    /// @return roles Array containing the specified roles
+    function _getRolesArray(uint256 role1, uint256 role2) internal pure returns (uint256[] memory roles) {
+        roles = new uint256[](2);
+        roles[0] = role1;
+        roles[1] = role2;
+        return roles;
     }
 }

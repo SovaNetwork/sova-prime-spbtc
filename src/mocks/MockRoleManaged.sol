@@ -26,15 +26,7 @@ contract MockRoleManaged is RoleManaged {
     }
     
     /// @notice Function that can be called by either STRATEGY_ADMIN or STRATEGY_MANAGER
-    function incrementAsStrategyRole() external {
-        uint256[] memory roles = new uint256[](2);
-        roles[0] = roleManager.STRATEGY_ADMIN();
-        roles[1] = roleManager.STRATEGY_MANAGER();
-        
-        if (!roleManager.hasAnyOfRoles(msg.sender, roles)) {
-            revert("Unauthorized");
-        }
-        
+    function incrementAsStrategyRole() external onlyRoles(_getStrategyRoles()) {
         counter++;
         emit CounterIncremented(msg.sender, counter);
     }
@@ -54,5 +46,11 @@ contract MockRoleManaged is RoleManaged {
     /// @notice Get the current counter value - no restrictions
     function getCounter() external view returns (uint256) {
         return counter;
+    }
+    
+    /// @notice Helper function to get the strategy roles
+    /// @return roles Array containing STRATEGY_ADMIN and STRATEGY_MANAGER roles
+    function _getStrategyRoles() internal view returns (uint256[] memory) {
+        return _getRolesArray(roleManager.STRATEGY_ADMIN(), roleManager.STRATEGY_MANAGER());
     }
 }
