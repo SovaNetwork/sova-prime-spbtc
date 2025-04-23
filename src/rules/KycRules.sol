@@ -10,41 +10,42 @@ import {Ownable} from "solady/auth/Ownable.sol";
  * @dev Uses allow/deny lists to determine if transfers are permitted
  */
 contract KycRules is BaseRules, Ownable {
+    // Errors
+    error ZeroAddress();
+    error AddressAlreadyDenied();
+    error InvalidArrayLength();
+
     // Allow and deny lists
     mapping(address => bool) public isAddressAllowed;
     mapping(address => bool) public isAddressDenied;
-
-    // Default allow/deny state
-    bool public defaultAllow;
 
     // Events
     event AddressAllowed(address indexed account);
     event AddressDenied(address indexed account);
     event AddressRestrictionRemoved(address indexed account);
-    event DefaultAllowChanged(bool defaultAllow);
+    event BatchAddressAllowed(uint256 count);
+    event BatchAddressDenied(uint256 count);
+    event BatchAddressRestrictionRemoved(uint256 count);
 
     /**
      * @notice Constructor
      * @param admin Address of the admin
-     * @param _defaultAllow Whether transfers are allowed by default
      */
-    constructor(address admin, bool _defaultAllow)
+    constructor(address admin)
         BaseRules("KycRule")
     {
-        if (admin == address(0)) revert("Invalid admin address");
+        if (admin == address(0)) revert ZeroAddress();
 
         _initializeOwner(admin);
-
-        defaultAllow = _defaultAllow;
     }
 
     /**
      * @notice Allow an address to transfer/receive tokens
      * @param account Address to allow
      */
-    function allowAddress(address account) external onlyOwner {
-        if (account == address(0)) revert("Invalid address");
-        if (isAddressDenied[account]) revert("Address is denied");
+    function allow(address account) external onlyOwner {
+        if (account == address(0)) revert ZeroAddress();
+        if (isAddressDenied[account]) revert AddressAlreadyDenied();
 
         isAddressAllowed[account] = true;
 
@@ -55,8 +56,8 @@ contract KycRules is BaseRules, Ownable {
      * @notice Deny an address from transferring/receiving tokens
      * @param account Address to deny
      */
-    function denyAddress(address account) external onlyOwner {
-        if (account == address(0)) revert("Invalid address");
+    function deny(address account) external onlyOwner {
+        if (account == address(0)) revert ZeroAddress();
 
         isAddressAllowed[account] = false;
         isAddressDenied[account] = true;
@@ -65,11 +66,11 @@ contract KycRules is BaseRules, Ownable {
     }
 
     /**
-     * @notice Remove an address from both allow and deny lists
-     * @param account Address to remove
+     * @notice Reset an address by removing it from both allow and deny lists
+     * @param account Address to reset
      */
-    function removeAddressRestriction(address account) external onlyOwner {
-        if (account == address(0)) revert("Invalid address");
+    function reset(address account) external onlyOwner {
+        if (account == address(0)) revert ZeroAddress();
 
         isAddressAllowed[account] = false;
         isAddressDenied[account] = false;
@@ -78,13 +79,66 @@ contract KycRules is BaseRules, Ownable {
     }
 
     /**
-     * @notice Set the default allow state
-     * @param _defaultAllow Whether transfers are allowed by default
+     * @notice Batch allow addresses to transfer/receive tokens
+     * @param accounts Array of addresses to allow
      */
-    function setDefaultAllow(bool _defaultAllow) external onlyOwner {
-        defaultAllow = _defaultAllow;
+    function batchAllow(address[] calldata accounts) external onlyOwner {
+        uint256 length = accounts.length;
+        if (length == 0) revert InvalidArrayLength();
 
-        emit DefaultAllowChanged(_defaultAllow);
+        for (uint256 i = 0; i < length; i++) {
+            address account = accounts[i];
+            if (account == address(0)) revert ZeroAddress();
+            if (isAddressDenied[account]) revert AddressAlreadyDenied();
+
+            isAddressAllowed[account] = true;
+
+            emit AddressAllowed(account);
+        }
+
+        emit BatchAddressAllowed(length);
+    }
+
+    /**
+     * @notice Batch deny addresses from transferring/receiving tokens
+     * @param accounts Array of addresses to deny
+     */
+    function batchDeny(address[] calldata accounts) external onlyOwner {
+        uint256 length = accounts.length;
+        if (length == 0) revert InvalidArrayLength();
+
+        for (uint256 i = 0; i < length; i++) {
+            address account = accounts[i];
+            if (account == address(0)) revert ZeroAddress();
+
+            isAddressAllowed[account] = false;
+            isAddressDenied[account] = true;
+
+            emit AddressDenied(account);
+        }
+
+        emit BatchAddressDenied(length);
+    }
+
+    /**
+     * @notice Batch reset addresses by removing them from both allow and deny lists
+     * @param accounts Array of addresses to reset
+     */
+    function batchReset(address[] calldata accounts) external onlyOwner {
+        uint256 length = accounts.length;
+        if (length == 0) revert InvalidArrayLength();
+
+        for (uint256 i = 0; i < length; i++) {
+            address account = accounts[i];
+            if (account == address(0)) revert ZeroAddress();
+
+            isAddressAllowed[account] = false;
+            isAddressDenied[account] = false;
+
+            emit AddressRestrictionRemoved(account);
+        }
+
+        emit BatchAddressRestrictionRemoved(length);
     }
 
     /**
@@ -93,18 +147,18 @@ contract KycRules is BaseRules, Ownable {
      * @return Whether the address is allowed
      */
     function isAllowed(address account) public view returns (bool) {
+        // If explicitly denied, always return false (blacklist supersedes whitelist)
+        if (isAddressDenied[account]) {
+            return false;
+        }
+
         // If explicitly allowed, return true
         if (isAddressAllowed[account]) {
             return true;
         }
 
-        // If explicitly denied, return false
-        if (isAddressDenied[account]) {
-            return false;
-        }
-
-        // Otherwise, return the default state
-        return defaultAllow;
+        // Otherwise, return false (blacklist-default)
+        return false;
     }
 
     /**
