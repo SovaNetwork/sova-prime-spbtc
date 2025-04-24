@@ -25,16 +25,14 @@ interface IStrategy {
 
     // Initialization
     function initialize(
+        string calldata name,
+        string calldata symbol,
         address manager,
         address asset,
+        address rules,
         bytes memory initData
     ) external;
 
-    function deployToken(
-        string calldata name,
-        string calldata symbol,
-        address rules
-    ) external;
 
     // Role Management
     function manager() external view returns (address);

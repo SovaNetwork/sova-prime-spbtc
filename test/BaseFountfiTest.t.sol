@@ -83,18 +83,21 @@ abstract contract BaseFountfiTest is Test {
     ) internal returns (MockStrategy, tRWA) {
         // Init strategy and get token
         vm.startPrank(owner);
-        
+
         // Create a fresh MockRules and ensure it's initialized to allow by default
         MockRules mockRulesLocal = new MockRules(true, "Test rejection");
-        
+
         // Deploy a new strategy
         MockStrategy strategy = new MockStrategy(owner);
         strategy.initialize(
+            name,
+            symbol,
             manager,
             address(usdc),
+            address(mockRulesLocal),
             ""
         );
-        
+
         // Get the token the strategy created
         tRWA token = tRWA(strategy.sToken());
         vm.stopPrank();
@@ -125,10 +128,10 @@ abstract contract BaseFountfiTest is Test {
 
         // Deploy mock role manager
         MockRoleManager roleManager = new MockRoleManager(owner);
-        
+
         // Deploy rules with mock role manager
         kycRules = new KycRules(address(roleManager));
-        
+
         // Grant KYC roles to the owner for testing
         roleManager.grantRole(owner, roleManager.KYC_ADMIN());
         roleManager.grantRole(owner, roleManager.KYC_OPERATOR());

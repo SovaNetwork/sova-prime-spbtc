@@ -113,8 +113,7 @@ contract ModifiedRegistry is Ownable {
         strategy = _implementation.clone();
 
         // Initialize the strategy
-        IStrategy(strategy).initialize(_manager, _asset, _initData);
-        IStrategy(strategy).deployToken(_name, _symbol, _rules);
+        IStrategy(strategy).initialize(_name, _symbol, _manager, _asset, _rules, _initData);
 
         // Register strategy in the factory
         allStrategies.push(strategy);
@@ -123,7 +122,7 @@ contract ModifiedRegistry is Ownable {
         token = IStrategy(strategy).sToken();
 
         emit Deploy(strategy, token, _asset);
-        
+
         // Mark that we reached the return statement
         returnStatementCovered = true;
         emit ReturnStatementExecuted();
@@ -141,46 +140,46 @@ contract RegistryCoverageTest is Test {
     address public owner;
     address public admin;
     address public manager;
-    
+
     // Mock contracts
     MockERC20 public asset;
     MockStrategy public strategyImpl;
     MockRules public rules;
-    
+
     function setUp() public {
         // Setup addresses
         owner = makeAddr("owner");
         admin = makeAddr("admin");
         manager = makeAddr("manager");
-        
+
         // Deploy registry
         vm.startPrank(owner);
         registry = new ModifiedRegistry();
-        
+
         // Deploy mock contracts
         asset = new MockERC20("USD Coin", "USDC", 6);
         rules = new MockRules(true, "Mock rejection");
         strategyImpl = new MockStrategy(owner);
-        
+
         // Register all components
         registry.setStrategy(address(strategyImpl), true);
         registry.setRules(address(rules), true);
         registry.setAsset(address(asset), true);
-        
+
         vm.stopPrank();
     }
-    
+
     // Test specifically targeting the return statement for coverage
     function test_Deploy_ReturnStatementCoverage() public {
         vm.startPrank(owner);
-        
+
         // Explicitly check that the return statement has not been covered yet
         assertFalse(registry.returnStatementCovered());
-        
+
         // Deploy a strategy - this should execute the return statement
         vm.expectEmit(false, false, false, false);
         emit ModifiedRegistry.ReturnStatementExecuted();
-        
+
         (address strategy, address token) = registry.deploy(
             "Coverage Test",
             "COV",
@@ -190,18 +189,18 @@ contract RegistryCoverageTest is Test {
             manager,
             ""
         );
-        
+
         // Verify the return statement was covered
         assertTrue(registry.returnStatementCovered());
-        
+
         // Verify return values are valid
         assertTrue(strategy != address(0));
         assertTrue(token != address(0));
-        
+
         // Test usage of both return values
         console2.log("Strategy:", strategy);
         console2.log("Token:", token);
-        
+
         vm.stopPrank();
     }
 }

@@ -25,8 +25,11 @@ contract MockStrategy is IStrategy {
      * @param asset_ Address of the underlying asset
      */
     function initialize(
+        string calldata name_,
+        string calldata symbol_,
         address manager_,
         address asset_,
+        address rules_,
         bytes memory
     ) external {
         if (_initialized) revert AlreadyInitialized();
@@ -34,6 +37,9 @@ contract MockStrategy is IStrategy {
 
         if (manager_ == address(0)) revert InvalidAddress();
         if (asset_ == address(0)) revert InvalidAddress();
+        if (rules_ == address(0)) revert InvalidRules();
+
+        sToken = address(new tRWA(name_, symbol_, asset_, address(this), rules_));
 
         deployer = msg.sender;
         manager = manager_;
@@ -41,24 +47,6 @@ contract MockStrategy is IStrategy {
         _balance = 0;
 
         emit StrategyInitialized(address(0), manager_, asset_, sToken);
-    }
-
-    /**
-     * @notice Deploy the tRWA token
-     * @param name Token name
-     * @param symbol Token symbol
-     * @param rules Rules address
-     */
-    function deployToken(
-        string calldata name,
-        string calldata symbol,
-        address rules
-    ) external {
-        if (msg.sender != deployer) revert Unauthorized();
-        if (sToken != address(0)) revert TokenAlreadyDeployed();
-        if (rules == address(0)) revert InvalidRules();
-
-        sToken = address(new tRWA(name, symbol, asset, address(this), rules));
     }
 
     /**

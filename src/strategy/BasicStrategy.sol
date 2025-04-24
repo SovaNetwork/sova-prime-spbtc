@@ -47,8 +47,11 @@ abstract contract BasicStrategy is IStrategy, RoleManaged {
      * @param asset_ Address of the underlying asset
      */
     function initialize(
+        string calldata name_,
+        string calldata symbol_,
         address manager_,
         address asset_,
+        address rules_,
         bytes memory // initData
     ) public virtual {
         // Prevent re-initialization
@@ -57,34 +60,13 @@ abstract contract BasicStrategy is IStrategy, RoleManaged {
 
         if (manager_ == address(0)) revert InvalidAddress();
         if (asset_ == address(0)) revert InvalidAddress();
+        if (rules_ == address(0)) revert InvalidRules();
 
         // Set up strategy configuration
         // Unlike other protocol roles, only a single manager is allowed
         deployer = msg.sender;
         manager = manager_;
         asset = asset_;
-
-        emit StrategyInitialized(address(0), manager_, asset_, sToken);
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                            ADMIN MANAGEMENT
-    //////////////////////////////////////////////////////////////*/
-
-    /**
-     * @notice Deploy the tRWA token
-     * @param name_ Token name
-     * @param symbol_ Token symbol
-     * @param rules_ Rules address
-     */
-    function deployToken(
-        string calldata name_,
-        string calldata symbol_,
-        address rules_
-    ) external virtual override {
-        if (msg.sender != deployer) revert Unauthorized();
-        if (sToken != address(0)) revert TokenAlreadyDeployed();
-        if (rules_ == address(0)) revert InvalidRules();
 
         tRWA newToken = new tRWA(
             name_,
@@ -98,6 +80,11 @@ abstract contract BasicStrategy is IStrategy, RoleManaged {
 
         emit StrategyInitialized(address(0), manager, asset, sToken);
     }
+
+    /*//////////////////////////////////////////////////////////////
+                            ADMIN MANAGEMENT
+    //////////////////////////////////////////////////////////////*/
+
     /**
      * @notice Allow admin to change the manager
      * @param newManager The new manager

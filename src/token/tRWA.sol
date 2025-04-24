@@ -73,8 +73,8 @@ contract tRWA is ERC4626, ItRWA {
         _symbol = symbol_;
         _asset = asset_;
 
-        strategy = IStrategy(strategy);
-        rules = IRules(rules);
+        strategy = IStrategy(strategy_);
+        rules = IRules(rules_);
     }
 
     /**

@@ -178,8 +178,7 @@ contract Registry is RoleManaged {
         strategy = _implementation.clone();
 
         // Initialize the strategy
-        IStrategy(strategy).initialize(_manager, _asset, _initData);
-        IStrategy(strategy).deployToken(_name, _symbol, _rules);
+        IStrategy(strategy).initialize(_name, _symbol, _manager, _asset, _rules, _initData);
 
         // Register strategy in the factory
         allStrategies.push(strategy);

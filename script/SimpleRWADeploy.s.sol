@@ -9,6 +9,7 @@ import {PriceOracleReporter} from "../src/reporter/PriceOracleReporter.sol";
 import {ReportedStrategy} from "../src/strategy/ReportedStrategy.sol";
 import {SubscriptionController} from "../src/controllers/SubscriptionController.sol";
 import {RoleManager} from "../src/auth/RoleManager.sol";
+import {BasicStrategy} from "../src/strategy/BasicStrategy.sol";
 
 contract SimpleRWADeployScript is Script {
     // Management addresses
@@ -31,9 +32,10 @@ contract SimpleRWADeployScript is Script {
     function setUp() public {}
 
     function run() public {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        // Use the private key directly from the command line parameter
+        uint256 deployerPrivateKey = 0x267aedad5dceb451cc0a93b451dd21726b4a23bb83d946c9d0e0e2587069684a;
         address deployer = vm.addr(deployerPrivateKey);
-
+        
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy core infrastructure
@@ -171,8 +173,9 @@ contract SimpleRWADeployScript is Script {
     }
 
     function configureController() internal {
-        // We no longer need to grant roles here as they are granted during controller construction
-        // This function is kept for future configuration needs
+        // Set up the token with the controller reference
+        BasicStrategy(strategy).configureController(controller);
+        console.log("Controller configured for strategy");
     }
 
     function logDeployedContracts() internal view {
