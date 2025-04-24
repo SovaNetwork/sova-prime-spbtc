@@ -4,7 +4,10 @@ pragma solidity ^0.8.25;
 import {LibClone} from "solady/utils/LibClone.sol";
 import {IStrategy} from "../strategy/IStrategy.sol";
 import {IRules} from "../rules/IRules.sol";
+import {IRulesEngine} from "../rules/IRulesEngine.sol";
 import {RoleManaged} from "../auth/RoleManaged.sol";
+import {SubscriptionController} from "../controllers/SubscriptionController.sol";
+import {SubscriptionControllerRule} from "../rules/SubscriptionControllerRule.sol";
 /**
  * @title Registry
  * @notice Central registry for strategies, rules, assets, and reporters
@@ -21,11 +24,15 @@ contract Registry is RoleManaged {
     // Deployed contracts registry
     address[] public allStrategies;
 
+    // Controller tracking
+    mapping(address => address) public strategyControllers;
+
     // Events
     event SetStrategy(address indexed implementation, bool allowed);
     event SetRules(address indexed implementation, bool allowed);
     event SetAsset(address indexed asset, bool allowed);
     event Deploy(address indexed strategy, address indexed sToken, address indexed asset);
+    event DeployWithController(address indexed strategy, address indexed sToken, address indexed controller);
 
     // Errors
     error ZeroAddress();
@@ -92,6 +99,84 @@ contract Registry is RoleManaged {
         address _manager,
         bytes memory _initData
     ) external onlyRole(roleManager.STRATEGY_ADMIN()) returns (address strategy, address token) {
+        return deployBase(_name, _symbol, _implementation, _asset, _rules, _manager, _initData);
+    }
+
+    /**
+     * @notice Deploy a strategy with a subscription controller
+     * @param _name Token name
+     * @param _symbol Token symbol
+     * @param _implementation Strategy implementation address
+     * @param _asset Asset address
+     * @param _rules Rules address
+     * @param _manager Manager address for the strategy
+     * @param _managerAddresses Additional manager addresses for the controller
+     * @param _initData Initialization data
+     * @param initialCapacity Initial subscription capacity
+     * @return strategy Address of the deployed strategy
+     * @return token Address of the deployed tRWA token
+     * @return controller Address of the deployed controller
+     */
+    function deployWithController(
+        string memory _name,
+        string memory _symbol,
+        address _implementation,
+        address _asset,
+        address _rules,
+        address _manager,
+        address[] memory _managerAddresses,
+        bytes memory _initData,
+        uint256 initialCapacity
+    ) external onlyRole(roleManager.STRATEGY_ADMIN()) returns (address strategy, address token, address controller) {
+        // Deploy strategy and token
+        (strategy, token) = deployBase(_name, _symbol, _implementation, _asset, _rules, _manager, _initData);
+
+        // Deploy controller with main manager and additional managers
+        controller = address(new SubscriptionController(
+            token,
+            _manager,
+            _managerAddresses
+        ));
+
+        // Register controller
+        strategyControllers[strategy] = controller;
+
+        // Set up the token with the controller reference
+        IStrategy(strategy).configureController(controller);
+
+        // Deploy controller rule and add it to the rules
+        address controllerRule = address(new SubscriptionControllerRule(controller));
+
+        // Add controller rule to the rules engine
+        // Note: This assumes the rules parameter is a RulesEngine that can have rules added
+        IRulesEngine(_rules).addRule(controllerRule, 100); // Use priority 100 (lower executes first)
+
+        emit DeployWithController(strategy, token, controller);
+
+        return (strategy, token, controller);
+    }
+
+    /**
+     * @notice Base deployment function for strategies
+     * @param _name Token name
+     * @param _symbol Token symbol
+     * @param _implementation Strategy implementation address
+     * @param _asset Asset address
+     * @param _rules Rules address
+     * @param _manager Manager address
+     * @param _initData Initialization data
+     * @return strategy Deployed strategy address
+     * @return token Deployed token address
+     */
+    function deployBase(
+        string memory _name,
+        string memory _symbol,
+        address _implementation,
+        address _asset,
+        address _rules,
+        address _manager,
+        bytes memory _initData
+    ) internal returns (address strategy, address token) {
         if (!allowedRules[_rules]) revert UnauthorizedRule();
         if (!allowedAssets[_asset]) revert UnauthorizedAsset();
         if (!allowedStrategies[_implementation]) revert UnauthorizedStrategy();

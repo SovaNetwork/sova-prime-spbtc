@@ -13,8 +13,10 @@ contract MockStrategy is IStrategy {
     address public manager;
     address public asset;
     address public sToken;
+    address public controller;
     uint256 private _balance;
     bool private _initialized;
+    bool private _controllerConfigured;
 
     /**
      * @notice Initialize the strategy
@@ -95,5 +97,27 @@ contract MockStrategy is IStrategy {
         address oldManager = manager;
         manager = newManager;
         emit ManagerChange(oldManager, newManager);
+    }
+    
+    /**
+     * @notice Configure the controller for this strategy
+     * @param _controller Controller address
+     */
+    function configureController(address _controller) external {
+        // In a real implementation, this would have proper access control
+        
+        // Can only be configured once
+        if (_controllerConfigured) revert AlreadyInitialized();
+        
+        // Validate controller address
+        if (_controller == address(0)) revert InvalidAddress();
+        
+        controller = _controller;
+        _controllerConfigured = true;
+        
+        // Set controller reference in token (mock implementation)
+        // tRWA(sToken).setController(_controller);
+        
+        emit ControllerConfigured(_controller);
     }
 }

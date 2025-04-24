@@ -20,7 +20,7 @@
   - Tests: prefix with `test_` or `testFuzz_`
   - Deploy scripts: suffix with `.s.sol`
 - **Visibility**: Always declare explicitly (public, internal, private)
-- **Error handling**: Use custom errors with revert or require statements
+- **Error handling**: Use named errors with revert statements
 - **Documentation**: SPDX license identifier required for all files
 - **Events**: Emit events for important state changes
 

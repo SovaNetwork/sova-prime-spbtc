@@ -26,6 +26,7 @@ interface ItRWA {
     error RuleCheckFailed(string reason);
     error CallbackFailed();
     error tRWAUnauthorized();
+    error ControllerAlreadySet();
 
     // Logic contracts
     function strategy() external view returns (IStrategy);

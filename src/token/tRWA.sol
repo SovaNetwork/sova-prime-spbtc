@@ -44,6 +44,7 @@ contract tRWA is ERC4626, ItRWA {
     // Logic contracts
     IStrategy public strategy;
     IRules public immutable rules;
+    address public controller;
 
     // Events for withdrawal queueing
     event WithdrawalQueued(address indexed user, uint256 assets, uint256 shares);
@@ -74,6 +75,19 @@ contract tRWA is ERC4626, ItRWA {
 
         strategy = IStrategy(strategy);
         rules = IRules(rules);
+    }
+
+    /**
+     * @notice Set the controller address
+     * @param _controller Controller address
+     */
+    function setController(address _controller) external {
+        // Only callable once during initialization by strategy
+        if (msg.sender != address(strategy)) revert tRWAUnauthorized();
+        if (controller != address(0)) revert ControllerAlreadySet();
+        if (_controller == address(0)) revert InvalidAddress();
+
+        controller = _controller;
     }
 
     /**
@@ -297,6 +311,21 @@ contract tRWA is ERC4626, ItRWA {
 
         SafeTransferLib.safeTransferFrom(asset(), by, address(this), assets);
         _mint(to, shares);
+
+        // Notify subscription controller if set
+        if (controller != address(0)) {
+            // Pack data for callback
+            bytes memory callbackData = abi.encode(to, assets);
+
+            // Use callback pattern
+            if (controller.code.length > 0) {
+                try ICallbackReceiver(controller).operationCallback(
+                    keccak256("DEPOSIT"),
+                    true,
+                    callbackData
+                ) {} catch {}
+            }
+        }
 
         emit Deposit(by, to, assets, shares);
     }

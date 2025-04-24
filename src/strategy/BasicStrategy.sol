@@ -24,9 +24,11 @@ abstract contract BasicStrategy is IStrategy, RoleManaged {
     address public manager;
     address public asset;
     address public sToken;
+    address public controller;
 
-    // Initialization flag to prevent re-initialization
+    // Initialization flags to prevent re-initialization
     bool private _initialized;
+    bool private _controllerConfigured;
 
     /*//////////////////////////////////////////////////////////////
                             INITIALIZATION
@@ -186,6 +188,27 @@ abstract contract BasicStrategy is IStrategy, RoleManaged {
         bytes calldata data
     ) external onlyManager returns (bool success, bytes memory returnData) {
         (success, returnData) = target.delegatecall(data);
+    }
+
+    /**
+     * @notice Configure the subscription controller for this strategy
+     * @param _controller Controller address
+     */
+    function configureController(address _controller) external {
+        // Only callable by the manager - in production this would be the registry
+        if (msg.sender != manager) revert Unauthorized();
+        // Can only be configured once
+        if (_controllerConfigured) revert AlreadyInitialized();
+        // Validate controller address
+        if (_controller == address(0)) revert InvalidAddress();
+
+        controller = _controller;
+        _controllerConfigured = true;
+
+        // Set controller reference in token
+        tRWA(sToken).setController(_controller);
+
+        emit ControllerConfigured(_controller);
     }
 
     /*//////////////////////////////////////////////////////////////

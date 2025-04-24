@@ -21,6 +21,7 @@ interface IStrategy {
     event ManagerChange(address indexed oldManager, address indexed newManager);
     event Call(address indexed target, uint256 value, bytes data);
     event StrategyInitialized(address indexed admin, address indexed manager, address indexed asset, address sToken);
+    event ControllerConfigured(address indexed controller);
 
     // Initialization
     function initialize(
@@ -44,4 +45,7 @@ interface IStrategy {
     
     // Transfer assets from the strategy to a user
     function transferAssets(address user, uint256 amount) external;
+    
+    // Configure the controller for this strategy
+    function configureController(address controller) external;
 }
