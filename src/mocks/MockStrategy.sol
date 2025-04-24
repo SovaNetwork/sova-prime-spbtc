@@ -13,6 +13,7 @@ contract MockStrategy is IStrategy {
     address public manager;
     address public asset;
     address public sToken;
+    address public deployer;
     address public controller;
     uint256 private _balance;
     bool private _initialized;
@@ -20,18 +21,12 @@ contract MockStrategy is IStrategy {
 
     /**
      * @notice Initialize the strategy
-     * @param name_ Token name
-     * @param symbol_ Token symbol
      * @param manager_ Address of the manager
      * @param asset_ Address of the underlying asset
-     * @param rules_ Rules address
      */
     function initialize(
-        string calldata name_,
-        string calldata symbol_,
         address manager_,
         address asset_,
-        address rules_,
         bytes memory
     ) external {
         if (_initialized) revert AlreadyInitialized();
@@ -39,23 +34,31 @@ contract MockStrategy is IStrategy {
 
         if (manager_ == address(0)) revert InvalidAddress();
         if (asset_ == address(0)) revert InvalidAddress();
-        if (rules_ == address(0)) revert InvalidRules();
 
+        deployer = msg.sender;
         manager = manager_;
         asset = asset_;
-
-        tRWA newToken = new tRWA(
-            name_,
-            symbol_,
-            asset_,
-            address(this),
-            rules_
-        );
-
-        sToken = address(newToken);
         _balance = 0;
 
         emit StrategyInitialized(address(0), manager_, asset_, sToken);
+    }
+
+    /**
+     * @notice Deploy the tRWA token
+     * @param name Token name
+     * @param symbol Token symbol
+     * @param rules Rules address
+     */
+    function deployToken(
+        string calldata name,
+        string calldata symbol,
+        address rules
+    ) external {
+        if (msg.sender != deployer) revert Unauthorized();
+        if (sToken != address(0)) revert TokenAlreadyDeployed();
+        if (rules == address(0)) revert InvalidRules();
+
+        sToken = address(new tRWA(name, symbol, asset, address(this), rules));
     }
 
     /**
@@ -73,7 +76,7 @@ contract MockStrategy is IStrategy {
     function balance() external view returns (uint256) {
         return _balance;
     }
-    
+
     /**
      * @notice Transfer assets to a user
      * @param user Address to transfer assets to
@@ -82,10 +85,10 @@ contract MockStrategy is IStrategy {
     function transferAssets(address user, uint256 amount) external {
         // Only callable by token or manager
         if (msg.sender != sToken && msg.sender != manager) revert Unauthorized();
-        
+
         // Simulate asset transfer
         _balance -= amount;
-        
+
         // Mock the actual transfer since this is a test contract
         // In a real implementation, this would use SafeTransferLib to transfer the asset
     }
@@ -93,31 +96,31 @@ contract MockStrategy is IStrategy {
     function setManager(address newManager) external {
         // In a real implementation, this would be restricted to the appropriate role
         if (msg.sender != manager) revert Unauthorized();
-        
+
         address oldManager = manager;
         manager = newManager;
         emit ManagerChange(oldManager, newManager);
     }
-    
+
     /**
      * @notice Configure the controller for this strategy
      * @param _controller Controller address
      */
     function configureController(address _controller) external {
         // In a real implementation, this would have proper access control
-        
+
         // Can only be configured once
         if (_controllerConfigured) revert AlreadyInitialized();
-        
+
         // Validate controller address
         if (_controller == address(0)) revert InvalidAddress();
-        
+
         controller = _controller;
         _controllerConfigured = true;
-        
+
         // Set controller reference in token (mock implementation)
         // tRWA(sToken).setController(_controller);
-        
+
         emit ControllerConfigured(_controller);
     }
 }

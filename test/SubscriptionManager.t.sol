@@ -37,12 +37,13 @@ contract SubscriptionManagerTest is BaseFountfiTest {
         // Deploy strategy
         strategy = new MockStrategy(owner);
         strategy.initialize(
-            "Tokenized RWA",
-            "tRWA",
             manager,
             address(usdc),
-            address(subscriptionRules),
             ""
+        );
+        
+        // Deploy the token
+        strategy.deployToken("Tokenized RWA", "tRWA", address(subscriptionRules)
         );
         
         // Create tRWA with subscription rules

@@ -141,15 +141,8 @@ contract Registry is RoleManaged {
         // Register controller
         strategyControllers[strategy] = controller;
 
-        // Set up the token with the controller reference
-        IStrategy(strategy).configureController(controller);
-
         // Deploy controller rule and add it to the rules
         address controllerRule = address(new SubscriptionControllerRule(controller));
-
-        // Add controller rule to the rules engine
-        // Note: This assumes the rules parameter is a RulesEngine that can have rules added
-        IRulesEngine(_rules).addRule(controllerRule, 100); // Use priority 100 (lower executes first)
 
         emit DeployWithController(strategy, token, controller);
 
@@ -185,7 +178,8 @@ contract Registry is RoleManaged {
         strategy = _implementation.clone();
 
         // Initialize the strategy
-        IStrategy(strategy).initialize(_name, _symbol, _manager, _asset, _rules, _initData);
+        IStrategy(strategy).initialize(_manager, _asset, _initData);
+        IStrategy(strategy).deployToken(_name, _symbol, _rules);
 
         // Register strategy in the factory
         allStrategies.push(strategy);

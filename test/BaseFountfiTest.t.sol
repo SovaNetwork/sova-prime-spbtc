@@ -90,11 +90,8 @@ abstract contract BaseFountfiTest is Test {
         // Deploy a new strategy
         MockStrategy strategy = new MockStrategy(owner);
         strategy.initialize(
-            name,
-            symbol,
             manager,
             address(usdc),
-            address(mockRulesLocal),
             ""
         );
         

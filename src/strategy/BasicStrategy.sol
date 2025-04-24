@@ -21,6 +21,7 @@ abstract contract BasicStrategy is IStrategy, RoleManaged {
                             STATE
     //////////////////////////////////////////////////////////////*/
 
+    address public deployer;
     address public manager;
     address public asset;
     address public sToken;
@@ -42,18 +43,12 @@ abstract contract BasicStrategy is IStrategy, RoleManaged {
 
     /**
      * @notice Initialize the strategy
-     * @param name_ Token name
-     * @param symbol_ Token symbol
      * @param manager_ Address of the manager
      * @param asset_ Address of the underlying asset
-     * @param rules_ Rules address
      */
     function initialize(
-        string calldata name_,
-        string calldata symbol_,
         address manager_,
         address asset_,
-        address rules_,
         bytes memory // initData
     ) public virtual {
         // Prevent re-initialization
@@ -62,23 +57,12 @@ abstract contract BasicStrategy is IStrategy, RoleManaged {
 
         if (manager_ == address(0)) revert InvalidAddress();
         if (asset_ == address(0)) revert InvalidAddress();
-        if (rules_ == address(0)) revert InvalidRules();
 
         // Set up strategy configuration
         // Unlike other protocol roles, only a single manager is allowed
+        deployer = msg.sender;
         manager = manager_;
         asset = asset_;
-
-        // Deploy associated tRWA token
-        tRWA newToken = new tRWA(
-            name_,
-            symbol_,
-            asset_,
-            address(this),
-            rules_
-        );
-
-        sToken = address(newToken);
 
         emit StrategyInitialized(address(0), manager_, asset_, sToken);
     }
@@ -87,6 +71,33 @@ abstract contract BasicStrategy is IStrategy, RoleManaged {
                             ADMIN MANAGEMENT
     //////////////////////////////////////////////////////////////*/
 
+    /**
+     * @notice Deploy the tRWA token
+     * @param name_ Token name
+     * @param symbol_ Token symbol
+     * @param rules_ Rules address
+     */
+    function deployToken(
+        string calldata name_,
+        string calldata symbol_,
+        address rules_
+    ) external virtual override {
+        if (msg.sender != deployer) revert Unauthorized();
+        if (sToken != address(0)) revert TokenAlreadyDeployed();
+        if (rules_ == address(0)) revert InvalidRules();
+
+        tRWA newToken = new tRWA(
+            name_,
+            symbol_,
+            asset,
+            address(this),
+            rules_
+        );
+
+        sToken = address(newToken);
+
+        emit StrategyInitialized(address(0), manager, asset, sToken);
+    }
     /**
      * @notice Allow admin to change the manager
      * @param newManager The new manager

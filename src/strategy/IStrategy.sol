@@ -13,7 +13,7 @@ interface IStrategy {
     error Unauthorized();
     error CallRevert(bytes returnData);
     error AlreadyInitialized();
-
+    error TokenAlreadyDeployed();
     // Events
     event PendingAdminChange(address indexed oldAdmin, address indexed newAdmin);
     event AdminChange(address indexed oldAdmin, address indexed newAdmin);
@@ -25,12 +25,15 @@ interface IStrategy {
 
     // Initialization
     function initialize(
-        string calldata name,
-        string calldata symbol,
         address manager,
         address asset,
-        address rules,
         bytes memory initData
+    ) external;
+
+    function deployToken(
+        string calldata name,
+        string calldata symbol,
+        address rules
     ) external;
 
     // Role Management
@@ -42,10 +45,10 @@ interface IStrategy {
 
     // Asset Management
     function balance() external view returns (uint256);
-    
+
     // Transfer assets from the strategy to a user
     function transferAssets(address user, uint256 amount) external;
-    
+
     // Configure the controller for this strategy
     function configureController(address controller) external;
 }

@@ -42,7 +42,7 @@ contract tRWA is ERC4626, ItRWA {
     address private immutable _asset;
 
     // Logic contracts
-    IStrategy public strategy;
+    IStrategy public immutable strategy;
     IRules public immutable rules;
     address public controller;
 
@@ -83,7 +83,7 @@ contract tRWA is ERC4626, ItRWA {
      */
     function setController(address _controller) external {
         // Only callable once during initialization by strategy
-        if (msg.sender != address(strategy)) revert tRWAUnauthorized();
+        if (msg.sender != address(strategy)) revert tRWAUnauthorized(msg.sender, address(strategy));
         if (controller != address(0)) revert ControllerAlreadySet();
         if (_controller == address(0)) revert InvalidAddress();
 
@@ -374,9 +374,10 @@ contract tRWA is ERC4626, ItRWA {
      */
     function burn(address from, uint256 amount) external {
         // Only the strategy or authorized contracts can call this
-        if (msg.sender != address(strategy) &&
-            !rules.evaluateTransfer(address(this), from, address(0), amount).approved) {
-            revert tRWAUnauthorized();
+        IRules.RuleResult memory result = rules.evaluateTransfer(address(this), from, address(0), amount);
+
+        if (!result.approved) {
+            revert RuleCheckFailed(result.reason);
         }
 
         _burn(from, amount);

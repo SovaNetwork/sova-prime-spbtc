@@ -25,7 +25,7 @@ interface ItRWA {
     error AssetMismatch();
     error RuleCheckFailed(string reason);
     error CallbackFailed();
-    error tRWAUnauthorized();
+    error tRWAUnauthorized(address caller, address strategy);
     error ControllerAlreadySet();
 
     // Logic contracts
@@ -34,19 +34,19 @@ interface ItRWA {
 
     // Callback-enabled operations
     function deposit(
-        uint256 assets, 
+        uint256 assets,
         address receiver,
         bool useCallback,
         bytes calldata callbackData
     ) external returns (uint256 shares);
-    
+
     function mint(
-        uint256 shares, 
+        uint256 shares,
         address receiver,
         bool useCallback,
         bytes calldata callbackData
     ) external returns (uint256 assets);
-    
+
     function withdraw(
         uint256 assets,
         address receiver,
@@ -54,7 +54,7 @@ interface ItRWA {
         bool useCallback,
         bytes calldata callbackData
     ) external returns (uint256 shares);
-    
+
     function redeem(
         uint256 shares,
         address receiver,

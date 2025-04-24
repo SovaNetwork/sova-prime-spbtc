@@ -91,7 +91,6 @@ contract ModifiedRegistry is Ownable {
      * @param _implementation Strategy implementation
      * @param _asset Asset address
      * @param _rules Rules address
-     * @param _admin Admin address for the strategy
      * @param _manager Manager address for the strategy
      * @param _initData Initialization data
      * @return strategy Address of the deployed strategy
@@ -103,7 +102,6 @@ contract ModifiedRegistry is Ownable {
         address _implementation,
         address _asset,
         address _rules,
-        address _admin,
         address _manager,
         bytes memory _initData
     ) external onlyOwner returns (address strategy, address token) {
@@ -115,7 +113,8 @@ contract ModifiedRegistry is Ownable {
         strategy = _implementation.clone();
 
         // Initialize the strategy
-        IStrategy(strategy).initialize(_name, _symbol, _manager, _asset, _rules, _initData);
+        IStrategy(strategy).initialize(_manager, _asset, _initData);
+        IStrategy(strategy).deployToken(_name, _symbol, _rules);
 
         // Register strategy in the factory
         allStrategies.push(strategy);
@@ -188,7 +187,6 @@ contract RegistryCoverageTest is Test {
             address(strategyImpl),
             address(asset),
             address(rules),
-            admin,
             manager,
             ""
         );
