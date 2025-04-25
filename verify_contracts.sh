@@ -131,7 +131,7 @@ if command -v jq &> /dev/null; then
                     2)
                         # Third contract in deployWithController is the SubscriptionController
                         contract_name="SubscriptionController"
-                        contract_path="src/managers/SubscriptionController.sol"
+                        contract_path="src/controllers/SubscriptionController.sol"
                         ;;
                     3)
                         # Fourth contract in deployWithController is the SubscriptionControllerRule
