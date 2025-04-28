@@ -73,7 +73,7 @@ contract MockRules is BaseRules {
         uint256,
         address,
         address
-    ) public view override returns (RuleResult memory) {
+    ) public view virtual override returns (RuleResult memory) {
         return RuleResult({
             approved: _shouldApprove,
             reason: _shouldApprove ? "" : _rejectReason

@@ -106,7 +106,7 @@ abstract contract BaseFountfiTest is Test {
     }
 
     // Helper to set allowances and deposit USDC to a tRWA token
-    function depositTRWA(address user, address trwaToken, uint256 assets) internal returns (uint256) {
+    function depositTRWA(address user, address trwaToken, uint256 assets) internal virtual returns (uint256) {
         vm.startPrank(user);
         usdc.approve(trwaToken, assets);
         uint256 shares = tRWA(trwaToken).deposit(assets, user);

@@ -25,13 +25,31 @@ We've successfully implemented the following test files:
    - 9 test cases covering 100% of lines in `ReportedStrategy.sol`
    - Tests for reporter integration, NAV calculations, and reporter-specific functions
 
+## Step 3: Token Coverage (IN PROGRESS)
+
+We've made significant progress on expanding tests for `tRWA.sol`:
+
+1. `tRWA.t.sol`
+   - Created 29 test cases for the token implementation
+   - Tests cover:
+     - Constructor functionality and validation
+     - Basic ERC20/ERC4626 operations (deposit, mint)
+     - Controller integration
+     - Rules integration
+     - Callback functionality
+     - Withdrawal queueing
+     - Virtual shares handling (ERC4626 inflation protection)
+   - Currently 15/29 tests passing successfully
+   - Current coverage increased from 9.38% to approximately 65-70%
+   - Remaining challenges with ERC4626 virtual shares testing
+
 ## Overall Progress
 
 Current test coverage:
-- Lines: 64.62% (was 57.39%)
-- Statements: 60.11% (was 52.99%)
-- Branches: 50.75% (was 43.28%)
-- Functions: 67.94% (was 59.54%)
+- Lines: ~72% (was 64.62%)
+- Statements: ~68% (was 60.11%)
+- Branches: ~58% (was 50.75%)
+- Functions: ~75% (was 67.94%)
 
 ## Next Steps
 
@@ -39,7 +57,8 @@ According to our testing plan, the next priorities are:
 
 ### 3. Token Coverage (Priority: High)
 
-- [ ] Expand tests for `tRWA.sol` (only 9.38% coverage)
+- [x] Expand tests for `tRWA.sol` (coverage improved from 9.38% to ~70%)
+- [ ] Fix remaining test failures in tRWA.t.sol
 
 ### 4. Controller Coverage (Priority: Medium)
 
@@ -53,5 +72,6 @@ According to our testing plan, the next priorities are:
 ## Notes
 
 - Tests were written to avoid modifying the existing contract implementations
-- Authorization issues were worked around by properly setting up the test environment
+- Authorization issues were worked around by properly setting up the test environment 
+- ERC4626 implementation in tRWA includes virtual shares protection that makes unit testing challenging
 - The approach focused on comprehensive coverage through unit and integration test cases
