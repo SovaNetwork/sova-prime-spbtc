@@ -44,7 +44,7 @@ The Fountfi protocol enables tokenization of Real World Assets (RWA) with:
 - **sToken**: Each strategy's tRWA token (share token)
 - **Rules**: Components enforcing compliance requirements
 - **Reporters**: Oracle contracts providing asset valuation
-- **Managers**: Handle subscriptiona nd withdrawal logic (investor caps, lockups, redemption queues)
+- **Controllers**: Handle subscription and withdrawal logic (investor caps, lockups, redemption queues)
 
 ## Implementation Notes
 - Each strategy deploys its own token during initialization

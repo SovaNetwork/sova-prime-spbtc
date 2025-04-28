@@ -1,0 +1,498 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.25;
+
+import {BaseFountfiTest} from "./BaseFountfiTest.t.sol";
+import {BasicStrategy} from "../src/strategy/BasicStrategy.sol";
+import {IStrategy} from "../src/strategy/IStrategy.sol";
+import {tRWA} from "../src/token/tRWA.sol";
+import {RoleManaged} from "../src/auth/RoleManaged.sol";
+import {MockRoleManager} from "../src/mocks/MockRoleManager.sol";
+import {MockRules} from "../src/mocks/MockRules.sol";
+import {MockERC20} from "../src/mocks/MockERC20.sol";
+
+/**
+ * @title TestableBasicStrategy
+ * @notice Concrete implementation of BasicStrategy for testing
+ */
+contract TestableBasicStrategy is BasicStrategy {
+    constructor(address _roleManager) BasicStrategy(_roleManager) {}
+
+    /**
+     * @notice Get the balance of the strategy
+     * @return The balance of the strategy in the underlying asset
+     */
+    function balance() external view override returns (uint256) {
+        return MockERC20(asset).balanceOf(address(this));
+    }
+
+    /**
+     * @notice Transfer assets from the strategy to a user
+     * @param user Address to transfer assets to
+     * @param amount Amount of assets to transfer
+     */
+    function transferAssets(address user, uint256 amount) external override onlyManager {
+        // Transfer the asset to the user
+        MockERC20(asset).transfer(user, amount);
+    }
+}
+
+/**
+ * @title BasicStrategyTest
+ * @notice Tests for BasicStrategy
+ */
+contract BasicStrategyTest is BaseFountfiTest {
+    // Test contracts
+    TestableBasicStrategy public strategy;
+    tRWA public token;
+    MockRoleManager public roleManager;
+    MockRules public strategyRules;
+    MockERC20 public daiToken;
+
+    // Strategy parameters
+    string constant TOKEN_NAME = "Test Token";
+    string constant TOKEN_SYMBOL = "TT";
+
+    function setUp() public override {
+        super.setUp();
+
+        vm.startPrank(owner);
+
+        // Deploy a new role manager for the strategy
+        roleManager = new MockRoleManager(owner);
+        
+        // Grant strategy admin role to owner
+        roleManager.grantRole(owner, roleManager.STRATEGY_ADMIN());
+        
+        // Deploy test DAI token as the asset
+        daiToken = new MockERC20("DAI Stablecoin", "DAI", 18);
+        
+        // Deploy rules
+        strategyRules = new MockRules(true, "");
+        
+        // Deploy the strategy
+        strategy = new TestableBasicStrategy(address(roleManager));
+        
+        // Initialize the strategy
+        strategy.initialize(
+            TOKEN_NAME,
+            TOKEN_SYMBOL,
+            manager,
+            address(daiToken),
+            address(strategyRules),
+            ""
+        );
+        
+        // Get the token that was deployed during initialization
+        token = tRWA(strategy.sToken());
+        
+        // Fund the strategy with some DAI
+        daiToken.mint(address(strategy), 1000 * 10**18);
+        
+        vm.stopPrank();
+    }
+    
+    function test_Initialization() public {
+        // Check that the strategy was initialized correctly
+        assertEq(strategy.deployer(), owner, "Deployer should be set to owner");
+        assertEq(strategy.manager(), manager, "Manager should be set correctly");
+        assertEq(strategy.asset(), address(daiToken), "Asset should be set correctly");
+        assertEq(address(token), strategy.sToken(), "Token should be set correctly");
+        
+        // Check that the token was initialized correctly
+        assertEq(token.name(), TOKEN_NAME, "Token name should be set correctly");
+        assertEq(token.symbol(), TOKEN_SYMBOL, "Token symbol should be set correctly");
+        assertEq(address(token.asset()), address(daiToken), "Token asset should be set correctly");
+        assertEq(address(token.strategy()), address(strategy), "Token strategy should be set correctly");
+    }
+    
+    function test_Reinitialization() public {
+        vm.startPrank(owner);
+        
+        // Attempting to reinitialize should revert
+        vm.expectRevert(IStrategy.AlreadyInitialized.selector);
+        strategy.initialize(
+            "New Name",
+            "NEW",
+            alice,
+            address(daiToken),
+            address(strategyRules),
+            ""
+        );
+        
+        vm.stopPrank();
+    }
+    
+    function test_InitWithInvalidParams() public {
+        vm.startPrank(owner);
+        
+        // Deploy a new strategy to test initialization with invalid params
+        TestableBasicStrategy newStrategy = new TestableBasicStrategy(address(roleManager));
+        
+        // Test zero address for manager
+        vm.expectRevert(IStrategy.InvalidAddress.selector);
+        newStrategy.initialize(
+            TOKEN_NAME,
+            TOKEN_SYMBOL,
+            address(0),
+            address(daiToken),
+            address(strategyRules),
+            ""
+        );
+        
+        // Test zero address for asset
+        vm.expectRevert(IStrategy.InvalidAddress.selector);
+        newStrategy.initialize(
+            TOKEN_NAME,
+            TOKEN_SYMBOL,
+            manager,
+            address(0),
+            address(strategyRules),
+            ""
+        );
+        
+        // Test zero address for rules
+        vm.expectRevert(IStrategy.InvalidRules.selector);
+        newStrategy.initialize(
+            TOKEN_NAME,
+            TOKEN_SYMBOL,
+            manager,
+            address(daiToken),
+            address(0),
+            ""
+        );
+        
+        vm.stopPrank();
+    }
+    
+    function test_ManagerChange() public {
+        vm.startPrank(owner);
+        
+        // Change manager to alice
+        strategy.setManager(alice);
+        assertEq(strategy.manager(), alice, "Manager should be changed to alice");
+        
+        // Change manager to address(0) to disable
+        strategy.setManager(address(0));
+        assertEq(strategy.manager(), address(0), "Manager should be disabled");
+        
+        vm.stopPrank();
+    }
+    
+    function test_ManagerChangeUnauthorized() public {
+        vm.startPrank(alice);
+        
+        // Alice is not authorized to change the manager
+        vm.expectRevert();
+        strategy.setManager(bob);
+        
+        vm.stopPrank();
+    }
+    
+    function test_Balance() public {
+        uint256 bal = strategy.balance();
+        assertEq(bal, 1000 * 10**18, "Balance should match minted amount");
+    }
+    
+    function test_TransferAssets() public {
+        vm.startPrank(manager);
+        
+        uint256 initialBob = daiToken.balanceOf(bob);
+        uint256 initialStrategy = daiToken.balanceOf(address(strategy));
+        
+        // Transfer 100 DAI to bob
+        strategy.transferAssets(bob, 100 * 10**18);
+        
+        assertEq(daiToken.balanceOf(bob), initialBob + 100 * 10**18, "Bob should receive 100 DAI");
+        assertEq(daiToken.balanceOf(address(strategy)), initialStrategy - 100 * 10**18, "Strategy should send 100 DAI");
+        
+        vm.stopPrank();
+    }
+    
+    function test_TransferAssetsUnauthorized() public {
+        vm.startPrank(alice);
+        
+        // Alice is not the manager
+        vm.expectRevert(IStrategy.Unauthorized.selector);
+        strategy.transferAssets(bob, 100 * 10**18);
+        
+        vm.stopPrank();
+    }
+    
+    function test_SendETH() public {
+        // Fund the strategy with some ETH
+        vm.deal(address(strategy), 1 ether);
+        
+        vm.startPrank(manager);
+        
+        uint256 initialBob = address(bob).balance;
+        
+        // Send all ETH to bob
+        strategy.sendETH(bob);
+        
+        assertEq(address(bob).balance, initialBob + 1 ether, "Bob should receive 1 ETH");
+        assertEq(address(strategy).balance, 0, "Strategy should have 0 ETH left");
+        
+        vm.stopPrank();
+    }
+    
+    function test_SendETHUnauthorized() public {
+        vm.deal(address(strategy), 1 ether);
+        
+        vm.startPrank(alice);
+        
+        // Alice is not the manager
+        vm.expectRevert(IStrategy.Unauthorized.selector);
+        strategy.sendETH(bob);
+        
+        vm.stopPrank();
+    }
+    
+    function test_SendToken() public {
+        // Deploy a new token
+        MockERC20 newToken = new MockERC20("New Token", "NEW", 18);
+        newToken.mint(address(strategy), 500 * 10**18);
+        
+        vm.startPrank(manager);
+        
+        uint256 initialBob = newToken.balanceOf(bob);
+        uint256 initialStrategy = newToken.balanceOf(address(strategy));
+        
+        // Send 200 tokens to bob
+        strategy.sendToken(address(newToken), bob, 200 * 10**18);
+        
+        assertEq(newToken.balanceOf(bob), initialBob + 200 * 10**18, "Bob should receive 200 tokens");
+        assertEq(newToken.balanceOf(address(strategy)), initialStrategy - 200 * 10**18, "Strategy should send 200 tokens");
+        
+        vm.stopPrank();
+    }
+    
+    function test_SendTokenUnauthorized() public {
+        vm.startPrank(alice);
+        
+        // Alice is not the manager
+        vm.expectRevert(IStrategy.Unauthorized.selector);
+        strategy.sendToken(address(daiToken), bob, 100 * 10**18);
+        
+        vm.stopPrank();
+    }
+    
+    function test_PullToken() public {
+        vm.startPrank(owner);
+        // Mint some tokens to charlie
+        daiToken.mint(charlie, 300 * 10**18);
+        vm.stopPrank();
+        
+        vm.startPrank(charlie);
+        daiToken.approve(address(strategy), 300 * 10**18);
+        vm.stopPrank();
+        
+        vm.startPrank(manager);
+        
+        uint256 initialCharlie = daiToken.balanceOf(charlie);
+        uint256 initialStrategy = daiToken.balanceOf(address(strategy));
+        
+        // Pull 200 tokens from charlie
+        strategy.pullToken(address(daiToken), charlie, 200 * 10**18);
+        
+        assertEq(daiToken.balanceOf(charlie), initialCharlie - 200 * 10**18, "Charlie should lose 200 tokens");
+        assertEq(daiToken.balanceOf(address(strategy)), initialStrategy + 200 * 10**18, "Strategy should gain 200 tokens");
+        
+        vm.stopPrank();
+    }
+    
+    function test_PullTokenUnauthorized() public {
+        vm.startPrank(alice);
+        
+        // Alice is not the manager
+        vm.expectRevert(IStrategy.Unauthorized.selector);
+        strategy.pullToken(address(daiToken), charlie, 100 * 10**18);
+        
+        vm.stopPrank();
+    }
+    
+    function test_SetAllowance() public {
+        vm.startPrank(manager);
+        
+        // Check initial allowance is 0
+        assertEq(daiToken.allowance(address(strategy), alice), 0, "Initial allowance should be 0");
+        
+        // Set allowance to 500 tokens
+        strategy.setAllowance(address(daiToken), alice, 500 * 10**18);
+        
+        assertEq(daiToken.allowance(address(strategy), alice), 500 * 10**18, "Allowance should be 500 tokens");
+        
+        vm.stopPrank();
+    }
+    
+    function test_SetAllowanceUnauthorized() public {
+        vm.startPrank(alice);
+        
+        // Alice is not the manager
+        vm.expectRevert(IStrategy.Unauthorized.selector);
+        strategy.setAllowance(address(daiToken), bob, 100 * 10**18);
+        
+        vm.stopPrank();
+    }
+    
+    function test_Call() public {
+        vm.startPrank(manager);
+        
+        // Setup a call to the token transfer function
+        bytes memory callData = abi.encodeWithSignature(
+            "transfer(address,uint256)",
+            bob,
+            100 * 10**18
+        );
+        
+        uint256 initialBob = daiToken.balanceOf(bob);
+        
+        // Call the transfer function
+        (bool success, bytes memory returnData) = strategy.call(address(daiToken), 0, callData);
+        
+        assertTrue(success, "Call should succeed");
+        assertEq(abi.decode(returnData, (bool)), true, "Transfer should return true");
+        assertEq(daiToken.balanceOf(bob), initialBob + 100 * 10**18, "Bob should receive 100 tokens");
+        
+        vm.stopPrank();
+    }
+    
+    function test_CallWithValue() public {
+        // Fund the strategy with ETH
+        vm.deal(address(strategy), 2 ether);
+        
+        // Deploy a simple payable contract
+        PayableTest payable_contract = new PayableTest();
+        
+        vm.startPrank(manager);
+        
+        // Call the contract with 1 ETH
+        (bool success, ) = strategy.call(address(payable_contract), 1 ether, "");
+        
+        assertTrue(success, "Call should succeed");
+        assertEq(address(payable_contract).balance, 1 ether, "Contract should receive 1 ETH");
+        
+        vm.stopPrank();
+    }
+    
+    function test_CallRevert() public {
+        vm.startPrank(manager);
+        
+        // Try to call a non-existent function that will revert
+        bytes memory callData = abi.encodeWithSignature("nonExistentFunction()");
+        
+        vm.expectRevert();
+        strategy.call(address(daiToken), 0, callData);
+        
+        vm.stopPrank();
+    }
+    
+    function test_CallZeroAddress() public {
+        vm.startPrank(manager);
+        
+        // Try to call address(0)
+        vm.expectRevert(IStrategy.InvalidAddress.selector);
+        strategy.call(address(0), 0, "");
+        
+        vm.stopPrank();
+    }
+    
+    function test_CallUnauthorized() public {
+        vm.startPrank(alice);
+        
+        // Alice is not the manager
+        vm.expectRevert(IStrategy.Unauthorized.selector);
+        strategy.call(address(daiToken), 0, "");
+        
+        vm.stopPrank();
+    }
+    
+    function test_DelegateCall() public {
+        // Deploy a test contract that we'll delegate call to
+        DelegateCallTest delegate_contract = new DelegateCallTest();
+        
+        vm.startPrank(manager);
+        
+        // Make a delegate call to set a value
+        bytes memory callData = abi.encodeWithSelector(
+            DelegateCallTest.setValue.selector,
+            123
+        );
+        
+        (bool success, bytes memory returnData) = strategy.delegateCall(address(delegate_contract), callData);
+        
+        assertTrue(success, "DelegateCall should succeed");
+        assertEq(abi.decode(returnData, (uint256)), 123, "Return value should be 123");
+        
+        vm.stopPrank();
+    }
+    
+    function test_DelegateCallUnauthorized() public {
+        vm.startPrank(alice);
+        
+        // Alice is not the manager
+        vm.expectRevert(IStrategy.Unauthorized.selector);
+        strategy.delegateCall(address(0), "");
+        
+        vm.stopPrank();
+    }
+    
+    function test_ConfigureController() public {
+        vm.startPrank(manager);
+        
+        // Configure the controller
+        strategy.configureController(alice);
+        
+        assertEq(strategy.controller(), alice, "Controller should be set to alice");
+        assertEq(token.controller(), alice, "Token controller should also be set to alice");
+        
+        vm.stopPrank();
+    }
+    
+    function test_ConfigureControllerUnauthorized() public {
+        vm.startPrank(alice);
+        
+        // Alice is not the manager
+        vm.expectRevert(IStrategy.Unauthorized.selector);
+        strategy.configureController(bob);
+        
+        vm.stopPrank();
+    }
+    
+    function test_ConfigureControllerZeroAddress() public {
+        vm.startPrank(manager);
+        
+        // Try to configure with address(0)
+        vm.expectRevert(IStrategy.InvalidAddress.selector);
+        strategy.configureController(address(0));
+        
+        vm.stopPrank();
+    }
+    
+    function test_ConfigureControllerAlreadyConfigured() public {
+        vm.startPrank(manager);
+        
+        // Configure the controller once
+        strategy.configureController(alice);
+        
+        // Try to configure it again
+        vm.expectRevert(IStrategy.AlreadyInitialized.selector);
+        strategy.configureController(bob);
+        
+        vm.stopPrank();
+    }
+}
+
+// Helper contract for testing delegate calls
+contract DelegateCallTest {
+    uint256 public value;
+    
+    function setValue(uint256 _value) external returns (uint256) {
+        value = _value;
+        return _value;
+    }
+}
+
+// Helper contract for testing payable calls
+contract PayableTest {
+    receive() external payable {}
+}
