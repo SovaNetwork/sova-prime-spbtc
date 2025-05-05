@@ -98,7 +98,7 @@ contract Registry is RoleManaged {
         address _rules,
         address _manager,
         bytes memory _initData
-    ) external onlyRole(roleManager.STRATEGY_ADMIN()) returns (address strategy, address token) {
+    ) external onlyRole(roleManager.STRATEGY_OPERATOR()) returns (address strategy, address token) {
         return deployBase(_name, _symbol, _implementation, _asset, _rules, _manager, _initData);
     }
 
@@ -127,7 +127,7 @@ contract Registry is RoleManaged {
         address[] memory _managerAddresses,
         bytes memory _initData,
         uint256 initialCapacity
-    ) external onlyRole(roleManager.STRATEGY_ADMIN()) returns (address strategy, address token, address controller) {
+    ) external onlyRole(roleManager.STRATEGY_OPERATOR()) returns (address strategy, address token, address controller) {
         // Deploy strategy and token
         (strategy, token) = deployBase(_name, _symbol, _implementation, _asset, _rules, _manager, _initData);
 
