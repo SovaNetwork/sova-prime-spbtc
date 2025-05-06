@@ -25,9 +25,15 @@ contract KycRulesTest is BaseFountfiTest {
         // Deploy rules with mock role manager
         kycRules = new KycRules(address(mockRoleManager));
         
-        // Grant KYC roles to the owner for testing
+        // The MockRoleManager constructor gives all roles to owner
+        // But we'll explicitly grant these roles again to be sure
         mockRoleManager.grantRole(owner, mockRoleManager.KYC_ADMIN());
         mockRoleManager.grantRole(owner, mockRoleManager.KYC_OPERATOR());
+        
+        // The KycRules contract uses roleManager.KYC_OPERATOR() in its modifiers
+        // We need to make sure our mock returns the appropriate value
+        // The MockRoleManager uses KYC_ADMIN to manage KYC_OPERATOR, not RULES_ADMIN
+        // In this mock, all roles are given to owner in the constructor
         
         vm.stopPrank();
     }

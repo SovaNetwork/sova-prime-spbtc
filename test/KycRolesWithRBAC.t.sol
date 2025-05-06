@@ -21,10 +21,12 @@ contract KycRolesWithRBACTest is Test {
         roleManager = new RoleManager();
         kycRules = new KycRules(address(roleManager));
 
-        // Set up roles
-        roleManager.grantRole(kycAdmin, roleManager.KYC_OPERATOR());
+        // Set up roles - admin already has PROTOCOL_ADMIN role from constructor
+        // Grant RULES_ADMIN to kycAdmin to manage KYC operators
+        roleManager.grantRole(kycAdmin, roleManager.RULES_ADMIN());
         vm.stopPrank();
 
+        // Now kycAdmin can grant KYC_OPERATOR role
         vm.startPrank(kycAdmin);
         roleManager.grantRole(kycOperator, roleManager.KYC_OPERATOR());
         vm.stopPrank();

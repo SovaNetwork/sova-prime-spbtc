@@ -52,8 +52,36 @@ contract MockRoleManager {
     function hasRole(address user, uint256 role) external view returns (bool) {
         return roles[user][role];
     }
+    
+    // Check if a user has any role bits (for compatibility with RoleManager)
+    function hasAnyRole(address user, uint256 role) external view returns (bool) {
+        // Check for any of the role bits
+        for (uint256 i = 0; i < 256; i++) {
+            uint256 roleBit = 1 << i;
+            if ((role & roleBit) != 0 && roles[user][roleBit]) {
+                return true;
+            }
+            // A reasonable limit for checking bits
+            if (roleBit == 0 || i > 32) break;
+        }
+        return false;
+    }
 
-    // Check if a user has any of the specified roles
+    // Check if a user has all role bits (for compatibility with RoleManager)
+    function hasAllRoles(address user, uint256 role) external view returns (bool) {
+        // Check for all of the role bits
+        for (uint256 i = 0; i < 256; i++) {
+            uint256 roleBit = 1 << i;
+            if ((role & roleBit) != 0 && !roles[user][roleBit]) {
+                return false;
+            }
+            // A reasonable limit for checking bits
+            if (roleBit == 0 || i > 32) break;
+        }
+        return true;
+    }
+
+    // Check if a user has any of the specified roles (array version)
     function hasAnyOfRoles(address user, uint256[] calldata _roles) external view returns (bool) {
         for (uint256 i = 0; i < _roles.length; i++) {
             if (roles[user][_roles[i]]) {
@@ -63,8 +91,8 @@ contract MockRoleManager {
         return false;
     }
 
-    // Check if a user has all of the specified roles
-    function hasAllRoles(address user, uint256[] calldata _roles) external view returns (bool) {
+    // Check if a user has all of the specified roles (array version)
+    function hasAllRolesArray(address user, uint256[] calldata _roles) external view returns (bool) {
         for (uint256 i = 0; i < _roles.length; i++) {
             if (!roles[user][_roles[i]]) {
                 return false;

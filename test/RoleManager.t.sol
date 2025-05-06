@@ -20,18 +20,22 @@ contract RoleManagerTest is Test {
     address public user = address(8);
 
     function setUp() public {
+        // Deploy RoleManager contract
         vm.startPrank(admin);
         roleManager = new RoleManager();
         mockRoleManaged = new MockRoleManaged(address(roleManager));
 
-        // Set up roles
+        // admin already has the PROTOCOL_ADMIN role from constructor
+        // Now set up additional roles
         roleManager.grantRole(registryAdmin, roleManager.RULES_ADMIN());
         roleManager.grantRole(strategyAdmin, roleManager.STRATEGY_ADMIN());
-        roleManager.grantRole(kycAdmin, roleManager.KYC_OPERATOR());
-
-        // Operational roles are granted by their functional admins
+        
+        // Need to use RULES_ADMIN role for KYC_OPERATOR (due to role hierarchy)
+        roleManager.grantRole(kycAdmin, roleManager.RULES_ADMIN());
+        
         vm.stopPrank();
 
+        // Now have the role admins grant the operational roles
         vm.startPrank(kycAdmin);
         roleManager.grantRole(kycOperator, roleManager.KYC_OPERATOR());
         vm.stopPrank();
