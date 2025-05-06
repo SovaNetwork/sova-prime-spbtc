@@ -35,11 +35,15 @@ contract tRWA is ERC4626, ItRWA {
     using FixedPointMathLib for uint256;
     using SafeTransferLib for address;
 
+    // Custom errors
+    error AssetDecimalsTooHigh();
+
     // Internal storage for token metadata
     uint8 private constant DECIMALS = 18;
     string private _symbol;
     string private _name;
     address private immutable _asset;
+    uint8 private immutable _assetDecimals;
 
     // Logic contracts
     IStrategy public immutable strategy;
@@ -55,6 +59,7 @@ contract tRWA is ERC4626, ItRWA {
      * @param symbol_ Token symbol
      * @param asset_ Asset address
      * @param strategy_ Strategy address
+     * @param assetDecimals_ Decimals of the asset token
      * @param rules_ Rules address
      */
     constructor(
@@ -62,12 +67,17 @@ contract tRWA is ERC4626, ItRWA {
         string memory symbol_,
         address asset_,
         address strategy_,
+        uint8 assetDecimals_,
         address rules_
     ) {
         // Validate configuration parameters
         if (asset_ == address(0)) revert InvalidAddress();
         if (strategy_ == address(0)) revert InvalidAddress();
         if (rules_ == address(0)) revert InvalidAddress();
+
+        // Store asset decimals
+        _assetDecimals = assetDecimals_;
+        if (_assetDecimals > DECIMALS) revert AssetDecimalsTooHigh(); // Cannot handle asset decimals > share decimals (18)
 
         _name = name_;
         _symbol = symbol_;
@@ -122,11 +132,21 @@ contract tRWA is ERC4626, ItRWA {
     }
 
     /**
-     * @notice Returns the total assets of the strategy
+     * @notice Returns the total amount of the underlying asset managed by the Vault, scaled to 18 decimals.
+     * @dev This value is used internally by ERC4626 calculations.
      * @return Total assets in terms of _asset
      */
     function totalAssets() public view override returns (uint256) {
-        return strategy.balance();
+        uint256 balance = strategy.balance(); // Balance in asset decimals
+        uint8 assetDecimals_ = _assetDecimals;
+
+        // Scale up to 18 decimals if needed
+        if (assetDecimals_ < DECIMALS) {
+           return balance * (10**(uint256(DECIMALS) - assetDecimals_));
+        } else {
+           // This case should be prevented by constructor check, but handle defensively
+           return balance; // Already 18 decimals or more (error case)
+        }
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -296,6 +316,66 @@ contract tRWA is ERC4626, ItRWA {
     /*//////////////////////////////////////////////////////////////
                             ERC4626 OVERRIDES
     //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @inheritdoc ERC4626
+     * @dev Overridden to handle asset decimals different from share decimals (18).
+     */
+    function convertToShares(uint256 assets) public view virtual override returns (uint256 shares) {
+        uint256 supply = totalSupply;
+        if (supply == 0) {
+            // Initial deposit: 1 asset unit (scaled) = 1 share unit (scaled)
+            uint8 assetDecimals_ = _assetDecimals;
+            if (assetDecimals_ < DECIMALS) {
+                return assets * (10**(uint256(DECIMALS) - assetDecimals_));
+            } else {
+                // Should not happen due to constructor check
+                return assets;
+            }
+        } else {
+            // Scale assets up to 18 decimals before calculation
+            uint8 assetDecimals_ = _assetDecimals;
+            uint256 assetsScaled;
+            if (assetDecimals_ < DECIMALS) {
+                assetsScaled = assets * (10**(uint256(DECIMALS) - assetDecimals_));
+            } else {
+                // Should not happen due to constructor check
+                assetsScaled = assets;
+            }
+            shares = assetsScaled.mulDivDown(supply, totalAssets());
+        }
+    }
+
+    /**
+     * @inheritdoc ERC4626
+     * @dev Overridden to handle asset decimals different from share decimals (18).
+     */
+    function convertToAssets(uint256 shares) public view virtual override returns (uint256 assets) {
+        uint256 supply = totalSupply;
+        if (supply == 0) {
+            // No shares minted yet: 1 share unit (scaled) = 1 asset unit (scaled)
+            // Result needs scaling down to asset decimals
+            uint8 assetDecimals_ = _assetDecimals;
+            if (assetDecimals_ < DECIMALS) {
+                return shares / (10**(uint256(DECIMALS) - assetDecimals_));
+            } else {
+                 // Should not happen due to constructor check
+                return shares;
+            }
+        } else {
+            // Calculate assets scaled to 18 decimals first
+            uint256 assetsScaled = shares.mulDivDown(totalAssets(), supply);
+
+            // Scale down to asset decimals
+            uint8 assetDecimals_ = _assetDecimals;
+            if (assetDecimals_ < DECIMALS) {
+                assets = assetsScaled / (10**(uint256(DECIMALS) - assetDecimals_));
+            } else {
+                // Should not happen due to constructor check
+                assets = assetsScaled;
+            }
+        }
+    }
 
     /**
      * @notice Deposit assets into the token
