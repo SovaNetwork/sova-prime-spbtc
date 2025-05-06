@@ -89,7 +89,7 @@ abstract contract BasicStrategy is IStrategy, RoleManaged {
      * @notice Allow admin to change the manager
      * @param newManager The new manager
      */
-    function setManager(address newManager) external onlyRole(roleManager.STRATEGY_ADMIN()) {
+    function setManager(address newManager) external onlyRoles(roleManager.STRATEGY_ADMIN()) {
         // Can set to 0 to disable manager
         manager = newManager;
 

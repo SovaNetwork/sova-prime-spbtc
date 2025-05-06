@@ -35,7 +35,7 @@ contract SimpleRWADeployScript is Script {
         // Use the private key directly from the command line parameter
         uint256 deployerPrivateKey = 0x267aedad5dceb451cc0a93b451dd21726b4a23bb83d946c9d0e0e2587069684a;
         address deployer = vm.addr(deployerPrivateKey);
-        
+
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy core infrastructure
@@ -114,34 +114,20 @@ contract SimpleRWADeployScript is Script {
         // Strategy roles
         roleManager.grantRole(MANAGER_1, roleManager.STRATEGY_ADMIN());
         roleManager.grantRole(MANAGER_2, roleManager.STRATEGY_ADMIN());
-        roleManager.grantRole(MANAGER_1, roleManager.STRATEGY_MANAGER());
-        roleManager.grantRole(MANAGER_2, roleManager.STRATEGY_MANAGER());
-
-        // Rules admins
-        roleManager.grantRole(MANAGER_1, roleManager.RULES_ADMIN());
-        roleManager.grantRole(MANAGER_2, roleManager.RULES_ADMIN());
+        roleManager.grantRole(MANAGER_1, roleManager.STRATEGY_OPERATOR());
+        roleManager.grantRole(MANAGER_2, roleManager.STRATEGY_OPERATOR());
 
         // KYC roles
-        roleManager.grantRole(MANAGER_1, roleManager.KYC_ADMIN());
-        roleManager.grantRole(MANAGER_2, roleManager.KYC_ADMIN());
+        roleManager.grantRole(MANAGER_1, roleManager.RULES_ADMIN());
+        roleManager.grantRole(MANAGER_2, roleManager.RULES_ADMIN());
         roleManager.grantRole(MANAGER_1, roleManager.KYC_OPERATOR());
         roleManager.grantRole(MANAGER_2, roleManager.KYC_OPERATOR());
-
-        // Reporter roles
-        roleManager.grantRole(MANAGER_1, roleManager.REPORTER_ADMIN());
-        roleManager.grantRole(MANAGER_2, roleManager.REPORTER_ADMIN());
-        roleManager.grantRole(MANAGER_1, roleManager.DATA_PROVIDER());
-        roleManager.grantRole(MANAGER_2, roleManager.DATA_PROVIDER());
-
-        // Subscription admins
-        roleManager.grantRole(MANAGER_1, roleManager.SUBSCRIPTION_ADMIN());
-        roleManager.grantRole(MANAGER_2, roleManager.SUBSCRIPTION_ADMIN());
     }
 
     function deployStrategyAndController(address deployer) internal {
         // Encode initialization data for the strategy (reporter address)
         bytes memory initData = abi.encode(address(priceOracle));
-        
+
         // Create array of additional manager addresses
         address[] memory managerAddresses = new address[](2);
         managerAddresses[0] = MANAGER_1;

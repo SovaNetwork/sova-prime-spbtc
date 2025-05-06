@@ -55,7 +55,7 @@ contract RulesEngine is IRulesEngine, BaseRules, RoleManaged {
      * @param priority Priority of the rule (lower numbers execute first)
      * @return ruleId Identifier of the added rule
      */
-    function addRule(address rule, uint256 priority) external onlyRole(roleManager.RULES_ADMIN()) returns (bytes32) {
+    function addRule(address rule, uint256 priority) external onlyRoles(roleManager.RULES_ADMIN()) returns (bytes32) {
         if (rule == address(0)) revert InvalidRuleAddress();
 
         // Get rule ID from the rule contract
@@ -84,7 +84,7 @@ contract RulesEngine is IRulesEngine, BaseRules, RoleManaged {
      * @notice Remove a rule from the engine
      * @param ruleId Identifier of the rule to remove
      */
-    function removeRule(bytes32 ruleId) external onlyRole(roleManager.RULES_ADMIN()) {
+    function removeRule(bytes32 ruleId) external onlyRoles(roleManager.RULES_ADMIN()) {
         if (_rules[ruleId].rule == address(0)) revert RuleNotFound(ruleId);
 
         // Remove from the rules mapping
@@ -108,7 +108,7 @@ contract RulesEngine is IRulesEngine, BaseRules, RoleManaged {
      * @param ruleId Identifier of the rule
      * @param newPriority New priority for the rule
      */
-    function changeRulePriority(bytes32 ruleId, uint256 newPriority) external onlyRole(roleManager.RULES_ADMIN()) {
+    function changeRulePriority(bytes32 ruleId, uint256 newPriority) external onlyRoles(roleManager.RULES_ADMIN()) {
         if (_rules[ruleId].rule == address(0)) revert RuleNotFound(ruleId);
 
         _rules[ruleId].priority = newPriority;
@@ -120,7 +120,7 @@ contract RulesEngine is IRulesEngine, BaseRules, RoleManaged {
      * @notice Enable a rule
      * @param ruleId Identifier of the rule to enable
      */
-    function enableRule(bytes32 ruleId) external onlyRole(roleManager.RULES_ADMIN()) {
+    function enableRule(bytes32 ruleId) external onlyRoles(roleManager.RULES_ADMIN()) {
         if (_rules[ruleId].rule == address(0)) revert RuleNotFound(ruleId);
 
         _rules[ruleId].active = true;
@@ -132,7 +132,7 @@ contract RulesEngine is IRulesEngine, BaseRules, RoleManaged {
      * @notice Disable a rule
      * @param ruleId Identifier of the rule to disable
      */
-    function disableRule(bytes32 ruleId) external onlyRole(roleManager.RULES_ADMIN()) {
+    function disableRule(bytes32 ruleId) external onlyRoles(roleManager.RULES_ADMIN()) {
         if (_rules[ruleId].rule == address(0)) revert RuleNotFound(ruleId);
 
         _rules[ruleId].active = false;

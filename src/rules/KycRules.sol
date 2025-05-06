@@ -40,7 +40,7 @@ contract KycRules is BaseRules, RoleManaged {
      * @notice Allow an address to transfer/receive tokens
      * @param account Address to allow
      */
-    function allow(address account) external onlyRole(roleManager.KYC_OPERATOR()) {
+    function allow(address account) external onlyRoles(roleManager.KYC_OPERATOR()) {
         if (account == address(0)) revert ZeroAddress();
         if (isAddressDenied[account]) revert AddressAlreadyDenied();
 
@@ -53,7 +53,7 @@ contract KycRules is BaseRules, RoleManaged {
      * @notice Deny an address from transferring/receiving tokens
      * @param account Address to deny
      */
-    function deny(address account) external onlyRole(roleManager.KYC_OPERATOR()) {
+    function deny(address account) external onlyRoles(roleManager.KYC_OPERATOR()) {
         if (account == address(0)) revert ZeroAddress();
 
         isAddressAllowed[account] = false;
@@ -66,7 +66,7 @@ contract KycRules is BaseRules, RoleManaged {
      * @notice Reset an address by removing it from both allow and deny lists
      * @param account Address to reset
      */
-    function reset(address account) external onlyRole(roleManager.KYC_OPERATOR()) {
+    function reset(address account) external onlyRoles(roleManager.KYC_OPERATOR()) {
         if (account == address(0)) revert ZeroAddress();
 
         isAddressAllowed[account] = false;
@@ -79,7 +79,7 @@ contract KycRules is BaseRules, RoleManaged {
      * @notice Batch allow addresses to transfer/receive tokens
      * @param accounts Array of addresses to allow
      */
-    function batchAllow(address[] calldata accounts) external onlyRole(roleManager.KYC_OPERATOR()) {
+    function batchAllow(address[] calldata accounts) external onlyRoles(roleManager.KYC_OPERATOR()) {
         uint256 length = accounts.length;
         if (length == 0) revert InvalidArrayLength();
 
@@ -100,7 +100,7 @@ contract KycRules is BaseRules, RoleManaged {
      * @notice Batch deny addresses from transferring/receiving tokens
      * @param accounts Array of addresses to deny
      */
-    function batchDeny(address[] calldata accounts) external onlyRole(roleManager.KYC_OPERATOR()) {
+    function batchDeny(address[] calldata accounts) external onlyRoles(roleManager.KYC_OPERATOR()) {
         uint256 length = accounts.length;
         if (length == 0) revert InvalidArrayLength();
 
@@ -121,7 +121,7 @@ contract KycRules is BaseRules, RoleManaged {
      * @notice Batch reset addresses by removing them from both allow and deny lists
      * @param accounts Array of addresses to reset
      */
-    function batchReset(address[] calldata accounts) external onlyRole(roleManager.KYC_OPERATOR()) {
+    function batchReset(address[] calldata accounts) external onlyRoles(roleManager.KYC_OPERATOR()) {
         uint256 length = accounts.length;
         if (length == 0) revert InvalidArrayLength();
 
