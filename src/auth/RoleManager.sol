@@ -116,22 +116,39 @@ contract RoleManager is OwnableRoles {
     /// @return True if the manager can grant/revoke the role
     function _canManageRole(address manager, uint256 role) internal view virtual returns (bool) {
         // Owner can always manage any role.
-        if (manager == owner() || hasAllRoles(manager, PROTOCOL_ADMIN)) {
+        if (manager == owner()) {
             return true;
         }
 
-        // Get the manager's full roles bitmap
-        uint256 managerRoles = rolesOf(manager);
-
-        // Core hierarchical check:
-        // 1. Does the manager have ALL the bits required by the target role? (managerRoles & role == role)
-        // 2. Does the manager have MORE bits than the target role? (managerRoles != role)
-        // Condition 1 is implicitly checked by OwnableRoles' hasAllRoles.
-        if (hasAllRoles(manager, role) && managerRoles != role) {
-            return true;
+        // PROTOCOL_ADMIN can manage any role *except* PROTOCOL_ADMIN itself.
+        // (Only the owner can grant/revoke PROTOCOL_ADMIN to others).
+        if (hasAllRoles(manager, PROTOCOL_ADMIN)) {
+            return role != PROTOCOL_ADMIN;
         }
 
-        // If none of the above conditions met
+        // --- Specific Hierarchical Checks ---
+        // Check if the manager holds the *required Admin role* for the target role.
+
+        if (role == STRATEGY_OPERATOR) {
+            // STRATEGY_OPERATOR is managed by STRATEGY_ADMIN
+            // We use hasAllRoles to ensure the manager has the complete STRATEGY_ADMIN role (flag + base).
+            return hasAllRoles(manager, STRATEGY_ADMIN);
+        } else if (role == KYC_OPERATOR) {
+            // KYC_OPERATOR is managed by RULES_ADMIN
+            return hasAllRoles(manager, RULES_ADMIN);
+        } else if (role == STRATEGY_ADMIN || role == RULES_ADMIN) {
+            // STRATEGY_ADMIN and RULES_ADMIN are managed only by PROTOCOL_ADMIN.
+            // Since the PROTOCOL_ADMIN check passed above without returning true,
+            // the manager cannot be PROTOCOL_ADMIN, so they cannot manage these roles.
+            return false;
+        }
+        // Add checks here if other roles (like DATA_PROVIDER, if re-added)
+        // have specific non-PROTOCOL_ADMIN managers.
+        // else if (role == DATA_PROVIDER) { return hasAllRoles(manager, REPORTER_ADMIN); }
+
+
+        // If the role doesn't match any specific management rule above,
+        // management is denied (as owner/PROTOCOL_ADMIN cases were handled).
         return false;
     }
 }
