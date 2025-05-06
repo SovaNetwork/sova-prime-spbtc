@@ -38,8 +38,12 @@ contract ReportedStrategy is BasicStrategy {
 
     /**
      * @notice Initialize the strategy
+     * @param name_ The name of the strategy
+     * @param symbol_ The symbol of the strategy
      * @param manager_ The manager address
      * @param asset_ The asset address
+     * @param assetDecimals_ The asset decimals
+     * @param rules_ The rules address
      * @param initData Initialization data
      */
     function initialize(
@@ -47,10 +51,11 @@ contract ReportedStrategy is BasicStrategy {
         string calldata symbol_,
         address manager_,
         address asset_,
+        uint8 assetDecimals_,
         address rules_,
         bytes memory initData
     ) public override {
-        super.initialize(name_, symbol_, manager_, asset_, rules_, initData);
+        super.initialize(name_, symbol_, manager_, asset_, assetDecimals_, rules_, initData);
 
         address reporter_ = abi.decode(initData, (address));
         if (reporter_ == address(0)) revert InvalidReporter();

@@ -29,6 +29,7 @@ contract MockStrategy is IStrategy {
         string calldata symbol_,
         address manager_,
         address asset_,
+        uint8 assetDecimals_,
         address rules_,
         bytes memory
     ) external {
@@ -39,7 +40,7 @@ contract MockStrategy is IStrategy {
         if (asset_ == address(0)) revert InvalidAddress();
         if (rules_ == address(0)) revert InvalidRules();
 
-        sToken = address(new tRWA(name_, symbol_, asset_, address(this), rules_));
+        sToken = address(new tRWA(name_, symbol_, asset_, assetDecimals_, address(this), rules_));
 
         deployer = msg.sender;
         manager = manager_;

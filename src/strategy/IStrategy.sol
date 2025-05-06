@@ -29,6 +29,7 @@ interface IStrategy {
         string calldata symbol,
         address manager,
         address asset,
+        uint8 assetDecimals,
         address rules,
         bytes memory initData
     ) external;

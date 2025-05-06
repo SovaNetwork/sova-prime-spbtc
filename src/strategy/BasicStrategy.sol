@@ -51,6 +51,7 @@ abstract contract BasicStrategy is IStrategy, RoleManaged {
         string calldata symbol_,
         address manager_,
         address asset_,
+        uint8 assetDecimals_,
         address rules_,
         bytes memory // initData
     ) public virtual {
@@ -72,6 +73,7 @@ abstract contract BasicStrategy is IStrategy, RoleManaged {
             name_,
             symbol_,
             asset,
+            assetDecimals_,
             address(this),
             rules_
         );

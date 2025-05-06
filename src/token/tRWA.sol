@@ -57,16 +57,16 @@ contract tRWA is ERC4626, ItRWA {
      * @param name_ Token name
      * @param symbol_ Token symbol
      * @param asset_ Asset address
-     * @param strategy_ Strategy address
      * @param assetDecimals_ Decimals of the asset token
+     * @param strategy_ Strategy address
      * @param rules_ Rules address
      */
     constructor(
         string memory name_,
         string memory symbol_,
         address asset_,
-        address strategy_,
         uint8 assetDecimals_,
+        address strategy_,
         address rules_
     ) {
         // Validate configuration parameters

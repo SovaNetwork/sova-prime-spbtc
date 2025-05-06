@@ -84,6 +84,7 @@ contract Registry is RoleManaged {
      * @param _name Token name
      * @param _symbol Token symbol
      * @param _asset Asset address
+     * @param _assetDecimals Asset decimals
      * @param _rules Rules address
      * @param _manager Manager address for the strategy
      * @param _initData Initialization data
@@ -95,11 +96,12 @@ contract Registry is RoleManaged {
         string memory _symbol,
         address _implementation,
         address _asset,
+        uint8 _assetDecimals,
         address _rules,
         address _manager,
         bytes memory _initData
     ) external onlyRoles(roleManager.STRATEGY_OPERATOR()) returns (address strategy, address token) {
-        return deployBase(_name, _symbol, _implementation, _asset, _rules, _manager, _initData);
+        return deployBase(_name, _symbol, _implementation, _asset, _assetDecimals, _rules, _manager, _initData);
     }
 
     /**
@@ -108,6 +110,7 @@ contract Registry is RoleManaged {
      * @param _symbol Token symbol
      * @param _implementation Strategy implementation address
      * @param _asset Asset address
+     * @param _assetDecimals Asset decimals
      * @param _rules Rules address
      * @param _manager Manager address for the strategy
      * @param _managerAddresses Additional manager addresses for the controller
@@ -122,6 +125,7 @@ contract Registry is RoleManaged {
         string memory _symbol,
         address _implementation,
         address _asset,
+        uint8 _assetDecimals,
         address _rules,
         address _manager,
         address[] memory _managerAddresses,
@@ -129,7 +133,7 @@ contract Registry is RoleManaged {
         uint256 initialCapacity
     ) external onlyRoles(roleManager.STRATEGY_OPERATOR()) returns (address strategy, address token, address controller) {
         // Deploy strategy and token
-        (strategy, token) = deployBase(_name, _symbol, _implementation, _asset, _rules, _manager, _initData);
+        (strategy, token) = deployBase(_name, _symbol, _implementation, _asset, _assetDecimals, _rules, _manager, _initData);
 
         // Deploy controller with main manager and additional managers
         controller = address(new SubscriptionController(
@@ -155,6 +159,7 @@ contract Registry is RoleManaged {
      * @param _symbol Token symbol
      * @param _implementation Strategy implementation address
      * @param _asset Asset address
+     * @param _assetDecimals Asset decimals
      * @param _rules Rules address
      * @param _manager Manager address
      * @param _initData Initialization data
@@ -166,6 +171,7 @@ contract Registry is RoleManaged {
         string memory _symbol,
         address _implementation,
         address _asset,
+        uint8 _assetDecimals,
         address _rules,
         address _manager,
         bytes memory _initData
@@ -178,7 +184,7 @@ contract Registry is RoleManaged {
         strategy = _implementation.clone();
 
         // Initialize the strategy
-        IStrategy(strategy).initialize(_name, _symbol, _manager, _asset, _rules, _initData);
+        IStrategy(strategy).initialize(_name, _symbol, _manager, _asset, _assetDecimals, _rules, _initData);
 
         // Register strategy in the factory
         allStrategies.push(strategy);
