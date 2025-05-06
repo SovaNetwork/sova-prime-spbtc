@@ -139,6 +139,7 @@ contract SimpleRWADeployScript is Script {
             "fUSDC",                  // symbol
             address(strategyImplementation),
             address(usdToken),
+            6, // assetDecimals
             address(kycRules),
             deployer,                 // Manager of the strategy
             managerAddresses,         // Additional manager addresses for controller

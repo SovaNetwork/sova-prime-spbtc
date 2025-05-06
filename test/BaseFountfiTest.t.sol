@@ -94,6 +94,7 @@ abstract contract BaseFountfiTest is Test {
             symbol,
             manager,
             address(usdc),
+            6,
             address(mockRulesLocal),
             ""
         );
@@ -150,6 +151,7 @@ abstract contract BaseFountfiTest is Test {
             "TRWA",
             address(strategyImpl),
             address(usdc),
+            6,
             address(kycRules),
             manager,
             ""

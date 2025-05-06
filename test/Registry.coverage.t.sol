@@ -90,6 +90,7 @@ contract ModifiedRegistry is Ownable {
      * @param _symbol Token symbol
      * @param _implementation Strategy implementation
      * @param _asset Asset address
+     * @param _assetDecimals Asset decimals
      * @param _rules Rules address
      * @param _manager Manager address for the strategy
      * @param _initData Initialization data
@@ -101,6 +102,7 @@ contract ModifiedRegistry is Ownable {
         string memory _symbol,
         address _implementation,
         address _asset,
+        uint8 _assetDecimals,
         address _rules,
         address _manager,
         bytes memory _initData
@@ -113,7 +115,7 @@ contract ModifiedRegistry is Ownable {
         strategy = _implementation.clone();
 
         // Initialize the strategy
-        IStrategy(strategy).initialize(_name, _symbol, _manager, _asset, _rules, _initData);
+        IStrategy(strategy).initialize(_name, _symbol, _manager, _asset, _assetDecimals, _rules, _initData);
 
         // Register strategy in the factory
         allStrategies.push(strategy);
@@ -185,6 +187,7 @@ contract RegistryCoverageTest is Test {
             "COV",
             address(strategyImpl),
             address(asset),
+            6,
             address(rules),
             manager,
             ""
