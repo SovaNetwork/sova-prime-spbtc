@@ -39,7 +39,7 @@ contract SubscriptionRulesHook is BaseHook, OwnableRoles {
      * @param _isOpen Initial state for whether subscriptions are open
      */
     constructor(address _admin, bool _enforceApproval, bool _isOpen)
-        BaseHook("SubscriptionRulesHook", "1.0")
+        BaseHook("SubscriptionRulesHook-1.0")
     {
         if (_admin == address(0)) revert InvalidAddress();
 
@@ -104,31 +104,29 @@ contract SubscriptionRulesHook is BaseHook, OwnableRoles {
         address user, // user performing the action, could be different from receiver
         uint256, // assets (unused in this specific hook logic)
         address receiver // entity receiving the results of the deposit (e.g. shares)
-    ) public view virtual override returns (bytes4) {
+    ) public view virtual override returns (IHook.HookOutput memory) {
         // Check if subscriptions are open
         if (!isOpen) {
-            // return bytes4(keccak256("HOOK_DENY_SUBSCRIPTION_CLOSED")); // Example, replace with IHook definition
-            return IHook.HOOK_DENY_SUBSCRIPTION_CLOSED.selector;
+            return IHook.HookOutput({
+                approved: false,
+                reason: "SubscriptionRulesHook: Subscription closed"
+            });
         }
 
         // Check if the user (or receiver, depending on policy) is an approved subscriber
         // Assuming the check should be on the 'receiver' of the shares/subscription benefits.
         if (enforceApproval && !isSubscriptionApproved[receiver]) {
-            // return bytes4(keccak256("HOOK_DENY_NOT_SUBSCRIBED")); // Example, replace with IHook definition
-            return IHook.HOOK_DENY_SUBSCRIPTION_NOT_APPROVED.selector;
-        }
-
-        // Additional check on 'user' if user and receiver can be different and both need to be checked.
-        // For now, let's assume 'receiver' is the primary subject for subscription checks.
-        if (enforceApproval && isSubscriptionApproved[user] != isSubscriptionApproved[receiver]) {
-             // This case might indicate a complex scenario (e.g. depositing for someone else)
-             // and specific rules might apply. For now, if receiver is approved, it passes.
-             // If user also needs approval, add: `&& !isSubscriptionApproved[user]` to the condition above
-             // or handle it as a separate check if the denial reason should be different.
+            return IHook.HookOutput({
+                approved: false,
+                reason: "SubscriptionRulesHook: Not subscribed"
+            });
         }
 
         // All checks passed, deposit is allowed
-        return IHook.HOOK_SUCCESS.selector;
+        return IHook.HookOutput({
+            approved: true,
+            reason: ""
+        });
     }
 
     // appliesTo() function removed as it's not part of IHook

@@ -3,14 +3,12 @@ pragma solidity ^0.8.25;
 
 
 /**
- * @title IOperationHook
+ * @title IHook
  * @notice Interface for operation hooks in the tRWA system
  * @dev Operation hooks are called before key operations (deposit, withdraw, transfer)
  * and can approve or reject the operation with a reason
  */
-interface IOperationHook {
-    function appliesTo() external pure returns (uint256); // Bitmap indicating applicable operations
-
+interface IHook {
     /**
      * @title HookOutput
      * @notice Structure representing the result of a hook evaluation

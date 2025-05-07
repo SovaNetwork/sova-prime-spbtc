@@ -2,7 +2,6 @@
 pragma solidity ^0.8.25;
 
 import {IStrategy} from "../strategy/IStrategy.sol";
-import {IRules} from "../rules/IRules.sol";
 
 /**
  * @title ItRWA
@@ -11,14 +10,6 @@ import {IRules} from "../rules/IRules.sol";
  *      This is an extension interface (does not duplicate ERC4626 methods)
  */
 interface ItRWA {
-    // Configuration struct for deployment
-    struct ConfigurationStruct {
-        // The strategy contract
-        IStrategy strategy;
-
-        // The rules contract
-        IRules rules;
-    }
 
     // Errors
     error InvalidAddress();
@@ -30,7 +21,6 @@ interface ItRWA {
 
     // Logic contracts
     function strategy() external view returns (IStrategy);
-    function rules() external view returns (IRules);
 
     // Callback-enabled operations
     function deposit(

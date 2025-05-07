@@ -30,17 +30,15 @@ contract MockStrategy is IStrategy {
         address manager_,
         address asset_,
         uint8 assetDecimals_,
-        address rules_,
         bytes memory
-    ) external {
+    ) external override {
         if (_initialized) revert AlreadyInitialized();
         _initialized = true;
 
         if (manager_ == address(0)) revert InvalidAddress();
         if (asset_ == address(0)) revert InvalidAddress();
-        if (rules_ == address(0)) revert InvalidRules();
 
-        sToken = address(new tRWA(name_, symbol_, asset_, assetDecimals_, address(this), rules_));
+        sToken = address(new tRWA(name_, symbol_, asset_, assetDecimals_, address(this)));
 
         deployer = msg.sender;
         manager = manager_;

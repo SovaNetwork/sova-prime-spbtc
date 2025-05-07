@@ -50,7 +50,7 @@ contract RulesEngine is BaseHook, RoleManaged {
      * @notice Constructor
      * @param _roleManager Address of the role manager
      */
-    constructor(address _roleManager) BaseHook("RulesEngine", "1.0") RoleManaged(_roleManager) {}
+    constructor(address _roleManager) BaseHook("RulesEngine-1.0") RoleManaged(_roleManager) {}
 
     /*//////////////////////////////////////////////////////////////
                             HOOK MANAGEMENT
@@ -66,8 +66,7 @@ contract RulesEngine is BaseHook, RoleManaged {
         if (hookAddress == address(0)) revert InvalidHookAddress();
 
         // Get hook ID from the hook contract (namehash of its name and version)
-        (string memory name, string memory version) = IHook(hookAddress).getHookMetadata();
-        bytes32 id = keccak256(abi.encodePacked(name, version));
+        bytes32 id = IHook(hookAddress).hookId();
 
         if (_hooks[id].hookAddress != address(0)) revert HookAlreadyExists(id);
 
@@ -238,7 +237,7 @@ contract RulesEngine is BaseHook, RoleManaged {
      * @param callData Encoded call data for the hook evaluation function (e.g., onBeforeTransfer)
      * @return resultSelector Bytes4 selector indicating success or failure reason
      */
-    function _evaluateSubHooks(bytes memory callData) internal view returns (bytes4 resultSelector) {
+    function _evaluateSubHooks(bytes memory callData) internal view returns (IHook.HookOutput memory) {
         bytes32[] memory sortedHookIds = _getSortedActiveHookIds();
 
         for (uint256 i = 0; i < sortedHookIds.length; i++) {
@@ -256,16 +255,19 @@ contract RulesEngine is BaseHook, RoleManaged {
                 revert HookEvaluationFailed(hookId, bytes4(0)); // Generic failure selector
             }
 
-            bytes4 hookResultSelector = abi.decode(returnData, (bytes4));
+            // Decode the hook output from response
+            IHook.HookOutput memory hookOutput = abi.decode(returnData, (IHook.HookOutput));
 
-            if (hookResultSelector != IHook.HOOK_SUCCESS.selector) {
-                // If hook denies, operation is not allowed, propagate the reason selector
-                return hookResultSelector;
+            if (!hookOutput.approved) {
+                return hookOutput;
             }
         }
 
         // If we made it through all hooks, operation is allowed
-        return IHook.HOOK_SUCCESS.selector;
+        return IHook.HookOutput({
+            approved: true,
+            reason: ""
+        });
     }
 
     /**

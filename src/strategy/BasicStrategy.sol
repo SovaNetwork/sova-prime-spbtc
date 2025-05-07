@@ -52,16 +52,14 @@ abstract contract BasicStrategy is IStrategy, RoleManaged {
         address manager_,
         address asset_,
         uint8 assetDecimals_,
-        address rules_,
         bytes memory // initData
-    ) public virtual {
+    ) public virtual override {
         // Prevent re-initialization
         if (_initialized) revert AlreadyInitialized();
         _initialized = true;
 
         if (manager_ == address(0)) revert InvalidAddress();
         if (asset_ == address(0)) revert InvalidAddress();
-        if (rules_ == address(0)) revert InvalidRules();
 
         // Set up strategy configuration
         // Unlike other protocol roles, only a single manager is allowed
@@ -74,8 +72,7 @@ abstract contract BasicStrategy is IStrategy, RoleManaged {
             symbol_,
             asset,
             assetDecimals_,
-            address(this),
-            rules_
+            address(this)
         );
 
         sToken = address(newToken);

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
-import {IHook, HookOutput} from "./IHook.sol";
+import {IHook} from "./IHook.sol";
 
 abstract contract BaseHook is IHook {
-    string public immutable name;
+    string public name;
 
     /**
      * @notice Constructor
@@ -32,10 +32,6 @@ abstract contract BaseHook is IHook {
 
     /**
      * @notice Called before a deposit operation
-     * @param token Address of the token
-     * @param user Address of the user
-     * @param assets Amount of assets to deposit
-     * @param receiver Address of the receiver
      * @return HookOutput Result of the hook evaluation
      */
     function onBeforeDeposit(
@@ -43,17 +39,12 @@ abstract contract BaseHook is IHook {
         address, /*user*/
         uint256, /*assets*/
         address  /*receiver*/
-    ) public virtual override returns (HookOutput memory) {
-        return HookOutput({approved: true, reason: ""});
+    ) public virtual override returns (IHook.HookOutput memory) {
+        return IHook.HookOutput({approved: true, reason: ""});
     }
 
     /**
      * @notice Called before a withdraw operation
-     * @param token Address of the token
-     * @param by Address of the sender
-     * @param assets Amount of assets to withdraw
-     * @param to Address of the receiver
-     * @param owner Address of the owner
      * @return HookOutput Result of the hook evaluation
      */
     function onBeforeWithdraw(
@@ -62,16 +53,12 @@ abstract contract BaseHook is IHook {
         uint256, /*assets*/
         address, /*to*/
         address  /*owner*/
-    ) public virtual override returns (HookOutput memory) {
-        return HookOutput({approved: true, reason: ""});
+    ) public virtual override returns (IHook.HookOutput memory) {
+        return IHook.HookOutput({approved: true, reason: ""});
     }
 
     /**
      * @notice Called before a transfer operation
-     * @param token Address of the token
-     * @param from Address of the sender
-     * @param to Address of the receiver
-     * @param amount Amount of assets to transfer
      * @return HookOutput Result of the hook evaluation
      */
     function onBeforeTransfer(
@@ -79,6 +66,7 @@ abstract contract BaseHook is IHook {
         address, /*from*/
         address, /*to*/
         uint256  /*amount*/
-    ) public virtual override returns (HookOutput memory) {
-        return HookOutput({approved: true, reason: ""});
+    ) public virtual override returns (IHook.HookOutput memory) {
+        return IHook.HookOutput({approved: true, reason: ""});
     }
+}

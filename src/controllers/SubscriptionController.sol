@@ -6,7 +6,6 @@ import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {ISubscriptionController} from "./ISubscriptionController.sol";
 import {tRWA} from "../token/tRWA.sol";
 import {IStrategy} from "../strategy/IStrategy.sol";
-import {IRules} from "../rules/IRules.sol";
 
 /**
  * @title SubscriptionController

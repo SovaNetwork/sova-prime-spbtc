@@ -4,7 +4,7 @@ pragma solidity ^0.8.25;
 import {ERC4626} from "solady/tokens/ERC4626.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solady/utils/FixedPointMathLib.sol";
-import {IOperationHook, HookOutput} from "../rules/IOperationHook.sol";
+import {IHook} from "../hooks/IHook.sol";
 import {IStrategy} from "../strategy/IStrategy.sol";
 import {ItRWA} from "./ItRWA.sol";
 
@@ -37,11 +37,7 @@ contract tRWA is ERC4626, ItRWA {
 
     // Custom errors
     error AssetDecimalsTooHigh();
-    error InvalidAddress();
-    error ControllerAlreadySet();
-    error tRWAUnauthorized(address caller, address expected);
     error HookCheckFailed(string reason);
-    error WithdrawMoreThanMax();
     error NotStrategyAdmin();
     error HookAddressZero();
     error ReorderInvalidLength();
@@ -56,13 +52,13 @@ contract tRWA is ERC4626, ItRWA {
 
     // Logic contracts
     IStrategy public immutable strategy;
-    IOperationHook[] public operationHooks;
+    IHook[] public hooks = new IHook[](0);
     address public controller;
 
     // Events for withdrawal queueing
     event WithdrawalQueued(address indexed user, uint256 assets, uint256 shares);
-    event OperationHookAdded(address indexed hookAddress, uint256 index);
-    event OperationHooksReordered(uint256[] newIndices);
+    event HookAdded(address indexed hookAddress, uint256 index);
+    event HooksReordered(uint256[] newIndices);
 
     /**
      * @notice Contract constructor
@@ -71,23 +67,17 @@ contract tRWA is ERC4626, ItRWA {
      * @param asset_ Asset address
      * @param assetDecimals_ Decimals of the asset token
      * @param strategy_ Strategy address
-     * @param hookAddresses Array of operation hook contract addresses
      */
     constructor(
         string memory name_,
         string memory symbol_,
         address asset_,
         uint8 assetDecimals_,
-        address strategy_,
-        address[] memory hookAddresses
+        address strategy_
     ) {
         // Validate configuration parameters
         if (asset_ == address(0)) revert InvalidAddress();
         if (strategy_ == address(0)) revert InvalidAddress();
-        if (hookAddresses.length == 0) revert InvalidAddress();
-        for (uint i = 0; i < hookAddresses.length; i++) {
-            if (hookAddresses[i] == address(0)) revert InvalidAddress();
-        }
 
         _name = name_;
         _symbol = symbol_;
@@ -95,11 +85,6 @@ contract tRWA is ERC4626, ItRWA {
         _assetDecimals = assetDecimals_;
 
         strategy = IStrategy(strategy_);
-        operationHooks = new IOperationHook[](hookAddresses.length);
-
-        for (uint i = 0; i < hookAddresses.length; i++) {
-            operationHooks[i] = IOperationHook(hookAddresses[i]);
-        }
     }
 
     /**
@@ -343,8 +328,8 @@ contract tRWA is ERC4626, ItRWA {
      * @param shares Amount of shares to mint
      */
     function _deposit(address by, address to, uint256 assets, uint256 shares) internal override {
-        for (uint i = 0; i < operationHooks.length; i++) {
-            HookOutput memory hookOutput = operationHooks[i].onBeforeDeposit(address(this), by, assets, to);
+        for (uint i = 0; i < hooks.length; i++) {
+            IHook.HookOutput memory hookOutput = hooks[i].onBeforeDeposit(address(this), by, assets, to);
             if (!hookOutput.approved) {
                 revert HookCheckFailed(hookOutput.reason);
             }
@@ -380,8 +365,8 @@ contract tRWA is ERC4626, ItRWA {
      * @param shares Amount of shares to withdraw
      */
     function _withdraw(address by, address to, address owner, uint256 assets, uint256 shares) internal override {
-       for (uint i = 0; i < operationHooks.length; i++) {
-            HookOutput memory hookOutput = operationHooks[i].onBeforeWithdraw(address(this), by, assets, to, owner);
+       for (uint256 i = 0; i < hooks.length; i++) {
+            IHook.HookOutput memory hookOutput = hooks[i].onBeforeWithdraw(address(this), by, assets, to, owner);
             if (!hookOutput.approved) {
                 // Special case for withdrawal queue still needs to be handled based on the hook's reason
                 if (keccak256(bytes(hookOutput.reason)) == keccak256(bytes("Direct withdrawals not supported. Withdrawal request created in queue."))) {
@@ -412,8 +397,8 @@ contract tRWA is ERC4626, ItRWA {
      * @param amount Amount to burn
      */
     function burn(address from, uint256 amount) external {
-        for (uint i = 0; i < operationHooks.length; i++) {
-            HookOutput memory hookOutput = operationHooks[i].onBeforeTransfer(address(this), from, address(0), amount);
+        for (uint256 i = 0; i < hooks.length; i++) {
+            IHook.HookOutput memory hookOutput = hooks[i].onBeforeTransfer(address(this), from, address(0), amount);
             if (!hookOutput.approved) {
                 revert HookCheckFailed(hookOutput.reason);
             }
@@ -427,7 +412,7 @@ contract tRWA is ERC4626, ItRWA {
     //////////////////////////////////////////////////////////////*/
 
     modifier onlyStrategy() {
-        if (msg.sender != address(strategy)) revert NotStrategyAdmin();
+    if (msg.sender != address(strategy)) revert NotStrategyAdmin();
         _;
     }
 
@@ -439,8 +424,8 @@ contract tRWA is ERC4626, ItRWA {
     function addOperationHook(address newHookAddress) external onlyStrategy {
         if (newHookAddress == address(0)) revert HookAddressZero();
         // Consider adding a check to prevent duplicate hook additions if desired.
-        operationHooks.push(IOperationHook(newHookAddress));
-        emit OperationHookAdded(newHookAddress, operationHooks.length - 1);
+        hooks.push(IHook(newHookAddress));
+        emit HookAdded(newHookAddress, hooks.length - 1);
     }
 
     /**
@@ -451,10 +436,10 @@ contract tRWA is ERC4626, ItRWA {
      *                        that should now be at NEW position i.
      */
     function reorderOperationHooks(uint256[] calldata newOrderIndices) external onlyStrategy {
-        uint256 numHooks = operationHooks.length;
+        uint256 numHooks = hooks.length;
         if (newOrderIndices.length != numHooks) revert ReorderInvalidLength();
 
-        IOperationHook[] memory reorderedHooks = new IOperationHook[](numHooks);
+        IHook[] memory reorderedHooks = new IHook[](numHooks);
         bool[] memory indexSeen = new bool[](numHooks);
 
         for (uint256 i = 0; i < numHooks; i++) {
@@ -462,11 +447,11 @@ contract tRWA is ERC4626, ItRWA {
             if (oldIndex >= numHooks) revert ReorderIndexOutOfBounds();
             if (indexSeen[oldIndex]) revert ReorderDuplicateIndex();
 
-            reorderedHooks[i] = operationHooks[oldIndex];
+            reorderedHooks[i] = hooks[oldIndex];
             indexSeen[oldIndex] = true;
         }
 
-        operationHooks = reorderedHooks;
-        emit OperationHooksReordered(newOrderIndices);
+        hooks = reorderedHooks;
+        emit HooksReordered(newOrderIndices);
     }
 }

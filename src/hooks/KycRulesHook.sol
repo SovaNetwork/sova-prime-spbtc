@@ -165,7 +165,7 @@ contract KycRulesHook is BaseHook, RoleManaged {
         address from,
         address to,
         uint256 // amount
-    ) public view override returns (bytes4) {
+    ) public view override returns (IHook.HookOutput memory) {
         return _checkSenderAndReceiver(from, to);
     }
 
@@ -180,7 +180,7 @@ contract KycRulesHook is BaseHook, RoleManaged {
         address user,
         uint256, // amount
         address receiver
-    ) public view override returns (bytes4) {
+    ) public view override returns (IHook.HookOutput memory) {
         return _checkSenderAndReceiver(user, receiver);
     }
 
@@ -197,10 +197,10 @@ contract KycRulesHook is BaseHook, RoleManaged {
         uint256, // amount
         address receiver,
         address owner
-    ) public view override returns (bytes4) {
+    ) public view override returns (IHook.HookOutput memory) {
         // Check if the owner is allowed
         if (!isAllowed(owner)) {
-            return HookOutput({
+            return IHook.HookOutput({
                 approved: false,
                 reason: "KycRules: owner"
             });
@@ -209,22 +209,22 @@ contract KycRulesHook is BaseHook, RoleManaged {
         return _checkSenderAndReceiver(user, receiver);
     }
 
-    function _checkSenderAndReceiver(address from, address to) internal view returns (bool) {
+    function _checkSenderAndReceiver(address from, address to) internal view returns (IHook.HookOutput memory) {
         if (!isAllowed(from)) {
-            return HookOutput({
+            return IHook.HookOutput({
                 approved: false,
                 reason: "KycRules: sender"
             });
         }
 
         if (!isAllowed(to)) {
-            return HookOutput({
+            return IHook.HookOutput({
                 approved: false,
                 reason: "KycRules: receiver"
             });
         }
 
-        return HookOutput({
+        return IHook.HookOutput({
             approved: true,
             reason: ""
         });
