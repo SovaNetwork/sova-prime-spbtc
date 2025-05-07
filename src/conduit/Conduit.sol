@@ -4,8 +4,7 @@ pragma solidity ^0.8.0;
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {RoleManaged} from "../auth/RoleManaged.sol";
 import {ItRWA} from "../token/ItRWA.sol";
-import {Registry} from "../registry/Registry.sol";
-
+import {IRegistry} from "../registry/IRegistry.sol";
 contract Conduit is RoleManaged {
     using SafeTransferLib for address;
 
@@ -41,12 +40,12 @@ contract Conduit is RoleManaged {
         uint256 amount
     ) external returns (bool) {
         if (amount == 0) revert InvalidAmount();
-        if (!Registry(registry()).allowedAssets(token)) revert InvalidToken();
-        if (!Registry(registry()).isToken(msg.sender)) revert InvalidDestination();
+        if (!IRegistry(registry()).allowedAssets(token)) revert InvalidToken();
+        if (!IRegistry(registry()).isToken(msg.sender)) revert InvalidDestination();
         if (ItRWA(msg.sender).asset() != token) revert UnsupportedAsset();
 
         // TODO: Possible remove this, based on subscription queue pattern
-        if (!Registry(registry()).isToken(to)) revert InvalidDestination();
+        if (!IRegistry(registry()).isToken(to)) revert InvalidDestination();
 
         // The core logic: transfer tokens from 'from' to 'to'.
         // This relies on the user ('from') having previously called approve() on the 'token'

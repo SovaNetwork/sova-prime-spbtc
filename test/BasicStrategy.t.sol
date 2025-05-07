@@ -6,7 +6,7 @@ import {BasicStrategy} from "../src/strategy/BasicStrategy.sol";
 import {IStrategy} from "../src/strategy/IStrategy.sol";
 import {tRWA} from "../src/token/tRWA.sol";
 import {RoleManaged} from "../src/auth/RoleManaged.sol";
-import {MockRoleManager} from "../src/mocks/MockRoleManager.sol";
+import {RoleManager} from "../src/auth/RoleManager.sol";
 import {MockHook} from "../src/mocks/MockHook.sol";
 import {MockERC20} from "../src/mocks/MockERC20.sol";
 
@@ -44,7 +44,7 @@ contract BasicStrategyTest is BaseFountfiTest {
     // Test contracts
     TestableBasicStrategy public strategy;
     tRWA public token;
-    MockRoleManager public roleManager;
+    RoleManager public roleManager;
     MockHook public strategyHook;
     MockERC20 public daiToken;
 
@@ -57,11 +57,11 @@ contract BasicStrategyTest is BaseFountfiTest {
 
         vm.startPrank(owner);
 
-        // Deploy a new role manager for the strategy
-        roleManager = new MockRoleManager(owner);
-
-        // Grant strategy admin role to owner
-        roleManager.grantRole(owner, roleManager.STRATEGY_ADMIN());
+        // Deploy RoleManager. 'owner' will be the contract owner and PROTOCOL_ADMIN.
+        roleManager = new RoleManager();
+        // Initialize the registry for RoleManager.
+        // Using address(this) as a placeholder for the registry address.
+        roleManager.initializeRegistry(address(this)); // It's owner who calls this.
 
         // Deploy test DAI token as the asset
         daiToken = new MockERC20("DAI Stablecoin", "DAI", 18);
@@ -76,7 +76,7 @@ contract BasicStrategyTest is BaseFountfiTest {
         strategy.initialize(
             TOKEN_NAME,
             TOKEN_SYMBOL,
-            manager,
+            manager, // 'manager' from BaseFountfiTest.t.sol will be the strategy manager
             address(daiToken),
             18,
             ""
@@ -173,7 +173,7 @@ contract BasicStrategyTest is BaseFountfiTest {
 
         // Looking at the contract code, we need to have the STRATEGY_ADMIN role to set the manager
         // First grant the role to the owner
-        roleManager.grantRole(owner, roleManager.STRATEGY_ADMIN());
+        // roleManager.grantRole(owner, roleManager.STRATEGY_ADMIN()); // Remove this line
 
         // Change manager to alice
         strategy.setManager(alice);
@@ -449,7 +449,7 @@ contract BasicStrategyTest is BaseFountfiTest {
         vm.startPrank(owner);
 
         // First, we need the STRATEGY_ADMIN role to use the addOperationHook function
-        roleManager.grantRole(address(strategy), roleManager.STRATEGY_ADMIN());
+        // roleManager.grantRole(address(strategy), roleManager.STRATEGY_ADMIN()); // Remove this line
 
         // Test the callStrategyToken function
         MockHook newHook = new MockHook(true, "");

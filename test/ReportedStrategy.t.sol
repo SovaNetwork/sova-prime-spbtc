@@ -6,7 +6,7 @@ import {ReportedStrategy} from "../src/strategy/ReportedStrategy.sol";
 import {BasicStrategy} from "../src/strategy/BasicStrategy.sol";
 import {IStrategy} from "../src/strategy/IStrategy.sol";
 import {tRWA} from "../src/token/tRWA.sol";
-import {MockRoleManager} from "../src/mocks/MockRoleManager.sol";
+import {RoleManager} from "../src/auth/RoleManager.sol";
 import {MockHook} from "../src/mocks/MockHook.sol";
 import {MockERC20} from "../src/mocks/MockERC20.sol";
 import {MockReporter} from "../src/mocks/MockReporter.sol";
@@ -20,7 +20,7 @@ contract ReportedStrategyTest is BaseFountfiTest {
     // Test contracts
     ReportedStrategy public strategy;
     tRWA public token;
-    MockRoleManager public roleManager;
+    RoleManager public roleManager;
     MockHook public strategyHook;
     MockERC20 public daiToken;
     MockReporter public reporter;
@@ -35,11 +35,10 @@ contract ReportedStrategyTest is BaseFountfiTest {
 
         vm.startPrank(owner);
 
-        // Deploy a new role manager for the strategy
-        roleManager = new MockRoleManager(owner);
-
-        // Grant strategy admin role to owner
-        roleManager.grantRole(owner, roleManager.STRATEGY_ADMIN());
+        // Deploy RoleManager. 'owner' will be the contract owner and PROTOCOL_ADMIN.
+        roleManager = new RoleManager();
+        // Initialize the registry for RoleManager.
+        roleManager.initializeRegistry(address(this));
 
         // Deploy test DAI token as the asset
         daiToken = new MockERC20("DAI Stablecoin", "DAI", 18);

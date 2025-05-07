@@ -5,7 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {Registry} from "../src/registry/Registry.sol";
 import {MockERC20} from "../src/mocks/MockERC20.sol";
 import {RoleManager} from "../src/auth/RoleManager.sol";
-
+import {IRegistry} from "../src/registry/IRegistry.sol";
 /**
  * @title RegistryTest
  * @notice Simple test for the Registry contract
@@ -61,13 +61,13 @@ contract RegistryTest is Test {
         vm.startPrank(owner);
 
         // Zero address checks
-        vm.expectRevert(Registry.ZeroAddress.selector);
+        vm.expectRevert(IRegistry.ZeroAddress.selector);
         registry.setAsset(address(0), true);
 
-        vm.expectRevert(Registry.ZeroAddress.selector);
+        vm.expectRevert(IRegistry.ZeroAddress.selector);
         registry.setHook(address(0), true);
 
-        vm.expectRevert(Registry.ZeroAddress.selector);
+        vm.expectRevert(IRegistry.ZeroAddress.selector);
         registry.setStrategy(address(0), true);
 
         vm.stopPrank();

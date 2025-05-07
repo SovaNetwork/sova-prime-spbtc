@@ -6,40 +6,27 @@ import {IStrategy} from "../strategy/IStrategy.sol";
 import {RoleManaged} from "../auth/RoleManaged.sol";
 import {ItRWA} from "../token/ItRWA.sol";
 import {Conduit} from "../conduit/Conduit.sol";
+import {IRegistry} from "./IRegistry.sol";
 
 /**
  * @title Registry
  * @notice Central registry for strategies, rules, assets, and reporters
  * @dev Uses minimal proxy pattern for cloning templates
  */
-contract Registry is RoleManaged {
+contract Registry is IRegistry, RoleManaged {
     using LibClone for address;
 
     // Singleton contracts
     address public immutable conduit;
 
     // Registry mappings
-    mapping(address => bool) public allowedStrategies;
-    mapping(address => bool) public allowedHooks;
-    mapping(address => bool) public allowedAssets;
+    mapping(address => bool) public override allowedStrategies;
+    mapping(address => bool) public override allowedHooks;
+    mapping(address => bool) public override allowedAssets;
 
     // Deployed contracts registry
-    address[] public allStrategies;
-    mapping(address => bool) public isStrategy;
-
-    // Events
-    event SetStrategy(address indexed implementation, bool allowed);
-    event SetHook(address indexed implementation, bool allowed);
-    event SetAsset(address indexed asset, bool allowed);
-    event Deploy(address indexed strategy, address indexed sToken, address indexed asset);
-    event DeployWithController(address indexed strategy, address indexed sToken, address indexed controller);
-
-    // Errors
-    error ZeroAddress();
-    error UnauthorizedStrategy();
-    error UnauthorizedHook();
-    error UnauthorizedAsset();
-    error InvalidInitialization();
+    address[] private _allStrategies;
+    mapping(address => bool) public override isStrategy;
 
     /**
      * @notice Constructor
@@ -104,7 +91,7 @@ contract Registry is RoleManaged {
         uint8 _assetDecimals,
         address _manager,
         bytes memory _initData
-    ) external onlyRoles(roleManager.STRATEGY_OPERATOR()) returns (address strategy, address token) {
+    ) external override onlyRoles(roleManager.STRATEGY_OPERATOR()) returns (address strategy, address token) {
         if (!allowedAssets[_asset]) revert UnauthorizedAsset();
         if (!allowedStrategies[_implementation]) revert UnauthorizedStrategy();
 
@@ -125,7 +112,7 @@ contract Registry is RoleManaged {
         token = IStrategy(strategy).sToken();
 
         // Register strategy in the factory
-        allStrategies.push(strategy);
+        _allStrategies.push(strategy);
         isStrategy[strategy] = true;
 
         emit Deploy(strategy, token, _asset);
@@ -138,7 +125,7 @@ contract Registry is RoleManaged {
      * @param token Address of the token
      * @return bool True if the token is a tRWA token, false otherwise
      */
-    function isToken(address token) external view returns (bool) {
+    function isToken(address token) external view override returns (bool) {
         ItRWA tokenContract = ItRWA(token);
         address strategy = address(tokenContract.strategy());
 
@@ -149,11 +136,19 @@ contract Registry is RoleManaged {
      * @notice Get all tRWA tokens
      * @return tokens Array of tRWA token addresses
      */
-    function allTokens() external view returns (address[] memory tokens) {
-        tokens = new address[](allStrategies.length);
+    function allTokens() external view override returns (address[] memory tokens) {
+        tokens = new address[](_allStrategies.length);
 
-        for (uint256 i = 0; i < allStrategies.length; i++) {
-            tokens[i] = IStrategy(allStrategies[i]).sToken();
+        for (uint256 i = 0; i < _allStrategies.length; i++) {
+            tokens[i] = IStrategy(_allStrategies[i]).sToken();
         }
+    }
+
+    /**
+     * @notice Get all strategies
+     * @return strategies Array of strategy addresses
+     */
+    function allStrategies() external view override returns (address[] memory strategies) {
+        return _allStrategies;
     }
 }

@@ -18,6 +18,7 @@ import {IHook} from "../src/hooks/IHook.sol";
 import {PriceOracleReporter} from "../src/reporter/PriceOracleReporter.sol";
 import {ReportedStrategy} from "../src/strategy/ReportedStrategy.sol";
 import {IStrategy} from "../src/strategy/IStrategy.sol";
+import {RoleManager} from "../src/auth/RoleManager.sol";
 
 /**
  * @title BaseFountfiTest
@@ -153,14 +154,14 @@ abstract contract BaseFountfiTest is Test {
         // Setup Registry
         registry.setAsset(address(usdc), true);
 
-        // Deploy mock role manager
-        MockRoleManager roleManager = new MockRoleManager(owner);
+        // Deploy real RoleManager
+        RoleManager roleManager = new RoleManager();
+        roleManager.initializeRegistry(address(registry));
 
-        // Deploy hooks with mock role manager
+        // Deploy hooks with the real role manager
         kycRules = new KycRulesHook(address(roleManager));
 
-        // Grant KYC roles to the owner for testing
-        roleManager.grantRole(owner, roleManager.KYC_ADMIN());
+        // Grant KYC_OPERATOR role to the owner for testing KycRulesHook operations.
         roleManager.grantRole(owner, roleManager.KYC_OPERATOR());
 
         // Register the hook in the registry

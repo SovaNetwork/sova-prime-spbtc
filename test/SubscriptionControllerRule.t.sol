@@ -1,5 +1,5 @@
-// // SPDX-License-Identifier: MIT
-// pragma solidity ^0.8.25;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.25;
 
 // import {BaseFountfiTest} from "./BaseFountfiTest.t.sol";
 // import {SubscriptionController} from "../src/controllers/SubscriptionController.sol";
@@ -9,7 +9,7 @@
 // import {tRWA} from "../src/token/tRWA.sol";
 // import {RulesEngine} from "../src/hooks/RulesEngine.sol";
 // import {MockStrategy} from "../src/mocks/MockStrategy.sol";
-// import {MockRoleManager} from "../src/mocks/MockRoleManager.sol";
+// import {RoleManager} from "../src/auth/RoleManager.sol";
 
 // /**
 //  * @title SubscriptionControllerHookTest
@@ -21,14 +21,16 @@
 //     SubscriptionControllerHook public controllerHook;
 //     tRWA public token;
 //     MockStrategy public strategy;
+//     RoleManager public roleManager;
 
 //     function setUp() public override {
 //         super.setUp();
 
 //         // ===== IMPORTANT: first deploy any MockRoleManager needed =====
-//         // Deploy role manager for strategy
+//         // Deploy role manager
 //         vm.startPrank(owner);
-//         MockRoleManager roleManager = new MockRoleManager(owner);
+//         roleManager = new RoleManager();
+//         roleManager.initializeRegistry(address(this));
 
 //         // Create additional admin addresses for the subscription controller
 //         address[] memory managers = new address[](1);

@@ -9,7 +9,7 @@ import {MockCappedSubscriptionHook} from "../src/mocks/MockCappedSubscriptionHoo
 import {IHook} from "../src/hooks/IHook.sol";
 import {tRWA} from "../src/token/tRWA.sol";
 import {MockStrategy} from "../src/mocks/MockStrategy.sol";
-import {MockRoleManagerForRulesEngine} from "./RulesEngine.t.sol";
+import {RoleManager} from "../src/auth/RoleManager.sol";
 import {MockHook} from "../src/mocks/MockHook.sol";
 
 contract HooksTest is BaseFountfiTest {
@@ -18,27 +18,25 @@ contract HooksTest is BaseFountfiTest {
     MockSubscriptionHook public subHook;
     MockCappedSubscriptionHook public cappedHook;
 
-    MockRoleManagerForRulesEngine public mockRoleManager;
+    RoleManager public roleManager;
 
     function setUp() public override {
         super.setUp();
 
-        // Deploy mock role manager
-        mockRoleManager = new MockRoleManagerForRulesEngine(owner);
+        vm.startPrank(owner);
 
-        // Deploy hooks
-        rulesEngine = new RulesEngine(address(mockRoleManager));
-        kycRules = new KycRulesHook(address(mockRoleManager)); // Default deny with role manager
-        subHook = new MockSubscriptionHook(owner, true, true); // Enforce approval, initially open
+        roleManager = new RoleManager();
+        roleManager.initializeRegistry(address(this));
+
+        roleManager.grantRole(owner, roleManager.KYC_OPERATOR());
+
+        rulesEngine = new RulesEngine(address(roleManager));
+        kycRules = new KycRulesHook(address(roleManager));
+
+        subHook = new MockSubscriptionHook(owner, true, true);
         cappedHook = new MockCappedSubscriptionHook(10_000 * 10**6, true, "Test rejection");
 
-        // Grant owner the necessary roles
-        // MockRoleManager has different role structure
-        // We'll make sure owner has all needed roles
-        mockRoleManager.grantRole(owner, mockRoleManager.PROTOCOL_ADMIN());
-        mockRoleManager.grantRole(owner, mockRoleManager.KYC_ADMIN());
-        mockRoleManager.grantRole(owner, mockRoleManager.RULES_ADMIN()); // This is from MockRoleManagerForRulesEngine
-        mockRoleManager.grantRole(owner, mockRoleManager.KYC_OPERATOR());
+        vm.stopPrank();
     }
 
     // === KYC Rules Tests ===
@@ -226,21 +224,21 @@ contract HooksTest is BaseFountfiTest {
         // Create custom hook implementations that will have unique hookIds
         vm.prank(owner);
         MockHook uniqueHook1 = new MockHook(true, "");
-        
+
         vm.prank(owner);
         MockHook uniqueHook2 = new MockHook(true, "");
-        
+
         // Modify their names to ensure unique hookIds
         vm.prank(owner);
         uniqueHook1.setName("UniqueHook1");
-        
+
         vm.prank(owner);
         uniqueHook2.setName("UniqueHook2");
-        
+
         // Add hooks to the RulesEngine
         vm.prank(owner);
         rulesEngine.addHook(address(uniqueHook1), 0);
-        
+
         vm.prank(owner);
         rulesEngine.addHook(address(uniqueHook2), 1);
 
@@ -274,38 +272,38 @@ contract HooksTest is BaseFountfiTest {
         // Create hooks with unique IDs
         vm.prank(owner);
         MockHook kycMockHook = new MockHook(true, "");
-        
+
         vm.prank(owner);
         MockHook subMockHook = new MockHook(true, "");
-        
+
         // Set unique names to avoid hook ID collisions
         vm.prank(owner);
         kycMockHook.setName("KycMockHook");
-        
+
         vm.prank(owner);
         subMockHook.setName("SubMockHook");
-        
+
         // Set subMockHook to reject bob
         vm.prank(owner);
         subMockHook.setApproveStatus(true, "");
-        
+
         // Add hooks to the RulesEngine
         vm.prank(owner);
         rulesEngine.addHook(address(kycMockHook), 0);
-        
+
         vm.prank(owner);
         rulesEngine.addHook(address(subMockHook), 1);
-        
+
         // Test evaluation for alice (should pass both hooks)
         IHook.HookOutput memory result = rulesEngine.onBeforeDeposit(
             address(0), alice, 100, alice
         );
         assertTrue(result.approved, "Alice should pass both hooks");
-        
+
         // Now set the second hook to reject
         vm.prank(owner);
         subMockHook.setApproveStatus(false, "Sub hook rejects bob");
-        
+
         // Test evaluation (should now fail due to second hook)
         result = rulesEngine.onBeforeDeposit(
             address(0), bob, 100, bob

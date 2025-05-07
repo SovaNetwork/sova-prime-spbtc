@@ -1,5 +1,5 @@
-// // SPDX-License-Identifier: MIT
-// pragma solidity ^0.8.25;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.25;
 
 // import {BaseFountfiTest} from "./BaseFountfiTest.t.sol";
 // import {SubscriptionController} from "../src/controllers/SubscriptionController.sol";
@@ -10,6 +10,7 @@
 // import {RulesEngine} from "../src/hooks/RulesEngine.sol";
 // import {IHook} from "../src/hooks/IHook.sol";
 // import {MockStrategy} from "../src/mocks/MockStrategy.sol";
+// import {RoleManager} from "../src/auth/RoleManager.sol";
 
 // /**
 //  * @title SubscriptionControllerTest
