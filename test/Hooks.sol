@@ -9,7 +9,8 @@ import {MockCappedSubscriptionHook} from "../src/mocks/MockCappedSubscriptionHoo
 import {IHook} from "../src/hooks/IHook.sol";
 import {tRWA} from "../src/token/tRWA.sol";
 import {MockStrategy} from "../src/mocks/MockStrategy.sol";
-import {MockRoleManager} from "../src/mocks/MockRoleManager.sol";
+import {MockRoleManagerForRulesEngine} from "./RulesEngine.t.sol";
+import {MockHook} from "../src/mocks/MockHook.sol";
 
 contract HooksTest is BaseFountfiTest {
     RulesEngine public rulesEngine;
@@ -17,15 +18,13 @@ contract HooksTest is BaseFountfiTest {
     MockSubscriptionHook public subHook;
     MockCappedSubscriptionHook public cappedHook;
 
-    MockRoleManager public mockRoleManager;
+    MockRoleManagerForRulesEngine public mockRoleManager;
 
     function setUp() public override {
         super.setUp();
 
-        vm.startPrank(owner);
-
         // Deploy mock role manager
-        mockRoleManager = new MockRoleManager(owner);
+        mockRoleManager = new MockRoleManagerForRulesEngine(owner);
 
         // Deploy hooks
         rulesEngine = new RulesEngine(address(mockRoleManager));
@@ -38,11 +37,8 @@ contract HooksTest is BaseFountfiTest {
         // We'll make sure owner has all needed roles
         mockRoleManager.grantRole(owner, mockRoleManager.PROTOCOL_ADMIN());
         mockRoleManager.grantRole(owner, mockRoleManager.KYC_ADMIN());
-        // No direct RULES_ADMIN in MockRoleManager, just use separate KYC_ADMIN role
-        // Then the specific operator role
+        mockRoleManager.grantRole(owner, mockRoleManager.RULES_ADMIN()); // This is from MockRoleManagerForRulesEngine
         mockRoleManager.grantRole(owner, mockRoleManager.KYC_OPERATOR());
-
-        vm.stopPrank();
     }
 
     // === KYC Rules Tests ===
@@ -227,69 +223,94 @@ contract HooksTest is BaseFountfiTest {
     // === Rules Engine Tests ===
 
     function test_RulesEngine_Management() public {
-        // First, mock the hasAllRoles function in the MockRoleManager
-        // This needs to be fixed since our RulesEngine uses roleManager.RULES_ADMIN()
-        vm.startPrank(owner);
-
-        // The owner is already granted all roles in the MockRoleManager constructor
-        // But we need to make sure it works with the RulesEngine's expected behavior
-
+        // Create custom hook implementations that will have unique hookIds
+        vm.prank(owner);
+        MockHook uniqueHook1 = new MockHook(true, "");
+        
+        vm.prank(owner);
+        MockHook uniqueHook2 = new MockHook(true, "");
+        
+        // Modify their names to ensure unique hookIds
+        vm.prank(owner);
+        uniqueHook1.setName("UniqueHook1");
+        
+        vm.prank(owner);
+        uniqueHook2.setName("UniqueHook2");
+        
         // Add hooks to the RulesEngine
-        rulesEngine.addHook(address(kycRules), 0);
-        rulesEngine.addHook(address(subHook), 1);
+        vm.prank(owner);
+        rulesEngine.addHook(address(uniqueHook1), 0);
+        
+        vm.prank(owner);
+        rulesEngine.addHook(address(uniqueHook2), 1);
 
         // Get all hook IDs
         bytes32[] memory hookIds = rulesEngine.getAllHookIds();
         assertEq(hookIds.length, 2, "Should have 2 hooks registered");
 
         // Disable a hook
+        vm.prank(owner);
         rulesEngine.disableHook(hookIds[0]);
         assertFalse(rulesEngine.isHookActive(hookIds[0]), "Hook should be disabled");
 
         // Enable a hook
+        vm.prank(owner);
         rulesEngine.enableHook(hookIds[0]);
         assertTrue(rulesEngine.isHookActive(hookIds[0]), "Hook should be enabled");
 
         // Change priority
+        vm.prank(owner);
         rulesEngine.changeHookPriority(hookIds[0], 2);
         assertEq(rulesEngine.getHookPriority(hookIds[0]), 2, "Priority should be updated");
 
         // Remove a hook
+        vm.prank(owner);
         rulesEngine.removeHook(hookIds[1]);
         hookIds = rulesEngine.getAllHookIds();
         assertEq(hookIds.length, 1, "Should have 1 hook after removal");
-
-        vm.stopPrank();
     }
 
     function test_RulesEngine_Evaluation() public {
-        vm.startPrank(owner);
-
-        // Setup hooks
-        kycRules.allow(alice);
-        kycRules.allow(bob);
-        subHook.setSubscriber(alice, true);
-
+        // Create hooks with unique IDs
+        vm.prank(owner);
+        MockHook kycMockHook = new MockHook(true, "");
+        
+        vm.prank(owner);
+        MockHook subMockHook = new MockHook(true, "");
+        
+        // Set unique names to avoid hook ID collisions
+        vm.prank(owner);
+        kycMockHook.setName("KycMockHook");
+        
+        vm.prank(owner);
+        subMockHook.setName("SubMockHook");
+        
+        // Set subMockHook to reject bob
+        vm.prank(owner);
+        subMockHook.setApproveStatus(true, "");
+        
         // Add hooks to the RulesEngine
-        rulesEngine.addHook(address(kycRules), 0);
-        rulesEngine.addHook(address(subHook), 1);
-
+        vm.prank(owner);
+        rulesEngine.addHook(address(kycMockHook), 0);
+        
+        vm.prank(owner);
+        rulesEngine.addHook(address(subMockHook), 1);
+        
         // Test evaluation for alice (should pass both hooks)
         IHook.HookOutput memory result = rulesEngine.onBeforeDeposit(
             address(0), alice, 100, alice
         );
         assertTrue(result.approved, "Alice should pass both hooks");
-
-        // Deny bob in subscription rules (should fail on subHook)
-        subHook.setSubscriber(bob, false);
-
-        // Test evaluation for bob
+        
+        // Now set the second hook to reject
+        vm.prank(owner);
+        subMockHook.setApproveStatus(false, "Sub hook rejects bob");
+        
+        // Test evaluation (should now fail due to second hook)
         result = rulesEngine.onBeforeDeposit(
             address(0), bob, 100, bob
         );
-        assertFalse(result.approved, "Bob should fail on subscription hook");
+        assertFalse(result.approved, "Should fail when a hook rejects");
         assertTrue(bytes(result.reason).length > 0, "Reason should be provided");
-
-        vm.stopPrank();
     }
 }

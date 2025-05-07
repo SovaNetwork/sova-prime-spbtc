@@ -30,16 +30,12 @@ contract SubscriptionControllerTest is BaseFountfiTest {
     function setUp() public override {
         super.setUp();
         
-        // Deploy a mock tRWA setup - this is done with owner in the BaseFountfiTest.deployMockTRWA method
-        (strategy, token) = deployMockTRWA("Test Token", "TT");
-        
+        // ===== IMPORTANT: first deploy any MockRoleManager needed =====
+        // Deploy role manager for strategy
         vm.startPrank(owner);
-        
-        // Deploy role manager - needed for various components
         roleManager = new MockRoleManager(owner);
         
-        // The error might be coming from the OwnableRoles contract in the controller
-        // Let's create the controller with the needed managers
+        // Create managers list for the subscription controller
         address[] memory managers = new address[](2);
         managers[0] = admin;
         managers[1] = manager;
@@ -50,7 +46,25 @@ contract SubscriptionControllerTest is BaseFountfiTest {
             managers
         );
         
-        // Set the controller on the token
+        // Deploy a mock tRWA setup manually instead of using the helper
+        MockStrategy mockStrat = new MockStrategy(owner);
+        mockStrat.initialize(
+            "Test Token",
+            "TT", 
+            owner,
+            address(usdc),
+            6,
+            ""
+        );
+        
+        // Store the references
+        strategy = mockStrat;
+        token = tRWA(strategy.sToken());
+        
+        // Add the STRATEGY_ADMIN role so that strategy can modify the token
+        roleManager.grantRole(address(strategy), roleManager.STRATEGY_ADMIN());
+        
+        // Set the controller on the token (this should work now)
         strategy.callStrategyToken(
             abi.encodeCall(tRWA.setController, (address(controller)))
         );
@@ -62,13 +76,6 @@ contract SubscriptionControllerTest is BaseFountfiTest {
         strategy.callStrategyToken(
             abi.encodeCall(tRWA.addOperationHook, (address(controllerHook)))
         );
-        
-        // Since we're keeping the tests simple for now, we'll avoid RulesEngine
-        // and just test the components directly
-        
-        // Skip rulesEngine initialization since we can't properly set it up
-        // in the test environment due to role management differences
-        
         vm.stopPrank();
     }
     

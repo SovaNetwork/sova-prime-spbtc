@@ -9,6 +9,7 @@ import {IHook} from "../src/hooks/IHook.sol";
 import {tRWA} from "../src/token/tRWA.sol";
 import {RulesEngine} from "../src/hooks/RulesEngine.sol";
 import {MockStrategy} from "../src/mocks/MockStrategy.sol";
+import {MockRoleManager} from "../src/mocks/MockRoleManager.sol";
 
 /**
  * @title SubscriptionControllerHookTest
@@ -24,24 +25,46 @@ contract SubscriptionControllerHookTest is BaseFountfiTest {
     function setUp() public override {
         super.setUp();
         
-        // Deploy a mock tRWA setup - this is done with owner in the BaseFountfiTest.deployMockTRWA method
-        (strategy, token) = deployMockTRWA("Test Token", "TT");
-        
+        // ===== IMPORTANT: first deploy any MockRoleManager needed =====
+        // Deploy role manager for strategy
         vm.startPrank(owner);
+        MockRoleManager roleManager = new MockRoleManager(owner);
         
-        // Create additional admin addresses
+        // Create additional admin addresses for the subscription controller
         address[] memory managers = new address[](1);
         managers[0] = admin;
         
-        // Deploy subscription controller (no token reference needed now)
+        // Deploy subscription controller
         controller = new SubscriptionController(
             owner,
             managers
         );
         
+        // Deploy a mock tRWA setup
+        MockStrategy mockStrat = new MockStrategy(owner);
+        mockStrat.initialize(
+            "Test Token",
+            "TT", 
+            owner,
+            address(usdc),
+            6,
+            ""
+        );
+        
+        // Store the references
+        strategy = mockStrat;
+        token = tRWA(strategy.sToken());
+        
+        // Add the STRATEGY_ADMIN role so that strategy can modify the token
+        roleManager.grantRole(address(strategy), roleManager.STRATEGY_ADMIN());
+        
+        // Set the controller on the token (this should work now)
+        strategy.callStrategyToken(
+            abi.encodeCall(tRWA.setController, (address(controller)))
+        );
+        
         // Deploy controller hook
         controllerHook = new SubscriptionControllerHook(address(controller));
-        
         vm.stopPrank();
     }
     

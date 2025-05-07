@@ -196,7 +196,7 @@ contract RulesEngine is BaseHook, RoleManaged {
         address from,
         address to,
         uint256 amount
-    ) public view override returns (HookOutput memory) {
+    ) public override returns (HookOutput memory) {
         bytes memory callData = abi.encodeCall(IHook.onBeforeTransfer, (token, from, to, amount));
         return _evaluateSubHooks(callData);
     }
@@ -209,7 +209,7 @@ contract RulesEngine is BaseHook, RoleManaged {
         address user,
         uint256 assets,
         address receiver
-    ) public view override returns (HookOutput memory) {
+    ) public override returns (HookOutput memory) {
         bytes memory callData = abi.encodeCall(IHook.onBeforeDeposit, (token, user, assets, receiver));
         return _evaluateSubHooks(callData);
     }
@@ -223,7 +223,7 @@ contract RulesEngine is BaseHook, RoleManaged {
         uint256 assets,
         address receiver,
         address owner
-    ) public view override returns (HookOutput memory) {
+    ) public override returns (HookOutput memory) {
         bytes memory callData = abi.encodeCall(IHook.onBeforeWithdraw, (token, user, assets, receiver, owner));
         return _evaluateSubHooks(callData);
     }
@@ -237,15 +237,16 @@ contract RulesEngine is BaseHook, RoleManaged {
      * @param callData Encoded call data for the hook evaluation function (e.g., onBeforeTransfer)
      * @return resultSelector Bytes4 selector indicating success or failure reason
      */
-    function _evaluateSubHooks(bytes memory callData) internal view returns (IHook.HookOutput memory) {
+    function _evaluateSubHooks(bytes memory callData) internal returns (IHook.HookOutput memory) {
         bytes32[] memory sortedHookIds = _getSortedActiveHookIds();
 
         for (uint256 i = 0; i < sortedHookIds.length; i++) {
             bytes32 hookId = sortedHookIds[i];
             HookInfo memory hook = _hooks[hookId]; // No need to check active here, _getSortedActiveHookIds does that
 
-            // Call the sub-hook with the appropriate evaluation function
-            (bool success, bytes memory returnData) = hook.hookAddress.staticcall(callData);
+            // Call the sub-hook with the appropriate evaluation function - use call instead of staticcall
+            // to allow hooks to modify state (emit events, track interactions, etc.)
+            (bool success, bytes memory returnData) = hook.hookAddress.call(callData);
 
             if (!success) {
                 // Sub-hook execution failed (reverted without a known bytes4 selector)

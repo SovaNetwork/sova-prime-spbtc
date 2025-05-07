@@ -22,6 +22,14 @@ contract MockHook is IHook {
         approveOperations = _approveOperations;
         rejectReason = _rejectReason;
     }
+    
+    /**
+     * @notice Set the name of the hook (useful for creating unique identifiers in tests)
+     * @param _name New name for the hook
+     */
+    function setName(string memory _name) external {
+        name = _name;
+    }
 
     /**
      * @notice Set whether operations should be approved

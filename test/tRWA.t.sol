@@ -175,7 +175,7 @@ contract TRWATest is BaseFountfiTest {
     }
 
     function test_SetController_Reverts_WhenCalledByNonStrategy() public {
-        vm.expectRevert(abi.encodeWithSignature("NotStrategyAdmin()"));
+        vm.expectRevert(abi.encodeWithSignature("tRWAUnauthorized(address,address)", address(this), address(strategy)));
         token.setController(address(callbackReceiver));
     }
 

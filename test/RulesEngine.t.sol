@@ -18,6 +18,20 @@ contract MockRoleManagerForRulesEngine is MockRoleManager {
 }
 
 /**
+ * @title CustomMockHook
+ * @notice Mock hook implementation with customizable name for unique hookId
+ */
+contract CustomMockHook is MockHook {
+    constructor(
+        bool initialApprove,
+        string memory rejectReason,
+        string memory hookName
+    ) MockHook(initialApprove, rejectReason) {
+        name = hookName;
+    }
+}
+
+/**
  * @title OperationSpecificMockHook
  * @notice Mock hook implementation that handles specific operations differently
  */
@@ -30,6 +44,17 @@ contract OperationSpecificMockHook is MockHook {
         string memory rejectReason
     ) MockHook(initialApprove, rejectReason) {
         _operationType = operationType;
+        
+        // Set a unique name based on operation type to ensure unique hookId
+        if (operationType == 1) {
+            name = "DepositHook";
+        } else if (operationType == 2) {
+            name = "WithdrawHook";
+        } else if (operationType == 3) {
+            name = "TransferHook";
+        } else {
+            name = "GenericHook";
+        }
     }
     
     // Override the deposit hook if this is a deposit hook
@@ -138,15 +163,19 @@ contract RulesEngineTests is BaseFountfiTest {
         // Deploy our custom role manager with RULES_ADMIN
         roleManager = new MockRoleManagerForRulesEngine(owner);
         
-        // Add RULES_ADMIN role to the owner
+        // Grant RULES_ADMIN role to owner explicitly
         roleManager.grantRole(owner, roleManager.RULES_ADMIN());
         
         // Deploy rules engine
         rulesEngine = new RulesEngine(address(roleManager));
         
-        // Create hooks with different configurations
-        allowHook = new MockHook(true, "");
-        denyHook = new MockHook(false, "Hook denies operation");
+        // Create custom MockHook child contract that overrides hookName for uniqueness
+        CustomMockHook allowHookTemp = new CustomMockHook(true, "", "AllowHook");
+        CustomMockHook denyHookTemp = new CustomMockHook(false, "Hook denies operation", "DenyHook");
+        
+        // Store as MockHook reference
+        allowHook = MockHook(address(allowHookTemp));
+        denyHook = MockHook(address(denyHookTemp));
         
         // Create hooks for specific operations
         transferHook = new OperationSpecificMockHook(OPERATION_TRANSFER, true, "");

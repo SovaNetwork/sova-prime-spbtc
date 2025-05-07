@@ -483,11 +483,16 @@ contract BasicStrategyTest is BaseFountfiTest {
     function test_CallStrategyToken() public {
         vm.startPrank(owner);
         
+        // First, we need the STRATEGY_ADMIN role to use the addOperationHook function
+        roleManager.grantRole(address(strategy), roleManager.STRATEGY_ADMIN());
+        
         // Test the callStrategyToken function
         MockHook newHook = new MockHook(true, "");
         
-        // Add a new hook to the token by directly calling the token
-        token.addOperationHook(address(newHook));
+        // Call the token through the strategy (this should work now with the role)
+        strategy.callStrategyToken(
+            abi.encodeCall(tRWA.addOperationHook, (address(newHook)))
+        );
         
         // Verify hook was added - one way to test is to check if the operation succeeds
         // If the hook was not added correctly, the operation would fail

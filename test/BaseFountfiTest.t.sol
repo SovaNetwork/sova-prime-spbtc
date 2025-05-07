@@ -81,13 +81,12 @@ abstract contract BaseFountfiTest is Test {
         string memory name,
         string memory symbol
     ) internal returns (MockStrategy, tRWA) {
-        // Init strategy and get token
-        vm.startPrank(owner);
-
         // Create a fresh MockHook and ensure it's initialized to allow by default
+        vm.prank(owner);
         MockHook mockHookLocal = new MockHook(true, "Test rejection");
 
         // Register the hook in the registry
+        vm.prank(owner);
         registry.setOperationHook(address(mockHookLocal), true);
 
         // Create array of hooks
@@ -95,7 +94,10 @@ abstract contract BaseFountfiTest is Test {
         hookAddresses[0] = address(mockHookLocal);
 
         // Deploy a new strategy
+        vm.prank(owner);
         MockStrategy strategy = new MockStrategy(owner);
+        
+        vm.prank(owner);
         strategy.initialize(
             name,
             symbol,
@@ -109,11 +111,10 @@ abstract contract BaseFountfiTest is Test {
         tRWA token = tRWA(strategy.sToken());
         
         // Add hook to token
+        vm.prank(owner);
         strategy.callStrategyToken(
             abi.encodeCall(tRWA.addOperationHook, (address(mockHookLocal)))
         );
-        
-        vm.stopPrank();
 
         return (strategy, token);
     }
