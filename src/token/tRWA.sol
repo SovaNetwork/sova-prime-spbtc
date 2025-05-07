@@ -344,7 +344,7 @@ contract tRWA is ERC4626, ItRWA {
      */
     function _deposit(address by, address to, uint256 assets, uint256 shares) internal override {
         for (uint i = 0; i < operationHooks.length; i++) {
-            HookOutput memory hookOutput = operationHooks[i].evaluateDeposit(address(this), by, assets, to);
+            HookOutput memory hookOutput = operationHooks[i].onBeforeDeposit(address(this), by, assets, to);
             if (!hookOutput.approved) {
                 revert HookCheckFailed(hookOutput.reason);
             }
@@ -381,7 +381,7 @@ contract tRWA is ERC4626, ItRWA {
      */
     function _withdraw(address by, address to, address owner, uint256 assets, uint256 shares) internal override {
        for (uint i = 0; i < operationHooks.length; i++) {
-            HookOutput memory hookOutput = operationHooks[i].evaluateWithdraw(address(this), by, assets, to, owner);
+            HookOutput memory hookOutput = operationHooks[i].onBeforeWithdraw(address(this), by, assets, to, owner);
             if (!hookOutput.approved) {
                 // Special case for withdrawal queue still needs to be handled based on the hook's reason
                 if (keccak256(bytes(hookOutput.reason)) == keccak256(bytes("Direct withdrawals not supported. Withdrawal request created in queue."))) {
@@ -413,7 +413,7 @@ contract tRWA is ERC4626, ItRWA {
      */
     function burn(address from, uint256 amount) external {
         for (uint i = 0; i < operationHooks.length; i++) {
-            HookOutput memory hookOutput = operationHooks[i].evaluateTransfer(address(this), from, address(0), amount);
+            HookOutput memory hookOutput = operationHooks[i].onBeforeTransfer(address(this), from, address(0), amount);
             if (!hookOutput.approved) {
                 revert HookCheckFailed(hookOutput.reason);
             }

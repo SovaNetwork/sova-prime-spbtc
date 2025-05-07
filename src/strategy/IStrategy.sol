@@ -14,6 +14,8 @@ interface IStrategy {
     error CallRevert(bytes returnData);
     error AlreadyInitialized();
     error TokenAlreadyDeployed();
+    error CannotCallToken();
+
     // Events
     event PendingAdminChange(address indexed oldAdmin, address indexed newAdmin);
     event AdminChange(address indexed oldAdmin, address indexed newAdmin);

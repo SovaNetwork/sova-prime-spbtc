@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {BaseRules} from "./BaseRules.sol";
+import {BaseHook} from "./BaseHook.sol";
 import {RoleManaged} from "../auth/RoleManaged.sol";
+import {IHook} from "./IHook.sol"; // Added for HOOK_SUCCESS etc.
 
 /**
- * @title KycRule
- * @notice Rule that restricts transfers based on sender/receiver addresses
+ * @title KycRulesHook
+ * @notice Hook that restricts transfers based on sender/receiver KYC status
  * @dev Uses allow/deny lists to determine if transfers are permitted
  */
-contract KycRules is BaseRules, RoleManaged {
+contract KycRulesHook is BaseHook, RoleManaged {
     // Errors
     error ZeroAddress();
     error AddressAlreadyDenied();
@@ -32,7 +33,7 @@ contract KycRules is BaseRules, RoleManaged {
      * @param _roleManager Address of the role manager contract
      */
     constructor(address _roleManager)
-        BaseRules("KycRule")
+        BaseHook("KycRulesHook-1.0")
         RoleManaged(_roleManager)
     {}
 
@@ -154,108 +155,78 @@ contract KycRules is BaseRules, RoleManaged {
     }
 
     /**
-     * @notice Evaluate transfer operation
+     * @notice Hook executed before a transfer operation
      * @param from Address sending tokens
      * @param to Address receiving tokens
-     * @return result Rule evaluation result
+     * @return bytes4 Selector indicating success or specific failure reason
      */
-    function evaluateTransfer(
-        address,
+    function onBeforeTransfer(
+        address, // token
         address from,
         address to,
-        uint256
-    ) public view override returns (RuleResult memory result) {
-        // Check if the sender is allowed to transfer
-        if (!isAllowed(from)) {
-            return RuleResult({
-                approved: false,
-                reason: "KycRules: sender"
-            });
-        }
-
-        // Check if the receiver is allowed to receive
-        if (!isAllowed(to)) {
-            return RuleResult({
-                approved: false,
-                reason: "KycRules: receiver"
-            });
-        }
-
-        // Both sender and receiver are allowed
-        return RuleResult({ approved: true, reason: "" });
+        uint256 // amount
+    ) public view override returns (bytes4) {
+        return _checkSenderAndReceiver(from, to);
     }
 
     /**
-     * @notice Evaluate deposit operation
+     * @notice Hook executed before a deposit operation
      * @param user Address initiating the deposit
      * @param receiver Address receiving the shares
-     * @return result Rule evaluation result
+     * @return bytes4 Selector indicating success or specific failure reason
      */
-    function evaluateDeposit(
-        address,
+    function onBeforeDeposit(
+        address, // token
         address user,
-        uint256,
+        uint256, // amount
         address receiver
-    ) public view override returns (RuleResult memory result) {
-        // Check if sender is allowed to deposit
-        if (!isAllowed(user)) {
-            return RuleResult({
-                approved: false,
-                reason: "KycRules: sender"
-            });
-        }
-
-        // Check if the receiver is allowed to receive
-        if (!isAllowed(receiver)) {
-            return RuleResult({
-                approved: false,
-                reason: "KycRules: receiver"
-            });
-        }
-
-        // Both minter and receiver are allowed
-        return RuleResult({ approved: true, reason: "" });
+    ) public view override returns (bytes4) {
+        return _checkSenderAndReceiver(user, receiver);
     }
 
     /**
-     * @notice Evaluate withdraw operation
+     * @notice Hook executed before a withdraw operation
      * @param user Address initiating the withdrawal
      * @param receiver Address receiving the assets
      * @param owner Address owning the shares
-     * @return result Rule evaluation result
+     * @return bytes4 Selector indicating success or specific failure reason
      */
-    function evaluateWithdraw(
-        address,
+    function onBeforeWithdraw(
+        address, // token
         address user,
-        uint256,
+        uint256, // amount
         address receiver,
         address owner
-    ) public view override returns (RuleResult memory result) {
-        // Check if sender is allowed to withdraw
-        if (!isAllowed(user)) {
-            return RuleResult({
-                approved: false,
-                reason: "KycRules: sender"
-            });
-        }
-
+    ) public view override returns (bytes4) {
         // Check if the owner is allowed
         if (!isAllowed(owner)) {
-            return RuleResult({
+            return HookOutput({
                 approved: false,
                 reason: "KycRules: owner"
             });
         }
 
-        // Check if the receiver is allowed
-        if (!isAllowed(receiver)) {
-            return RuleResult({
+        return _checkSenderAndReceiver(user, receiver);
+    }
+
+    function _checkSenderAndReceiver(address from, address to) internal view returns (bool) {
+        if (!isAllowed(from)) {
+            return HookOutput({
+                approved: false,
+                reason: "KycRules: sender"
+            });
+        }
+
+        if (!isAllowed(to)) {
+            return HookOutput({
                 approved: false,
                 reason: "KycRules: receiver"
             });
         }
 
-        // All parties are allowed
-        return RuleResult({ approved: true, reason: "" });
+        return HookOutput({
+            approved: true,
+            reason: ""
+        });
     }
 }

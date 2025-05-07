@@ -48,7 +48,7 @@ contract SubscriptionControllerHook is BaseOperationHook {
      * @param receiver Address receiving the shares (passed as 'user' to controller.validateDeposit based on previous SCR logic)
      * @return output The hook evaluation output (approved, reason)
      */
-    function evaluateDeposit(
+    function onBeforeDeposit(
         address token,
         address user, // This is msg.sender in tRWA's _deposit
         uint256 assets,
@@ -71,22 +71,22 @@ contract SubscriptionControllerHook is BaseOperationHook {
     // or marks them as abstract and this contract is also abstract (which it isn't).
     // For now, assuming they are not used for this specific hook or BaseOperationHook handles them.
     // If IRules had them and they must be callable, they need an implementation (e.g., return approved: false).
-    function evaluateWithdraw(
+    function onBeforeWithdraw(
         address, /*token*/
         address, /*by*/
         uint256, /*assets*/
         address, /*to*/
         address /*owner*/
-    ) public pure override returns (HookOutput memory) {
+    ) public /*pure*/ override returns (HookOutput memory) { // Made non-pure as Base is virtual
         return HookOutput({ approved: false, reason: "SubscriptionControllerHook does not evaluate withdrawals" });
     }
 
-    function evaluateTransfer(
+    function onBeforeTransfer(
         address, /*token*/
         address, /*from*/
         address, /*to*/
         uint256 /*amount*/
-    ) public pure override returns (HookOutput memory) {
+    ) public /*pure*/ override returns (HookOutput memory) { // Made non-pure as Base is virtual
         return HookOutput({ approved: false, reason: "SubscriptionControllerHook does not evaluate transfers" });
     }
 }

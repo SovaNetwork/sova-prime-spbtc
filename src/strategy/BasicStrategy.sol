@@ -154,6 +154,21 @@ abstract contract BasicStrategy is IStrategy, RoleManaged {
     }
 
     /**
+     * @notice Call the strategy token
+     * @dev Used for configuring token hooks
+     * @param data The calldata to call the strategy token with
+     */
+    function callStrategyToken(bytes calldata data) external onlyRoles(roleManager.STRATEGY_ADMIN()) {
+        (bool success, bytes memory returnData) = sToken.call(data);
+
+        if (!success) {
+            revert CallRevert(returnData);
+        }
+
+        emit Call(sToken, 0, data);
+    }
+
+    /**
      * @notice Execute arbitrary transactions on behalf of the strategy
      * @param target Address of the contract to call
      * @param value Amount of ETH to send
@@ -166,7 +181,8 @@ abstract contract BasicStrategy is IStrategy, RoleManaged {
         uint256 value,
         bytes calldata data
     ) external onlyManager returns (bool success, bytes memory returnData) {
-        if (target == address(0)) revert InvalidAddress();
+        if (target == address(0) || target == address(this)) revert InvalidAddress();
+        if (target == sToken) revert CannotCallToken();
 
         (success, returnData) = target.call{value: value}(data);
         if (!success) {
