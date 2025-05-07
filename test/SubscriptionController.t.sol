@@ -72,9 +72,19 @@ contract SubscriptionControllerTest is BaseFountfiTest {
         // Deploy controller hook
         controllerHook = new SubscriptionControllerHook(address(controller));
         
-        // Add hook to token
+        // Add hook to token for all operations
+        bytes32 opDeposit = keccak256("DEPOSIT_OPERATION");
+        bytes32 opWithdraw = keccak256("WITHDRAW_OPERATION");
+        bytes32 opTransfer = keccak256("TRANSFER_OPERATION");
+        
         strategy.callStrategyToken(
-            abi.encodeCall(tRWA.addOperationHook, (address(controllerHook)))
+            abi.encodeCall(tRWA.addOperationHook, (opDeposit, address(controllerHook)))
+        );
+        strategy.callStrategyToken(
+            abi.encodeCall(tRWA.addOperationHook, (opWithdraw, address(controllerHook)))
+        );
+        strategy.callStrategyToken(
+            abi.encodeCall(tRWA.addOperationHook, (opTransfer, address(controllerHook)))
         );
         vm.stopPrank();
     }

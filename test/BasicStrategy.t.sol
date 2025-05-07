@@ -85,9 +85,19 @@ contract BasicStrategyTest is BaseFountfiTest {
         // Get the token that was deployed during initialization
         token = tRWA(strategy.sToken());
         
-        // Add the hook to the token
+        // Add the hook to the token for all operations
+        bytes32 opDeposit = keccak256("DEPOSIT_OPERATION");
+        bytes32 opWithdraw = keccak256("WITHDRAW_OPERATION");
+        bytes32 opTransfer = keccak256("TRANSFER_OPERATION");
+        
         strategy.callStrategyToken(
-            abi.encodeCall(tRWA.addOperationHook, (address(strategyHook)))
+            abi.encodeCall(tRWA.addOperationHook, (opDeposit, address(strategyHook)))
+        );
+        strategy.callStrategyToken(
+            abi.encodeCall(tRWA.addOperationHook, (opWithdraw, address(strategyHook)))
+        );
+        strategy.callStrategyToken(
+            abi.encodeCall(tRWA.addOperationHook, (opTransfer, address(strategyHook)))
         );
 
         // Fund the strategy with some DAI
@@ -490,8 +500,9 @@ contract BasicStrategyTest is BaseFountfiTest {
         MockHook newHook = new MockHook(true, "");
         
         // Call the token through the strategy (this should work now with the role)
+        bytes32 opDeposit = keccak256("DEPOSIT_OPERATION");
         strategy.callStrategyToken(
-            abi.encodeCall(tRWA.addOperationHook, (address(newHook)))
+            abi.encodeCall(tRWA.addOperationHook, (opDeposit, address(newHook)))
         );
         
         // Verify hook was added - one way to test is to check if the operation succeeds

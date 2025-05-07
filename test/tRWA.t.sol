@@ -110,9 +110,10 @@ contract TRWATest is BaseFountfiTest {
         // Get the token the strategy created
         token = tRWA(strategy.sToken());
         
-        // Add hook to token
+        // Add hook to token for withdrawal operations
+        bytes32 opWithdraw = keccak256("WITHDRAW_OPERATION");
         strategy.callStrategyToken(
-            abi.encodeCall(tRWA.addOperationHook, (address(queueHook)))
+            abi.encodeCall(tRWA.addOperationHook, (opWithdraw, address(queueHook)))
         );
 
         // Setup callback receiver
@@ -271,7 +272,7 @@ contract TRWATest is BaseFountfiTest {
 
         // Check callback was received
         assertTrue(callbackReceiver.callbackReceived());
-        assertEq(callbackReceiver.lastOperationType(), keccak256("DEPOSIT"));
+        assertEq(callbackReceiver.lastOperationType(), keccak256("DEPOSIT_OPERATION"));
         assertTrue(callbackReceiver.lastSuccess());
 
         // Check balances
@@ -343,7 +344,7 @@ contract TRWATest is BaseFountfiTest {
 
         // Check callback was received
         assertTrue(callbackReceiver.callbackReceived());
-        assertEq(callbackReceiver.lastOperationType(), keccak256("DEPOSIT"));
+        assertEq(callbackReceiver.lastOperationType(), keccak256("DEPOSIT_OPERATION"));
         assertTrue(callbackReceiver.lastSuccess());
 
         // Check encoded data
@@ -356,13 +357,21 @@ contract TRWATest is BaseFountfiTest {
     }
 
     function test_Deposit_FailsWhenHookRejects() public {
-        // Set hook to reject
-        queueHook.setApproveStatus(false, "Test rejection");
+        // Create a hook that rejects deposit operations
+        vm.startPrank(address(strategy));
+        MockHook rejectHook = new MockHook(false, "Test rejection");
+        
+        // Add the deposit hook
+        bytes32 opDeposit = keccak256("DEPOSIT_OPERATION");
+        token.addOperationHook(opDeposit, address(rejectHook));
+        vm.stopPrank();
 
-        // Try to deposit
-        vm.prank(alice);
+        // Try to deposit - should fail
+        vm.startPrank(alice);
+        usdc.approve(address(token), INITIAL_DEPOSIT);
         vm.expectRevert(abi.encodeWithSignature("HookCheckFailed(string)", "Test rejection"));
         token.deposit(INITIAL_DEPOSIT, alice);
+        vm.stopPrank();
     }
 
     function test_Mint() public {
@@ -421,7 +430,7 @@ contract TRWATest is BaseFountfiTest {
 
         // Check callback was received
         assertTrue(callbackReceiver.callbackReceived(), "Callback was not received");
-        assertEq(callbackReceiver.lastOperationType(), keccak256("MINT"), "Operation type incorrect");
+        assertEq(callbackReceiver.lastOperationType(), keccak256("DEPOSIT_OPERATION"), "Operation type incorrect");
         assertTrue(callbackReceiver.lastSuccess(), "Callback was not successful");
 
         // Check balances - shares match exactly as requested
@@ -455,14 +464,14 @@ contract TRWATest is BaseFountfiTest {
 
         // Call the callback directly (normally done by the token contract)
         callbackReceiver.operationCallback(
-            keccak256("WITHDRAW"),
+            keccak256("WITHDRAW_OPERATION"),
             true,
             callbackData
         );
 
         // Check callback was received
         assertTrue(callbackReceiver.callbackReceived());
-        assertEq(callbackReceiver.lastOperationType(), keccak256("WITHDRAW"));
+        assertEq(callbackReceiver.lastOperationType(), keccak256("WITHDRAW_OPERATION"));
         assertTrue(callbackReceiver.lastSuccess());
         vm.stopPrank();
     }
@@ -486,14 +495,14 @@ contract TRWATest is BaseFountfiTest {
 
         // Call the callback directly (normally done by the token contract)
         callbackReceiver.operationCallback(
-            keccak256("REDEEM"),
+            keccak256("WITHDRAW_OPERATION"),  // Now uses OP_WITHDRAW for redeem operations too
             true,
             callbackData
         );
 
         // Check callback was received
         assertTrue(callbackReceiver.callbackReceived());
-        assertEq(callbackReceiver.lastOperationType(), keccak256("REDEEM"));
+        assertEq(callbackReceiver.lastOperationType(), keccak256("WITHDRAW_OPERATION"));
         assertTrue(callbackReceiver.lastSuccess());
         vm.stopPrank();
     }
@@ -545,14 +554,14 @@ contract TRWATest is BaseFountfiTest {
         // Test that the callback works correctly with the WITHDRAW operation type
         vm.startPrank(address(callbackReceiver));
         callbackReceiver.operationCallback(
-            keccak256("WITHDRAW"),
+            keccak256("WITHDRAW_OPERATION"),
             true,
             ""
         );
 
         // Verify callback was handled correctly
         assertTrue(callbackReceiver.callbackReceived(), "Callback wasn't received");
-        assertEq(callbackReceiver.lastOperationType(), keccak256("WITHDRAW"), "Wrong operation type");
+        assertEq(callbackReceiver.lastOperationType(), keccak256("WITHDRAW_OPERATION"), "Wrong operation type");
         assertTrue(callbackReceiver.lastSuccess(), "Callback wasn't marked successful");
         vm.stopPrank();
     }
@@ -749,8 +758,9 @@ contract TRWATest is BaseFountfiTest {
         // Create a new hook
         MockHook newHook = new MockHook(true, "");
         
-        // Add the hook
-        token.addOperationHook(address(newHook));
+        // Add the hook to deposit operations
+        bytes32 opDeposit = keccak256("DEPOSIT_OPERATION");
+        token.addOperationHook(opDeposit, address(newHook));
         
         // Verify it was added (by checking if a deposit still works)
         vm.stopPrank();
@@ -768,17 +778,28 @@ contract TRWATest is BaseFountfiTest {
     function test_ReorderOperationHooks() public {
         vm.startPrank(address(strategy));
         
-        // Add another hook
-        MockHook newHook = new MockHook(true, "");
-        token.addOperationHook(address(newHook));
+        // Create two hooks for deposit operation
+        MockHook hook1 = new MockHook(true, "");
+        MockHook hook2 = new MockHook(true, "");
+        bytes32 opDeposit = keccak256("DEPOSIT_OPERATION");
+        
+        // First, remove any existing hooks from setup
+        address[] memory currentHooks = token.getHooksForOperation(opDeposit);
+        for (uint i = 0; i < currentHooks.length; i++) {
+            token.removeOperationHook(opDeposit, currentHooks[i]);
+        }
+        
+        // Add the new hooks
+        token.addOperationHook(opDeposit, address(hook1));
+        token.addOperationHook(opDeposit, address(hook2));
         
         // Create reordering array
         uint256[] memory newOrder = new uint256[](2);
-        newOrder[0] = 1; // The new hook (index 1) should be first
-        newOrder[1] = 0; // The original hook (index 0) should be second
+        newOrder[0] = 1; // The second hook (index 1) should be first
+        newOrder[1] = 0; // The first hook (index 0) should be second
         
-        // Reorder hooks
-        token.reorderOperationHooks(newOrder);
+        // Reorder hooks for deposit operation
+        token.reorderOperationHooks(opDeposit, newOrder);
         
         // Verification is hard since we can't directly access the hook order
         // But we can verify the operation still works
@@ -792,5 +813,163 @@ contract TRWATest is BaseFountfiTest {
         
         // Check deposit succeeded
         assertGt(shares, 0);
+    }
+    
+    function test_RemoveOperationHook() public {
+        bytes32 opDeposit = keccak256("DEPOSIT_OPERATION");
+        
+        vm.startPrank(address(strategy));
+        
+        // Create a new hook that rejects operations
+        MockHook rejectHook = new MockHook(false, "Operation rejected");
+        
+        // Add the hook to deposit operations
+        token.addOperationHook(opDeposit, address(rejectHook));
+        
+        // Verify it was added (by checking if a deposit fails)
+        vm.stopPrank();
+        
+        vm.startPrank(alice);
+        usdc.approve(address(token), 100);
+        strategy.setBalance(100);
+        
+        // This should fail because the hook rejects the operation
+        vm.expectRevert(abi.encodeWithSignature("HookCheckFailed(string)", "Operation rejected"));
+        token.deposit(100, alice);
+        vm.stopPrank();
+        
+        // Now remove the hook
+        vm.startPrank(address(strategy));
+        token.removeOperationHook(opDeposit, address(rejectHook));
+        vm.stopPrank();
+        
+        // Now the deposit should work
+        vm.startPrank(alice);
+        uint256 shares = token.deposit(100, alice);
+        vm.stopPrank();
+        
+        // Check deposit succeeded after hook removal
+        assertGt(shares, 0);
+    }
+    
+    function test_GetHooksForOperation() public {
+        vm.startPrank(address(strategy));
+        
+        // Create two hooks
+        MockHook hook1 = new MockHook(true, "");
+        MockHook hook2 = new MockHook(true, "");
+        
+        // Add hooks to different operations
+        bytes32 opDeposit = keccak256("DEPOSIT_OPERATION");
+        bytes32 opWithdraw = keccak256("WITHDRAW_OPERATION");
+        bytes32 opTransfer = keccak256("TRANSFER_OPERATION");
+        
+        token.addOperationHook(opDeposit, address(hook1));
+        token.addOperationHook(opTransfer, address(hook2));
+        
+        // Get hooks for each operation
+        address[] memory depositHooks = token.getHooksForOperation(opDeposit);
+        address[] memory transferHooks = token.getHooksForOperation(opTransfer);
+        address[] memory withdrawHooks = token.getHooksForOperation(opWithdraw);
+        
+        // Verify hook counts
+        assertEq(depositHooks.length, 1, "Should have 1 deposit hook");
+        assertEq(transferHooks.length, 1, "Should have 1 transfer hook");
+        assertEq(withdrawHooks.length, 1, "Should have 1 withdraw hook (from setup)");
+        
+        // Verify hook addresses
+        assertEq(depositHooks[0], address(hook1), "First deposit hook should be hook1");
+        assertEq(transferHooks[0], address(hook2), "First transfer hook should be hook2");
+        assertEq(withdrawHooks[0], address(queueHook), "First withdraw hook should be queueHook");
+        
+        vm.stopPrank();
+    }
+    
+    function test_TransferHookTriggering() public {
+        vm.startPrank(address(strategy));
+        
+        // Create a hook that logs transfers
+        MockHook transferHook = new MockHook(true, "");
+        
+        // Add hook to transfer operations
+        bytes32 opTransfer = keccak256("TRANSFER_OPERATION");
+        token.addOperationHook(opTransfer, address(transferHook));
+        vm.stopPrank();
+        
+        // Make an initial deposit
+        vm.startPrank(owner);
+        usdc.mint(owner, 1000);
+        usdc.approve(address(token), 1000);
+        strategy.setBalance(1000);
+        uint256 shares = token.deposit(1000, owner);
+        vm.stopPrank();
+        
+        // Verify the hook is called during transfer
+        vm.expectEmit(true, true, true, false);
+        emit MockHook.TransferHookCalled(address(token), owner, alice, 100);
+        
+        // Transfer tokens
+        vm.prank(owner);
+        token.transfer(alice, 100);
+        
+        // Verify token balances
+        assertEq(token.balanceOf(alice), 100, "Alice should have 100 tokens");
+        assertEq(token.balanceOf(owner), shares - 100, "Owner should have the rest");
+    }
+    
+    function test_OperationSpecificHooks() public {
+        // This simpler test focuses on verifying that different operations
+        // have independent hooks by checking the added hook counts are correct
+        
+        bytes32 opDeposit = keccak256("DEPOSIT_OPERATION");
+        bytes32 opWithdraw = keccak256("WITHDRAW_OPERATION");
+        bytes32 opTransfer = keccak256("TRANSFER_OPERATION");
+        
+        // Create a new token with no hooks
+        vm.startPrank(owner);
+        MockStrategy newStrategy = new MockStrategy(owner);
+        newStrategy.initialize(
+            "Test RWA",
+            "tTEST",
+            manager,
+            address(usdc),
+            6,
+            ""
+        );
+        tRWA newToken = tRWA(newStrategy.sToken());
+        
+        // Create hooks for different operations
+        MockHook hook1 = new MockHook(true, "");
+        MockHook hook2 = new MockHook(true, "");
+        MockHook hook3 = new MockHook(true, "");
+        
+        // Add hooks to different operations via strategy
+        // Two hooks for deposit, one for withdraw, none for transfer
+        newStrategy.callStrategyToken(
+            abi.encodeCall(tRWA.addOperationHook, (opDeposit, address(hook1)))
+        );
+        newStrategy.callStrategyToken(
+            abi.encodeCall(tRWA.addOperationHook, (opDeposit, address(hook2)))
+        );
+        newStrategy.callStrategyToken(
+            abi.encodeCall(tRWA.addOperationHook, (opWithdraw, address(hook3)))
+        );
+        
+        // Fetch hooks for each operation
+        address[] memory depositHooks = newToken.getHooksForOperation(opDeposit);
+        address[] memory withdrawHooks = newToken.getHooksForOperation(opWithdraw);
+        address[] memory transferHooks = newToken.getHooksForOperation(opTransfer);
+        
+        // Verify hook counts
+        assertEq(depositHooks.length, 2, "Should have 2 deposit hooks");
+        assertEq(withdrawHooks.length, 1, "Should have 1 withdraw hook");
+        assertEq(transferHooks.length, 0, "Should have 0 transfer hooks");
+        
+        // Verify hook addresses
+        assertEq(depositHooks[0], address(hook1), "First deposit hook should be hook1");
+        assertEq(depositHooks[1], address(hook2), "Second deposit hook should be hook2");
+        assertEq(withdrawHooks[0], address(hook3), "First withdraw hook should be hook3");
+        
+        vm.stopPrank();
     }
 }

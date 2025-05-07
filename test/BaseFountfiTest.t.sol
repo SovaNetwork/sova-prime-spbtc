@@ -110,10 +110,23 @@ abstract contract BaseFountfiTest is Test {
         // Get the token the strategy created
         tRWA token = tRWA(strategy.sToken());
         
-        // Add hook to token
+        // Add hook to token for all operations
+        vm.prank(owner);
+        bytes32 opDeposit = keccak256("DEPOSIT_OPERATION");
+        bytes32 opWithdraw = keccak256("WITHDRAW_OPERATION");
+        bytes32 opTransfer = keccak256("TRANSFER_OPERATION");
+        
         vm.prank(owner);
         strategy.callStrategyToken(
-            abi.encodeCall(tRWA.addOperationHook, (address(mockHookLocal)))
+            abi.encodeCall(tRWA.addOperationHook, (opDeposit, address(mockHookLocal)))
+        );
+        vm.prank(owner);
+        strategy.callStrategyToken(
+            abi.encodeCall(tRWA.addOperationHook, (opWithdraw, address(mockHookLocal)))
+        );
+        vm.prank(owner);
+        strategy.callStrategyToken(
+            abi.encodeCall(tRWA.addOperationHook, (opTransfer, address(mockHookLocal)))
         );
 
         return (strategy, token);
