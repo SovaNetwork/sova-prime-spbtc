@@ -72,7 +72,7 @@ contract ReportedStrategyTest is BaseFountfiTest {
         vm.stopPrank();
     }
 
-    function test_Initialization() public {
+    function test_Initialization() public view {
         // Check that the strategy was initialized correctly
         assertEq(strategy.registry(), owner, "Deployer should be set to owner");
         assertEq(strategy.manager(), manager, "Manager should be set correctly");

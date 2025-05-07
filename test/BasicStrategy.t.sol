@@ -106,7 +106,7 @@ contract BasicStrategyTest is BaseFountfiTest {
         vm.stopPrank();
     }
 
-    function test_Initialization() public {
+    function test_Initialization() public view {
         // Check that the strategy was initialized correctly
         assertEq(strategy.registry(), owner, "Deployer should be set to owner");
         assertEq(strategy.manager(), manager, "Manager should be set correctly");
@@ -197,7 +197,7 @@ contract BasicStrategyTest is BaseFountfiTest {
         vm.stopPrank();
     }
 
-    function test_Balance() public {
+    function test_Balance() public view {
         uint256 bal = strategy.balance();
         assertEq(bal, 1000 * 10**18, "Balance should match minted amount");
     }

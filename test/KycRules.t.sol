@@ -31,7 +31,7 @@ contract KycRulesTest is BaseFountfiTest {
         vm.stopPrank();
     }
     
-    function test_Constructor() public {
+    function test_Constructor() public view {
         // Verify constructor arguments
         assertEq(address(kycRules.roleManager()), address(mockRoleManager));
     }

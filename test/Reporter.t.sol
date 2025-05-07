@@ -18,7 +18,7 @@ contract ReporterTest is BaseFountfiTest {
         vm.stopPrank();
     }
 
-    function test_Initialization() public {
+    function test_Initialization() public view {
         assertEq(reporter.price(), 1000 * 10**6);
         assertEq(reporter.currentRound(), 1);
         assertTrue(reporter.authorizedUpdaters(updater));

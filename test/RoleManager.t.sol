@@ -63,7 +63,7 @@ contract RoleManagerTest is Test {
         assertTrue(newRoleManager.hasAllRoles(address(this), newRoleManager.PROTOCOL_ADMIN()));
     }
 
-    function test_ConstructorSetsInitialAdminRoles() public {
+    function test_ConstructorSetsInitialAdminRoles() public view {
         // Check that the admin roles were set correctly in the constructor
         assertEq(roleManager.roleAdminRole(roleManager.STRATEGY_OPERATOR()), roleManager.STRATEGY_ADMIN());
         assertEq(roleManager.roleAdminRole(roleManager.KYC_OPERATOR()), roleManager.RULES_ADMIN());
@@ -89,7 +89,7 @@ contract RoleManagerTest is Test {
         vm.stopPrank();
     }
 
-    function test_ProtocolAdminRoleForProtocolAdmin() public {
+    function test_ProtocolAdminRoleForProtocolAdmin() public view {
         // Instead of using an expectRevert that fails, just verify that by default
         // The user doesn't have PROTOCOL_ADMIN role
         assertFalse(roleManager.hasAnyRole(user, roleManager.PROTOCOL_ADMIN()));
@@ -148,7 +148,7 @@ contract RoleManagerTest is Test {
         vm.stopPrank();
     }
 
-    function test_VerifyProtocolAdminRole() public {
+    function test_VerifyProtocolAdminRole() public view {
         // Just verify that admin has the PROTOCOL_ADMIN role as expected
         assertTrue(roleManager.hasAnyRole(admin, roleManager.PROTOCOL_ADMIN()));
     }
@@ -329,7 +329,7 @@ contract RoleManagerTest is Test {
 
     // --- RoleManager Tests: Role Checking ---
 
-    function test_BatchRoleChecking() public {
+    function test_BatchRoleChecking() public view {
         // Test hasAnyOfRoles
         uint256 roles = roleManager.STRATEGY_ADMIN() | roleManager.KYC_OPERATOR();
 
@@ -434,7 +434,7 @@ contract RoleManagerTest is Test {
         new MockRoleManaged(address(0));
     }
 
-    function test_RoleManagedViewFunctions() public {
+    function test_RoleManagedViewFunctions() public view {
         // Test the view functions in RoleManaged
         
         // hasAnyRole should properly check roles through the roleManager

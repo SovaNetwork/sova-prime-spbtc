@@ -100,7 +100,7 @@ contract TRWATest is BaseFountfiTest {
                           CONSTRUCTOR TESTS
     //////////////////////////////////////////////////////////////*/
 
-    function test_Constructor() public {
+    function test_Constructor() public view {
         // Test token properties
         assertEq(token.name(), "Tokenized RWA");
         assertEq(token.symbol(), "tRWA");
@@ -134,7 +134,7 @@ contract TRWATest is BaseFountfiTest {
                           ERC4626 BASIC TESTS
     //////////////////////////////////////////////////////////////*/
 
-    function test_Asset() public {
+    function test_Asset() public view {
         assertEq(token.asset(), address(usdc));
     }
 

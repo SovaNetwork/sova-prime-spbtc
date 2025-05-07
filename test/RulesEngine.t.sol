@@ -462,7 +462,7 @@ contract RulesEngineTests is BaseFountfiTest {
         vm.stopPrank();
     }
 
-    function test_constructor_setsRoleManager() public {
+    function test_constructor_setsRoleManager() public view {
         // Assert that the role manager was set correctly
         assertEq(address(rulesEngine.roleManager()), address(roleManager));
     }

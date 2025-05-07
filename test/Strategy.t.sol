@@ -32,7 +32,7 @@ contract StrategyTest is Test {
         vm.stopPrank();
     }
     
-    function test_TokenBasics() public {
+    function test_TokenBasics() public view {
         assertEq(token.name(), "Test Token");
         assertEq(token.symbol(), "TST");
         assertEq(token.decimals(), 18);
