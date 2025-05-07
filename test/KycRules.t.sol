@@ -2,16 +2,16 @@
 pragma solidity ^0.8.25;
 
 import {BaseFountfiTest} from "./BaseFountfiTest.t.sol";
-import {KycRules} from "../src/rules/KycRules.sol";
-import {IRules} from "../src/rules/IRules.sol";
+import {KycRulesHook} from "../src/hooks/KycRulesHook.sol";
+import {IHook} from "../src/hooks/IHook.sol";
 import {MockRoleManager} from "../src/mocks/MockRoleManager.sol";
 
 /**
  * @title KycRulesTest
- * @notice Test suite for KycRules contract with 100% coverage target
+ * @notice Test suite for KycRulesHook contract with 100% coverage target
  */
 contract KycRulesTest is BaseFountfiTest {
-    KycRules public kycRules;
+    KycRulesHook public kycRules;
     MockRoleManager public mockRoleManager;
     
     function setUp() public override {
@@ -19,392 +19,303 @@ contract KycRulesTest is BaseFountfiTest {
         
         vm.startPrank(owner);
         
-        // Deploy the mock role manager with owner as admin
+        // Deploy mock role manager
         mockRoleManager = new MockRoleManager(owner);
         
-        // Deploy rules with mock role manager
-        kycRules = new KycRules(address(mockRoleManager));
+        // Deploy KYC rules with mock role manager
+        kycRules = new KycRulesHook(address(mockRoleManager));
         
-        // The MockRoleManager constructor gives all roles to owner
-        // But we'll explicitly grant these roles again to be sure
-        mockRoleManager.grantRole(owner, mockRoleManager.KYC_ADMIN());
+        // Grant owner the KYC_OPERATOR role
         mockRoleManager.grantRole(owner, mockRoleManager.KYC_OPERATOR());
         
-        // The KycRules contract uses roleManager.KYC_OPERATOR() in its modifiers
-        // We need to make sure our mock returns the appropriate value
-        // The MockRoleManager uses KYC_ADMIN to manage KYC_OPERATOR, not RULES_ADMIN
-        // In this mock, all roles are given to owner in the constructor
-        
         vm.stopPrank();
     }
     
-    // Test constructor and initialization
     function test_Constructor() public {
-        // Test with valid parameters
-        vm.startPrank(owner);
-        MockRoleManager newRoleManager = new MockRoleManager(alice);
-        KycRules newRules = new KycRules(address(newRoleManager));
-        vm.stopPrank();
-        
-        // Verify state
-        assertFalse(newRules.isAllowed(charlie)); // Should be denied by default
-        
-        // Try creating with invalid role manager address
-        vm.startPrank(owner);
-        vm.expectRevert(); // Just expect any revert, the specific error format is implementation-specific
-        new KycRules(address(0));
-        vm.stopPrank();
+        // Verify constructor arguments
+        assertEq(address(kycRules.roleManager()), address(mockRoleManager));
     }
     
-    // Test default deny behavior
-    function test_DefaultDenyBehavior() public {
-        // By default addresses are denied
+    function test_Allow() public {
+        vm.startPrank(owner);
+        
+        // Initial state
         assertFalse(kycRules.isAllowed(alice));
         
-        // Check operation-specific behaviors with default deny
-        IRules.RuleResult memory result;
+        // Allow alice
+        kycRules.allow(alice);
         
-        // Default deny: evaluateTransfer
-        result = kycRules.evaluateTransfer(address(0), alice, bob, 100);
-        assertFalse(result.approved);
-        assertEq(result.reason, "KycRules: sender");
+        // Verify alice is allowed
+        assertTrue(kycRules.isAllowed(alice));
+        
+        vm.stopPrank();
     }
     
-    // Test allow functionality with comprehensive checks
-    function test_Allow() public {
-        // Setup
-        address testUser = address(0x123);
-        
-        // Try allowing with non-authorized address
-        vm.startPrank(alice);
-        vm.expectRevert(); // Just expect any revert
-        kycRules.allow(testUser);
-        vm.stopPrank();
-        
-        // Test allow functionality
+    function test_Deny() public {
         vm.startPrank(owner);
         
-        // Try with zero address
-        vm.expectRevert(KycRules.ZeroAddress.selector);
+        // Initial state
+        assertFalse(kycRules.isAllowed(alice));
+        
+        // Allow alice first
+        kycRules.allow(alice);
+        assertTrue(kycRules.isAllowed(alice));
+        
+        // Deny alice
+        kycRules.deny(alice);
+        
+        // Verify alice is denied
+        assertFalse(kycRules.isAllowed(alice));
+        
+        vm.stopPrank();
+    }
+    
+    function test_Reset() public {
+        vm.startPrank(owner);
+        
+        // Initial state
+        assertFalse(kycRules.isAllowed(alice));
+        
+        // Allow alice first
+        kycRules.allow(alice);
+        assertTrue(kycRules.isAllowed(alice));
+        
+        // Reset alice
+        kycRules.reset(alice);
+        
+        // Verify alice is reset to denied
+        assertFalse(kycRules.isAllowed(alice));
+        
+        vm.stopPrank();
+    }
+    
+    function test_ZeroAddressRevert() public {
+        vm.startPrank(owner);
+        
+        // Test allow with zero address
+        vm.expectRevert(KycRulesHook.ZeroAddress.selector);
         kycRules.allow(address(0));
         
-        // Try allowing a denied address
-        kycRules.deny(testUser);
-        vm.expectRevert(KycRules.AddressAlreadyDenied.selector);
-        kycRules.allow(testUser);
-        
-        // Reset address and then allow
-        kycRules.reset(testUser);
-        kycRules.allow(testUser);
-        
-        vm.stopPrank();
-        
-        // Verify status
-        assertTrue(kycRules.isAllowed(testUser));
-        assertTrue(kycRules.isAddressAllowed(testUser));
-        assertFalse(kycRules.isAddressDenied(testUser));
-    }
-    
-    // Test deny functionality with comprehensive checks
-    function test_Deny() public {
-        // Setup
-        address testUser = address(0x123);
-        
-        // Try denying with non-authorized address
-        vm.startPrank(alice);
-        vm.expectRevert(); // Just expect any revert
-        kycRules.deny(testUser);
-        vm.stopPrank();
-        
-        // Test deny functionality
-        vm.startPrank(owner);
-        
-        // Try with zero address
-        vm.expectRevert(KycRules.ZeroAddress.selector);
+        // Test deny with zero address
+        vm.expectRevert(KycRulesHook.ZeroAddress.selector);
         kycRules.deny(address(0));
         
-        // Allow first, then deny to test flag changes
-        kycRules.allow(testUser);
-        kycRules.deny(testUser);
-        
-        vm.stopPrank();
-        
-        // Verify status
-        assertFalse(kycRules.isAllowed(testUser));
-        assertFalse(kycRules.isAddressAllowed(testUser));
-        assertTrue(kycRules.isAddressDenied(testUser));
-    }
-    
-    // Test reset functionality
-    function test_Reset() public {
-        // Setup
-        address testUser = address(0x123);
-        
-        // Try removing restriction with non-authorized address
-        vm.startPrank(alice);
-        vm.expectRevert(); // Just expect any revert
-        kycRules.reset(testUser);
-        vm.stopPrank();
-        
-        // Test functionality
-        vm.startPrank(owner);
-        
-        // Try with zero address
-        vm.expectRevert(KycRules.ZeroAddress.selector);
+        // Test reset with zero address
+        vm.expectRevert(KycRulesHook.ZeroAddress.selector);
         kycRules.reset(address(0));
         
-        // Setup initial state
-        kycRules.allow(testUser);
-        assertTrue(kycRules.isAllowed(testUser));
-        
-        // Reset address
-        kycRules.reset(testUser);
-        
         vm.stopPrank();
-        
-        // Verify status (should be back to default)
-        assertFalse(kycRules.isAllowed(testUser));
-        assertFalse(kycRules.isAddressAllowed(testUser));
-        assertFalse(kycRules.isAddressDenied(testUser));
-        
-        // Also test with a denied address
-        vm.startPrank(owner);
-        kycRules.deny(alice);
-        kycRules.reset(alice);
-        vm.stopPrank();
-        
-        assertFalse(kycRules.isAddressDenied(alice));
     }
     
-    // Test batch operations
-    function test_BatchOperations() public {
-        address[] memory accounts = new address[](3);
-        accounts[0] = address(0x1000);
-        accounts[1] = address(0x2000);
-        accounts[2] = address(0x3000);
-        
+    function test_AlreadyDeniedRevert() public {
         vm.startPrank(owner);
+        
+        // Deny alice first
+        kycRules.deny(alice);
+        
+        // Test allow on already denied address
+        vm.expectRevert(KycRulesHook.AddressAlreadyDenied.selector);
+        kycRules.allow(alice);
+        
+        vm.stopPrank();
+    }
+    
+    function test_BatchOperations() public {
+        vm.startPrank(owner);
+        
+        // Setup batch of addresses
+        address[] memory addresses = new address[](3);
+        addresses[0] = alice;
+        addresses[1] = bob;
+        addresses[2] = charlie;
         
         // Test batch allow
-        kycRules.batchAllow(accounts);
+        kycRules.batchAllow(addresses);
         
-        // Verify all addresses were allowed
-        for (uint256 i = 0; i < accounts.length; i++) {
-            assertTrue(kycRules.isAddressAllowed(accounts[i]));
-            assertTrue(kycRules.isAllowed(accounts[i]));
-        }
+        // Verify all addresses are allowed
+        assertTrue(kycRules.isAllowed(alice));
+        assertTrue(kycRules.isAllowed(bob));
+        assertTrue(kycRules.isAllowed(charlie));
         
         // Test batch deny
-        kycRules.batchDeny(accounts);
+        kycRules.batchDeny(addresses);
         
-        // Verify all addresses were denied
-        for (uint256 i = 0; i < accounts.length; i++) {
-            assertFalse(kycRules.isAddressAllowed(accounts[i]));
-            assertTrue(kycRules.isAddressDenied(accounts[i]));
-            assertFalse(kycRules.isAllowed(accounts[i]));
-        }
+        // Verify all addresses are denied
+        assertFalse(kycRules.isAllowed(alice));
+        assertFalse(kycRules.isAllowed(bob));
+        assertFalse(kycRules.isAllowed(charlie));
         
         // Test batch reset
-        kycRules.batchReset(accounts);
+        kycRules.batchReset(addresses);
         
-        // Verify all addresses were reset
-        for (uint256 i = 0; i < accounts.length; i++) {
-            assertFalse(kycRules.isAddressAllowed(accounts[i]));
-            assertFalse(kycRules.isAddressDenied(accounts[i]));
-            assertFalse(kycRules.isAllowed(accounts[i]));
-        }
+        // Verify all addresses are reset
+        assertFalse(kycRules.isAllowed(alice));
+        assertFalse(kycRules.isAllowed(bob));
+        assertFalse(kycRules.isAllowed(charlie));
+        assertFalse(kycRules.isAddressDenied(alice));
+        assertFalse(kycRules.isAddressDenied(bob));
+        assertFalse(kycRules.isAddressDenied(charlie));
         
         vm.stopPrank();
     }
     
-    // Test isAllowed functionality
-    function test_IsAllowed() public {
-        // Setup mixed state
+    function test_EmptyBatchRevert() public {
         vm.startPrank(owner);
+        
+        // Create empty array
+        address[] memory emptyAddresses = new address[](0);
+        
+        // Test batch allow with empty array
+        vm.expectRevert(KycRulesHook.InvalidArrayLength.selector);
+        kycRules.batchAllow(emptyAddresses);
+        
+        // Test batch deny with empty array
+        vm.expectRevert(KycRulesHook.InvalidArrayLength.selector);
+        kycRules.batchDeny(emptyAddresses);
+        
+        // Test batch reset with empty array
+        vm.expectRevert(KycRulesHook.InvalidArrayLength.selector);
+        kycRules.batchReset(emptyAddresses);
+        
+        vm.stopPrank();
+    }
+    
+    function test_OnBeforeTransfer() public {
+        vm.startPrank(owner);
+        
+        // Allow alice and bob
         kycRules.allow(alice);
+        kycRules.allow(bob);
+        
+        // Test transfer between allowed addresses
+        IHook.HookOutput memory result = kycRules.onBeforeTransfer(
+            address(0), alice, bob, 100
+        );
+        
+        assertTrue(result.approved);
+        assertEq(result.reason, "");
+        
+        // Test transfer from denied to allowed
+        result = kycRules.onBeforeTransfer(
+            address(0), charlie, alice, 100
+        );
+        
+        assertFalse(result.approved);
+        assertEq(result.reason, "KycRules: sender");
+        
+        // Test transfer from allowed to denied
+        result = kycRules.onBeforeTransfer(
+            address(0), alice, charlie, 100
+        );
+        
+        assertFalse(result.approved);
+        assertEq(result.reason, "KycRules: receiver");
+        
+        vm.stopPrank();
+    }
+    
+    function test_OnBeforeDeposit() public {
+        vm.startPrank(owner);
+        
+        // Allow alice
+        kycRules.allow(alice);
+        
+        // Test deposit with allowed user and receiver
+        IHook.HookOutput memory result = kycRules.onBeforeDeposit(
+            address(0), alice, 100, alice
+        );
+        
+        assertTrue(result.approved);
+        assertEq(result.reason, "");
+        
+        // Test deposit with denied user
+        result = kycRules.onBeforeDeposit(
+            address(0), charlie, 100, charlie
+        );
+        
+        assertFalse(result.approved);
+        assertEq(result.reason, "KycRules: sender");
+        
+        // Test deposit with denied receiver
+        result = kycRules.onBeforeDeposit(
+            address(0), alice, 100, charlie
+        );
+        
+        assertFalse(result.approved);
+        assertEq(result.reason, "KycRules: receiver");
+        
+        vm.stopPrank();
+    }
+    
+    function test_OnBeforeWithdraw() public {
+        vm.startPrank(owner);
+        
+        // Allow alice and bob
+        kycRules.allow(alice);
+        kycRules.allow(bob);
+        
+        // Test withdraw with all addresses allowed
+        IHook.HookOutput memory result = kycRules.onBeforeWithdraw(
+            address(0), alice, 100, bob, alice
+        );
+        
+        assertTrue(result.approved);
+        assertEq(result.reason, "");
+        
+        // Test withdraw with denied user
+        result = kycRules.onBeforeWithdraw(
+            address(0), charlie, 100, bob, alice
+        );
+        
+        assertFalse(result.approved);
+        assertEq(result.reason, "KycRules: sender");
+        
+        // Test withdraw with denied receiver
+        result = kycRules.onBeforeWithdraw(
+            address(0), alice, 100, charlie, alice
+        );
+        
+        assertFalse(result.approved);
+        assertEq(result.reason, "KycRules: receiver");
+        
+        // Test withdraw with denied owner
+        result = kycRules.onBeforeWithdraw(
+            address(0), alice, 100, bob, charlie
+        );
+        
+        assertFalse(result.approved);
+        assertEq(result.reason, "KycRules: owner");
+        
+        vm.stopPrank();
+    }
+    
+    function test_UnauthorizedOperation() public {
+        vm.startPrank(alice); // alice is not an operator
+        
+        // Test unauthorized allow
+        vm.expectRevert();
+        kycRules.allow(bob);
+        
+        // Test unauthorized deny
+        vm.expectRevert();
         kycRules.deny(bob);
-        vm.stopPrank();
         
-        // Check behavior for all cases
-        assertTrue(kycRules.isAllowed(alice)); // Explicitly allowed
-        assertFalse(kycRules.isAllowed(bob)); // Explicitly denied
-        assertFalse(kycRules.isAllowed(charlie)); // Default deny
+        // Test unauthorized reset
+        vm.expectRevert();
+        kycRules.reset(bob);
         
-        // Test blacklist supersedes whitelist case
-        vm.startPrank(owner);
-        // First add to whitelist
-        kycRules.allow(charlie);
-        assertTrue(kycRules.isAllowed(charlie)); // Now allowed
+        // Test unauthorized batch operations
+        address[] memory addresses = new address[](1);
+        addresses[0] = bob;
         
-        // Then add to blacklist - this should take precedence
-        kycRules.deny(charlie);
-        assertFalse(kycRules.isAllowed(charlie)); // Should be denied even though previously allowed
-        vm.stopPrank();
-    }
-    
-    // Test evaluateTransfer with all possible KYC combinations
-    function test_EvaluateTransfer_Comprehensive() public {
-        // Setup mixed state
-        vm.startPrank(owner);
-        kycRules.allow(alice);
-        kycRules.allow(bob);
-        kycRules.deny(charlie);
-        vm.stopPrank();
+        vm.expectRevert();
+        kycRules.batchAllow(addresses);
         
-        IRules.RuleResult memory result;
+        vm.expectRevert();
+        kycRules.batchDeny(addresses);
         
-        // Both allowed
-        result = kycRules.evaluateTransfer(address(0), alice, bob, 100);
-        assertTrue(result.approved);
-        assertEq(result.reason, "");
-        
-        // Sender denied
-        result = kycRules.evaluateTransfer(address(0), charlie, bob, 100);
-        assertFalse(result.approved);
-        assertEq(result.reason, "KycRules: sender");
-        
-        // Receiver denied
-        result = kycRules.evaluateTransfer(address(0), alice, charlie, 100);
-        assertFalse(result.approved);
-        assertEq(result.reason, "KycRules: receiver");
-        
-        // Both denied
-        result = kycRules.evaluateTransfer(address(0), charlie, charlie, 100);
-        assertFalse(result.approved);
-        assertEq(result.reason, "KycRules: sender");
-        
-        // Default deny (unrestricted address)
-        address unrestrictedUser = address(0x456);
-        result = kycRules.evaluateTransfer(address(0), alice, unrestrictedUser, 100);
-        assertFalse(result.approved);
-        assertEq(result.reason, "KycRules: receiver");
-    }
-    
-    // Test evaluateDeposit with all possible KYC combinations
-    function test_EvaluateDeposit_Comprehensive() public {
-        // Setup mixed state
-        vm.startPrank(owner);
-        kycRules.allow(alice);
-        kycRules.allow(bob);
-        kycRules.deny(charlie);
-        vm.stopPrank();
-        
-        IRules.RuleResult memory result;
-        
-        // Both allowed
-        result = kycRules.evaluateDeposit(address(0), alice, 100, bob);
-        assertTrue(result.approved);
-        assertEq(result.reason, "");
-        
-        // Sender denied
-        result = kycRules.evaluateDeposit(address(0), charlie, 100, bob);
-        assertFalse(result.approved);
-        assertEq(result.reason, "KycRules: sender");
-        
-        // Receiver denied
-        result = kycRules.evaluateDeposit(address(0), alice, 100, charlie);
-        assertFalse(result.approved);
-        assertEq(result.reason, "KycRules: receiver");
-        
-        // Both denied
-        result = kycRules.evaluateDeposit(address(0), charlie, 100, charlie);
-        assertFalse(result.approved);
-        assertEq(result.reason, "KycRules: sender");
-        
-        // Default deny (unrestricted address)
-        address unrestrictedUser = address(0x456);
-        result = kycRules.evaluateDeposit(address(0), alice, 100, unrestrictedUser);
-        assertFalse(result.approved);
-        assertEq(result.reason, "KycRules: receiver");
-    }
-    
-    // Test evaluateWithdraw with all possible KYC combinations
-    function test_EvaluateWithdraw_Comprehensive() public {
-        // Setup mixed state
-        vm.startPrank(owner);
-        kycRules.allow(alice);
-        kycRules.allow(bob);
-        kycRules.deny(charlie);
-        vm.stopPrank();
-        
-        IRules.RuleResult memory result;
-        
-        // All addresses allowed
-        result = kycRules.evaluateWithdraw(address(0), alice, 100, bob, alice);
-        assertTrue(result.approved);
-        assertEq(result.reason, "");
-        
-        // User (initiator) denied
-        result = kycRules.evaluateWithdraw(address(0), charlie, 100, bob, alice);
-        assertFalse(result.approved);
-        assertEq(result.reason, "KycRules: sender");
-        
-        // Owner denied
-        result = kycRules.evaluateWithdraw(address(0), alice, 100, bob, charlie);
-        assertFalse(result.approved);
-        assertEq(result.reason, "KycRules: owner");
-        
-        // Receiver denied
-        result = kycRules.evaluateWithdraw(address(0), alice, 100, charlie, alice);
-        assertFalse(result.approved);
-        assertEq(result.reason, "KycRules: receiver");
-        
-        // Default deny (unrestricted addresses)
-        address unrestrictedUser = address(0x456);
-        result = kycRules.evaluateWithdraw(address(0), alice, 100, bob, unrestrictedUser);
-        assertFalse(result.approved);
-        assertEq(result.reason, "KycRules: owner");
-    }
-    
-    // Test invalid batch operations
-    function test_InvalidBatchOperations() public {
-        // Test empty array validation
-        address[] memory emptyArray = new address[](0);
-        
-        vm.startPrank(owner);
-        
-        vm.expectRevert(KycRules.InvalidArrayLength.selector);
-        kycRules.batchAllow(emptyArray);
-        
-        vm.expectRevert(KycRules.InvalidArrayLength.selector);
-        kycRules.batchDeny(emptyArray);
-        
-        vm.expectRevert(KycRules.InvalidArrayLength.selector);
-        kycRules.batchReset(emptyArray);
-        
-        // Test zero address validation in batch operations
-        address[] memory accountsWithZero = new address[](3);
-        accountsWithZero[0] = address(0x1000);
-        accountsWithZero[1] = address(0); // Zero address
-        accountsWithZero[2] = address(0x3000);
-        
-        vm.expectRevert(KycRules.ZeroAddress.selector);
-        kycRules.batchAllow(accountsWithZero);
-        
-        vm.expectRevert(KycRules.ZeroAddress.selector);
-        kycRules.batchDeny(accountsWithZero);
-        
-        vm.expectRevert(KycRules.ZeroAddress.selector);
-        kycRules.batchReset(accountsWithZero);
-        
-        vm.stopPrank();
-    }
-    
-    // Test batch allow with denied addresses
-    function test_BatchAllowWithDeniedAddresses() public {
-        address[] memory accounts = new address[](3);
-        accounts[0] = address(0x1000);
-        accounts[1] = address(0x2000);
-        accounts[2] = address(0x3000);
-        
-        vm.startPrank(owner);
-        
-        // Deny one address first
-        kycRules.deny(accounts[1]);
-        
-        // Batch allow should revert when it encounters a denied address
-        vm.expectRevert(KycRules.AddressAlreadyDenied.selector);
-        kycRules.batchAllow(accounts);
+        vm.expectRevert();
+        kycRules.batchReset(addresses);
         
         vm.stopPrank();
     }

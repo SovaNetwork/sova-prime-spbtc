@@ -21,3 +21,4 @@ bin/
 out/
 
 coverage_report/
+**/.claude/settings.local.json

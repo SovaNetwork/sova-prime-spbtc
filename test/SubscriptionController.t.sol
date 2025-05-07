@@ -4,10 +4,11 @@ pragma solidity ^0.8.25;
 import {BaseFountfiTest} from "./BaseFountfiTest.t.sol";
 import {SubscriptionController} from "../src/controllers/SubscriptionController.sol";
 import {ISubscriptionController} from "../src/controllers/ISubscriptionController.sol";
-import {SubscriptionControllerRule} from "../src/rules/SubscriptionControllerRule.sol";
+import {SubscriptionControllerHook} from "../src/hooks/SubscriptionControllerHook.sol";
 import {tRWA} from "../src/token/tRWA.sol";
 import {MockRoleManager} from "../src/mocks/MockRoleManager.sol";
-import {RulesEngine} from "../src/rules/RulesEngine.sol";
+import {RulesEngine} from "../src/hooks/RulesEngine.sol";
+import {IHook} from "../src/hooks/IHook.sol";
 import {MockStrategy} from "../src/mocks/MockStrategy.sol";
 
 /**
@@ -17,7 +18,7 @@ import {MockStrategy} from "../src/mocks/MockStrategy.sol";
 contract SubscriptionControllerTest is BaseFountfiTest {
     // Test contracts
     SubscriptionController public controller;
-    SubscriptionControllerRule public controllerRule;
+    SubscriptionControllerHook public controllerHook;
     tRWA public token;
     MockStrategy public strategy;
     RulesEngine public rulesEngine;
@@ -45,13 +46,22 @@ contract SubscriptionControllerTest is BaseFountfiTest {
         
         // Deploy subscription controller with proper roles
         controller = new SubscriptionController(
-            address(token),
             owner,
             managers
         );
         
-        // Deploy controller rule
-        controllerRule = new SubscriptionControllerRule(address(controller));
+        // Set the controller on the token
+        strategy.callStrategyToken(
+            abi.encodeCall(tRWA.setController, (address(controller)))
+        );
+        
+        // Deploy controller hook
+        controllerHook = new SubscriptionControllerHook(address(controller));
+        
+        // Add hook to token
+        strategy.callStrategyToken(
+            abi.encodeCall(tRWA.addOperationHook, (address(controllerHook)))
+        );
         
         // Since we're keeping the tests simple for now, we'll avoid RulesEngine
         // and just test the components directly
@@ -63,9 +73,6 @@ contract SubscriptionControllerTest is BaseFountfiTest {
     }
     
     function test_Controller_Constructor() public {
-        // Verify token reference
-        assertEq(address(controller.token()), address(token), "Token address mismatch");
-        
         // Verify roles were assigned correctly
         assertTrue(controller.hasRole(owner, SUBSCRIPTION_ADMIN_ROLE), "Owner should have admin role");
         assertTrue(controller.hasRole(admin, SUBSCRIPTION_ADMIN_ROLE), "Admin should have admin role");
@@ -234,17 +241,8 @@ contract SubscriptionControllerTest is BaseFountfiTest {
         ISubscriptionController.SubscriptionRound memory round = controller.getCurrentRound();
         assertEq(round.deposits, 0, "Initial deposits should be 0");
         
-        // Test invalid sender
-        vm.expectRevert(ISubscriptionController.OnlyTokenAllowed.selector);
-        vm.startPrank(alice);
-        controller.operationCallback(
-            keccak256("DEPOSIT"),
-            true,
-            abi.encode(alice, 1000 * 1e6)
-        );
+        // Test valid callback from token
         vm.stopPrank();
-        
-        // Test valid callback
         vm.startPrank(address(token));
         controller.operationCallback(
             keccak256("DEPOSIT"),
@@ -365,9 +363,8 @@ contract SubscriptionControllerTest is BaseFountfiTest {
         vm.stopPrank();
     }
     
-    function test_ControllerRule_Integration() public {
-        // Since we're simplifying, let's test the subscription controller directly 
-        // without relying on the rule engine integration
+    function test_ControllerHook_Integration() public {
+        // Test the subscription controller hook integration
         
         vm.startPrank(owner);
         
@@ -379,16 +376,28 @@ contract SubscriptionControllerTest is BaseFountfiTest {
             100
         );
         
-        // Test validation with active round
-        (bool valid, ) = controller.validateDeposit(alice, 1000 * 1e6);
-        assertTrue(valid, "Deposit should be valid with active round");
+        // Test hook with active round
+        IHook.HookOutput memory result = controllerHook.onBeforeDeposit(
+            address(token),
+            alice,
+            1000 * 1e6,
+            alice
+        );
+        assertTrue(result.approved, "Deposit should be approved with active round");
+        assertEq(result.reason, "", "Approval reason should be empty");
         
-        // Test controller rule with no active round
+        // Test controller hook with no active round
         controller.closeSubscriptionRound();
         
-        // Validation should fail with no active round
-        (bool invalidDeposit, ) = controller.validateDeposit(alice, 1000 * 1e6);
-        assertFalse(invalidDeposit, "Deposit should be invalid with no active round");
+        // Evaluation should fail with no active round
+        result = controllerHook.onBeforeDeposit(
+            address(token),
+            alice,
+            1000 * 1e6,
+            alice
+        );
+        assertFalse(result.approved, "Deposit should be rejected with no active round");
+        assertEq(result.reason, "Subscription round not active or expired", "Rejection reason mismatch");
         
         // Now open an active round and try again
         controller.openSubscriptionRound(
@@ -398,9 +407,15 @@ contract SubscriptionControllerTest is BaseFountfiTest {
             100
         );
         
-        // Validation should succeed with active round
-        (bool validDeposit, ) = controller.validateDeposit(alice, 1000 * 1e6);
-        assertTrue(validDeposit, "Deposit should be valid with active round");
+        // Evaluation should succeed with active round
+        result = controllerHook.onBeforeDeposit(
+            address(token),
+            alice,
+            1000 * 1e6,
+            alice
+        );
+        assertTrue(result.approved, "Deposit should be approved with active round");
+        assertEq(result.reason, "", "Approval reason should be empty");
         
         vm.stopPrank();
     }

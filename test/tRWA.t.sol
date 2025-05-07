@@ -4,12 +4,13 @@ pragma solidity ^0.8.25;
 import {Test} from "forge-std/Test.sol";
 import {BaseFountfiTest} from "./BaseFountfiTest.t.sol";
 import {MockERC20} from "../src/mocks/MockERC20.sol";
-import {MockRules} from "../src/mocks/MockRules.sol";
+import {MockHook} from "../src/mocks/MockHook.sol";
+import {WithdrawQueueMockHook} from "../src/mocks/WithdrawQueueMockHook.sol";
 import {MockStrategy} from "../src/mocks/MockStrategy.sol";
 import {MockRoleManager} from "../src/mocks/MockRoleManager.sol";
 import {tRWA} from "../src/token/tRWA.sol";
 import {ICallbackReceiver} from "../src/token/tRWA.sol";
-import {IRules} from "../src/rules/IRules.sol";
+import {IHook} from "../src/hooks/IHook.sol";
 import {Registry} from "../src/registry/Registry.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 
@@ -47,35 +48,6 @@ contract MockCallbackReceiver is ICallbackReceiver {
     }
 }
 
-// Mock rules that enables control over withdrawal responses
-contract WithdrawQueueMockRules is MockRules {
-    bool public withdrawalsQueued = false;
-
-    constructor(bool initialApprove, string memory rejectReason)
-        MockRules(initialApprove, rejectReason)
-    {}
-
-    function setWithdrawalsQueued(bool queued) external {
-        withdrawalsQueued = queued;
-    }
-
-    function evaluateWithdraw(
-        address token,
-        address caller,
-        uint256 amount,
-        address recipient,
-        address owner
-    ) public view virtual override returns (IRules.RuleResult memory) {
-        if (withdrawalsQueued) {
-            return IRules.RuleResult({
-                approved: false,
-                reason: "Direct withdrawals not supported. Withdrawal request created in queue."
-            });
-        }
-        return super.evaluateWithdraw(token, caller, amount, recipient, owner);
-    }
-}
-
 /**
  * @title TRWATest
  * @notice Comprehensive tests for tRWA contract to achieve 100% coverage
@@ -84,7 +56,7 @@ contract TRWATest is BaseFountfiTest {
     // Test-specific contracts
     tRWA internal token;
     MockStrategy internal strategy;
-    WithdrawQueueMockRules internal queueRules;
+    WithdrawQueueMockHook internal queueHook;
     MockCallbackReceiver internal callbackReceiver;
 
     // Test constants
@@ -119,12 +91,12 @@ contract TRWATest is BaseFountfiTest {
         // Call parent setup
         super.setUp();
 
-        // Deploy specialized mock rules for testing withdrawals
-        queueRules = new WithdrawQueueMockRules(true, "Test rejection");
+        // Deploy specialized mock hooks for testing withdrawals
+        queueHook = new WithdrawQueueMockHook(true, "Test rejection");
 
         vm.startPrank(owner);
 
-        // Deploy a fresh strategy with MockRules
+        // Deploy a fresh strategy (initially without hooks)
         strategy = new MockStrategy(owner);
         strategy.initialize(
             "Tokenized RWA",
@@ -132,12 +104,16 @@ contract TRWATest is BaseFountfiTest {
             manager,
             address(usdc),
             6, // assetDecimals
-            address(queueRules),
             ""
         );
 
         // Get the token the strategy created
         token = tRWA(strategy.sToken());
+        
+        // Add hook to token
+        strategy.callStrategyToken(
+            abi.encodeCall(tRWA.addOperationHook, (address(queueHook)))
+        );
 
         // Setup callback receiver
         callbackReceiver = new MockCallbackReceiver();
@@ -169,7 +145,6 @@ contract TRWATest is BaseFountfiTest {
 
         // Test internal references
         assertEq(address(token.strategy()), address(strategy));
-        assertEq(address(token.rules()), address(queueRules));
     }
 
     function test_Constructor_Reverts_WithInvalidAddresses() public {
@@ -177,15 +152,11 @@ contract TRWATest is BaseFountfiTest {
 
         // Test invalid asset address
         vm.expectRevert(abi.encodeWithSignature("InvalidAddress()"));
-        new tRWA("Test", "TEST", address(0), 6, address(strategy), address(queueRules));
+        new tRWA("Test", "TEST", address(0), 6, address(strategy));
 
         // Test invalid strategy address
         vm.expectRevert(abi.encodeWithSignature("InvalidAddress()"));
-        new tRWA("Test", "TEST", address(usdc), 6, address(0), address(queueRules));
-
-        // Test invalid rules address
-        vm.expectRevert(abi.encodeWithSignature("InvalidAddress()"));
-        new tRWA("Test", "TEST", address(usdc), 6, address(strategy), address(0));
+        new tRWA("Test", "TEST", address(usdc), 6, address(0));
 
         vm.stopPrank();
     }
@@ -204,19 +175,8 @@ contract TRWATest is BaseFountfiTest {
     }
 
     function test_SetController_Reverts_WhenCalledByNonStrategy() public {
-        vm.expectRevert(abi.encodeWithSignature("tRWAUnauthorized(address,address)", address(this), address(strategy)));
+        vm.expectRevert(abi.encodeWithSignature("NotStrategyAdmin()"));
         token.setController(address(callbackReceiver));
-    }
-
-    function test_SetController_Reverts_WhenAlreadySet() public {
-        // Set controller first time
-        vm.prank(address(strategy));
-        token.setController(address(callbackReceiver));
-
-        // Try to set it again
-        vm.prank(address(strategy));
-        vm.expectRevert(abi.encodeWithSignature("ControllerAlreadySet()"));
-        token.setController(address(alice));
     }
 
     function test_SetController_Reverts_WithInvalidAddress() public {
@@ -395,13 +355,13 @@ contract TRWATest is BaseFountfiTest {
         assertEq(token.balanceOf(alice), shares);
     }
 
-    function test_Deposit_FailsWhenRulesReject() public {
-        // Set rules to reject
-        queueRules.setApproveStatus(false, "Test rejection");
+    function test_Deposit_FailsWhenHookRejects() public {
+        // Set hook to reject
+        queueHook.setApproveStatus(false, "Test rejection");
 
         // Try to deposit
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSignature("RuleCheckFailed(string)", "Test rejection"));
+        vm.expectRevert(abi.encodeWithSignature("HookCheckFailed(string)", "Test rejection"));
         token.deposit(INITIAL_DEPOSIT, alice);
     }
 
@@ -547,8 +507,8 @@ contract TRWATest is BaseFountfiTest {
         // First, we'll set up a special test to just verify the queue mechanism works
 
         vm.startPrank(owner);
-        // Set rule to queue withdrawals
-        queueRules.setWithdrawalsQueued(true);
+        // Set hook to queue withdrawals
+        queueHook.setWithdrawalsQueued(true);
         // Set up a strategy with balance
         strategy.setBalance(INITIAL_DEPOSIT);
 
@@ -602,8 +562,8 @@ contract TRWATest is BaseFountfiTest {
         // that focuses on testing the event emission without interacting with the real contract
 
         vm.startPrank(owner);
-        // Set rule to queue withdrawals
-        queueRules.setWithdrawalsQueued(true);
+        // Set hook to queue withdrawals
+        queueHook.setWithdrawalsQueued(true);
         // Set up a strategy with balance
         strategy.setBalance(INITIAL_DEPOSIT);
         vm.stopPrank();
@@ -635,8 +595,8 @@ contract TRWATest is BaseFountfiTest {
         // Reset callback state
         callbackReceiver.resetState();
 
-        // Configure rules to queue withdrawals instead of processing them directly
-        queueRules.setWithdrawalsQueued(true);
+        // Configure hooks to queue withdrawals instead of processing them directly
+        queueHook.setWithdrawalsQueued(true);
 
         // Calculate expected assets
         uint256 sharesToRedeem = shares / 2;
@@ -649,7 +609,7 @@ contract TRWATest is BaseFountfiTest {
         vm.expectEmit(true, false, false, true);
         emit tRWA.WithdrawalQueued(address(callbackReceiver), expectedAssets, sharesToRedeem);
 
-        vm.expectRevert(abi.encodeWithSignature("RuleCheckFailed(string)", "Direct withdrawals not supported. Withdrawal request created in queue."));
+        vm.expectRevert(abi.encodeWithSignature("HookCheckFailed(string)", "Direct withdrawals not supported. Withdrawal request created in queue."));
         token.redeem(
             sharesToRedeem,
             address(callbackReceiver),
@@ -685,14 +645,14 @@ contract TRWATest is BaseFountfiTest {
         // Reset callback state
         callbackReceiver.resetState();
 
-        // Configure rules to reject withdrawals with non-queue error
-        queueRules.setApproveStatus(false, "Test rejection");
+        // Configure hook to reject withdrawals with non-queue error
+        queueHook.setApproveStatus(false, "Test rejection");
 
         // Try withdraw with callback
         vm.startPrank(address(callbackReceiver));
 
         // Directly try redeem instead of withdraw as it doesn't check share balance first
-        vm.expectRevert(abi.encodeWithSignature("RuleCheckFailed(string)", "Test rejection"));
+        vm.expectRevert(abi.encodeWithSignature("HookCheckFailed(string)", "Test rejection"));
         token.redeem(
             callbackShares / 2,
             address(callbackReceiver),
@@ -725,8 +685,8 @@ contract TRWATest is BaseFountfiTest {
         // Reset callback state
         callbackReceiver.resetState();
 
-        // Configure rules to reject withdrawals with non-queue error
-        queueRules.setApproveStatus(false, "Test rejection");
+        // Configure hooks to reject withdrawals with non-queue error
+        queueHook.setApproveStatus(false, "Test rejection");
 
         // Setup strategy for redemption (even though it will fail)
         vm.prank(owner);
@@ -736,7 +696,7 @@ contract TRWATest is BaseFountfiTest {
         vm.startPrank(address(callbackReceiver));
 
         // Try to redeem
-        vm.expectRevert(abi.encodeWithSignature("RuleCheckFailed(string)", "Test rejection"));
+        vm.expectRevert(abi.encodeWithSignature("HookCheckFailed(string)", "Test rejection"));
         token.redeem(
             callbackShares / 2,
             address(callbackReceiver),
@@ -760,7 +720,7 @@ contract TRWATest is BaseFountfiTest {
         // Initial deposit returns 0 shares in this environment
     }
 
-    function test_Burn_FailsWhenRulesReject() public {
+    function test_Burn_FailsWhenHookReject() public {
         // Skip this test - it's problematic due to ERC4626 virtual shares protection
         // Initial deposit returns 0 shares in this environment
     }
@@ -777,5 +737,60 @@ contract TRWATest is BaseFountfiTest {
     function test_Withdraw_ExceedsBalance() public {
         // Skip this test - it's problematic due to ERC4626 virtual shares protection
         // Initial deposit returns 0 shares in this environment
+    }
+    
+    /*//////////////////////////////////////////////////////////////
+                        HOOK MANAGEMENT TESTS
+    //////////////////////////////////////////////////////////////*/
+    
+    function test_AddOperationHook() public {
+        vm.startPrank(address(strategy));
+        
+        // Create a new hook
+        MockHook newHook = new MockHook(true, "");
+        
+        // Add the hook
+        token.addOperationHook(address(newHook));
+        
+        // Verify it was added (by checking if a deposit still works)
+        vm.stopPrank();
+        
+        vm.startPrank(alice);
+        usdc.approve(address(token), 100);
+        strategy.setBalance(100);
+        uint256 shares = token.deposit(100, alice);
+        vm.stopPrank();
+        
+        // Check deposit succeeded
+        assertGt(shares, 0);
+    }
+    
+    function test_ReorderOperationHooks() public {
+        vm.startPrank(address(strategy));
+        
+        // Add another hook
+        MockHook newHook = new MockHook(true, "");
+        token.addOperationHook(address(newHook));
+        
+        // Create reordering array
+        uint256[] memory newOrder = new uint256[](2);
+        newOrder[0] = 1; // The new hook (index 1) should be first
+        newOrder[1] = 0; // The original hook (index 0) should be second
+        
+        // Reorder hooks
+        token.reorderOperationHooks(newOrder);
+        
+        // Verification is hard since we can't directly access the hook order
+        // But we can verify the operation still works
+        vm.stopPrank();
+        
+        vm.startPrank(alice);
+        usdc.approve(address(token), 100);
+        strategy.setBalance(100);
+        uint256 shares = token.deposit(100, alice);
+        vm.stopPrank();
+        
+        // Check deposit succeeded
+        assertGt(shares, 0);
     }
 }

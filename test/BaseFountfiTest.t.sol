@@ -3,18 +3,18 @@ pragma solidity ^0.8.25;
 
 import {Test} from "forge-std/Test.sol";
 import {MockERC20} from "../src/mocks/MockERC20.sol";
-import {MockRules} from "../src/mocks/MockRules.sol";
+import {MockHook} from "../src/mocks/MockHook.sol";
 import {MockReporter} from "../src/mocks/MockReporter.sol";
 import {MockStrategy} from "../src/mocks/MockStrategy.sol";
 import {MockRoleManager} from "../src/mocks/MockRoleManager.sol";
 import {tRWA} from "../src/token/tRWA.sol";
 import {Registry} from "../src/registry/Registry.sol";
-import {RulesEngine} from "../src/rules/RulesEngine.sol";
-import {KycRules} from "../src/rules/KycRules.sol";
-import {SubscriptionRules} from "../src/rules/SubscriptionRules.sol";
-import {MockCappedSubscriptionRules} from "../src/mocks/MockCappedSubscriptionRules.sol";
-import {BaseRules} from "../src/rules/BaseRules.sol";
-import {IRules} from "../src/rules/IRules.sol";
+import {RulesEngine} from "../src/hooks/RulesEngine.sol";
+import {KycRulesHook} from "../src/hooks/KycRulesHook.sol";
+import {SubscriptionRulesHook} from "../src/hooks/SubscriptionRulesHook.sol";
+import {MockCappedSubscriptionHook} from "../src/mocks/MockCappedSubscriptionHook.sol";
+import {BaseHook} from "../src/hooks/BaseHook.sol";
+import {IHook} from "../src/hooks/IHook.sol";
 import {PriceOracleReporter} from "../src/reporter/PriceOracleReporter.sol";
 import {ReportedStrategy} from "../src/strategy/ReportedStrategy.sol";
 import {IStrategy} from "../src/strategy/IStrategy.sol";
@@ -34,7 +34,7 @@ abstract contract BaseFountfiTest is Test {
 
     // Common contracts
     MockERC20 internal usdc;
-    MockRules internal mockRules;
+    MockHook internal mockHook;
     MockReporter internal mockReporter;
     MockStrategy internal mockStrategy;
     Registry internal registry;
@@ -67,7 +67,7 @@ abstract contract BaseFountfiTest is Test {
         usdc.mint(charlie, 10_000 * 10**6);
 
         // Deploy mocks
-        mockRules = new MockRules(true, "Mock rejection");
+        mockHook = new MockHook(true, "Mock rejection");
         mockReporter = new MockReporter(1000 * 10**6); // 1000 USDC initial value
         mockStrategy = new MockStrategy(owner);
 
@@ -84,8 +84,15 @@ abstract contract BaseFountfiTest is Test {
         // Init strategy and get token
         vm.startPrank(owner);
 
-        // Create a fresh MockRules and ensure it's initialized to allow by default
-        MockRules mockRulesLocal = new MockRules(true, "Test rejection");
+        // Create a fresh MockHook and ensure it's initialized to allow by default
+        MockHook mockHookLocal = new MockHook(true, "Test rejection");
+
+        // Register the hook in the registry
+        registry.setOperationHook(address(mockHookLocal), true);
+
+        // Create array of hooks
+        address[] memory hookAddresses = new address[](1);
+        hookAddresses[0] = address(mockHookLocal);
 
         // Deploy a new strategy
         MockStrategy strategy = new MockStrategy(owner);
@@ -95,12 +102,17 @@ abstract contract BaseFountfiTest is Test {
             manager,
             address(usdc),
             6,
-            address(mockRulesLocal),
             ""
         );
 
         // Get the token the strategy created
         tRWA token = tRWA(strategy.sToken());
+        
+        // Add hook to token
+        strategy.callStrategyToken(
+            abi.encodeCall(tRWA.addOperationHook, (address(mockHookLocal)))
+        );
+        
         vm.stopPrank();
 
         return (strategy, token);
@@ -119,7 +131,7 @@ abstract contract BaseFountfiTest is Test {
     function deployThroughRegistry() internal returns (
         address strategyAddr,
         address tokenAddr,
-        KycRules kycRules,
+        KycRulesHook kycRules,
         MockReporter reporter
     ) {
         vm.startPrank(owner);
@@ -130,13 +142,19 @@ abstract contract BaseFountfiTest is Test {
         // Deploy mock role manager
         MockRoleManager roleManager = new MockRoleManager(owner);
 
-        // Deploy rules with mock role manager
-        kycRules = new KycRules(address(roleManager));
+        // Deploy hooks with mock role manager
+        kycRules = new KycRulesHook(address(roleManager));
 
         // Grant KYC roles to the owner for testing
         roleManager.grantRole(owner, roleManager.KYC_ADMIN());
         roleManager.grantRole(owner, roleManager.KYC_OPERATOR());
-        registry.setRules(address(kycRules), true);
+        
+        // Register the hook in the registry
+        registry.setOperationHook(address(kycRules), true);
+
+        // Create hook addresses array
+        address[] memory hookAddresses = new address[](1);
+        hookAddresses[0] = address(kycRules);
 
         // Create reporter
         reporter = new MockReporter(1000 * 10**6);
@@ -152,7 +170,6 @@ abstract contract BaseFountfiTest is Test {
             address(strategyImpl),
             address(usdc),
             6,
-            address(kycRules),
             manager,
             ""
         );

@@ -21,8 +21,12 @@ contract MockStrategy is IStrategy {
 
     /**
      * @notice Initialize the strategy
+     * @param name_ Name of the token
+     * @param symbol_ Symbol of the token
      * @param manager_ Address of the manager
      * @param asset_ Address of the underlying asset
+     * @param assetDecimals_ Number of decimals of the asset
+     * @param initData Initialization data
      */
     function initialize(
         string calldata name_,
@@ -30,7 +34,7 @@ contract MockStrategy is IStrategy {
         address manager_,
         address asset_,
         uint8 assetDecimals_,
-        bytes memory
+        bytes memory initData
     ) external override {
         if (_initialized) revert AlreadyInitialized();
         _initialized = true;
@@ -38,6 +42,7 @@ contract MockStrategy is IStrategy {
         if (manager_ == address(0)) revert InvalidAddress();
         if (asset_ == address(0)) revert InvalidAddress();
 
+        // Deploy token with no hooks initially
         sToken = address(new tRWA(name_, symbol_, asset_, assetDecimals_, address(this)));
 
         deployer = msg.sender;
@@ -105,9 +110,20 @@ contract MockStrategy is IStrategy {
         controller = _controller;
         _controllerConfigured = true;
 
-        // Set controller reference in token (mock implementation)
-        // tRWA(sToken).setController(_controller);
+        // Set controller reference in token
+        tRWA(sToken).setController(_controller);
 
         emit ControllerConfigured(_controller);
+    }
+    
+    /**
+     * @notice Call tRWA token with arbitrary data (for testing)
+     * @param data The data to call the token with
+     */
+    function callStrategyToken(bytes calldata data) external returns (bool success, bytes memory returnData) {
+        // Only callable by manager
+        if (msg.sender != manager && msg.sender != deployer) revert Unauthorized();
+        
+        return sToken.call(data);
     }
 }

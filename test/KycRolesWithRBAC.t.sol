@@ -4,11 +4,11 @@ pragma solidity 0.8.25;
 import {Test} from "forge-std/Test.sol";
 import {RoleManager} from "../src/auth/RoleManager.sol";
 import {RoleManaged} from "../src/auth/RoleManaged.sol";
-import {KycRules} from "../src/rules/KycRules.sol";
+import {KycRulesHook} from "../src/hooks/KycRulesHook.sol";
 
 contract KycRolesWithRBACTest is Test {
     RoleManager public roleManager;
-    KycRules public kycRules;
+    KycRulesHook public kycRules;
 
     address public admin = address(1);
     address public kycAdmin = address(2);
@@ -19,7 +19,7 @@ contract KycRolesWithRBACTest is Test {
     function setUp() public {
         vm.startPrank(admin);
         roleManager = new RoleManager();
-        kycRules = new KycRules(address(roleManager));
+        kycRules = new KycRulesHook(address(roleManager));
 
         // Set up roles - admin already has PROTOCOL_ADMIN role from constructor
         // Grant RULES_ADMIN to kycAdmin to manage KYC operators

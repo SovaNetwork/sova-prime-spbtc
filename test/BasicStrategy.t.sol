@@ -7,7 +7,7 @@ import {IStrategy} from "../src/strategy/IStrategy.sol";
 import {tRWA} from "../src/token/tRWA.sol";
 import {RoleManaged} from "../src/auth/RoleManaged.sol";
 import {MockRoleManager} from "../src/mocks/MockRoleManager.sol";
-import {MockRules} from "../src/mocks/MockRules.sol";
+import {MockHook} from "../src/mocks/MockHook.sol";
 import {MockERC20} from "../src/mocks/MockERC20.sol";
 
 /**
@@ -45,7 +45,7 @@ contract BasicStrategyTest is BaseFountfiTest {
     TestableBasicStrategy public strategy;
     tRWA public token;
     MockRoleManager public roleManager;
-    MockRules public strategyRules;
+    MockHook public strategyHook;
     MockERC20 public daiToken;
 
     // Strategy parameters
@@ -66,25 +66,29 @@ contract BasicStrategyTest is BaseFountfiTest {
         // Deploy test DAI token as the asset
         daiToken = new MockERC20("DAI Stablecoin", "DAI", 18);
 
-        // Deploy rules
-        strategyRules = new MockRules(true, "");
+        // Deploy hooks
+        strategyHook = new MockHook(true, "");
 
         // Deploy the strategy
         strategy = new TestableBasicStrategy(address(roleManager));
 
-        // Initialize the strategy
+        // Initialize the strategy (without hooks)
         strategy.initialize(
             TOKEN_NAME,
             TOKEN_SYMBOL,
             manager,
             address(daiToken),
             18,
-            address(strategyRules),
             ""
         );
 
         // Get the token that was deployed during initialization
         token = tRWA(strategy.sToken());
+        
+        // Add the hook to the token
+        strategy.callStrategyToken(
+            abi.encodeCall(tRWA.addOperationHook, (address(strategyHook)))
+        );
 
         // Fund the strategy with some DAI
         daiToken.mint(address(strategy), 1000 * 10**18);
@@ -117,7 +121,6 @@ contract BasicStrategyTest is BaseFountfiTest {
             alice,
             address(daiToken),
             18,
-            address(strategyRules),
             ""
         );
 
@@ -138,7 +141,6 @@ contract BasicStrategyTest is BaseFountfiTest {
             address(0),
             address(daiToken),
             18,
-            address(strategyRules),
             ""
         );
 
@@ -150,19 +152,6 @@ contract BasicStrategyTest is BaseFountfiTest {
             manager,
             address(0),
             18,
-            address(strategyRules),
-            ""
-        );
-
-        // Test zero address for rules
-        vm.expectRevert(IStrategy.InvalidRules.selector);
-        newStrategy.initialize(
-            TOKEN_NAME,
-            TOKEN_SYMBOL,
-            manager,
-            address(daiToken),
-            18,
-            address(0),
             ""
         );
 
@@ -488,6 +477,40 @@ contract BasicStrategyTest is BaseFountfiTest {
         vm.expectRevert(IStrategy.AlreadyInitialized.selector);
         strategy.configureController(bob);
 
+        vm.stopPrank();
+    }
+    
+    function test_CallStrategyToken() public {
+        vm.startPrank(owner);
+        
+        // Test the callStrategyToken function
+        MockHook newHook = new MockHook(true, "");
+        
+        // Add a new hook to the token by directly calling the token
+        token.addOperationHook(address(newHook));
+        
+        // Verify hook was added - one way to test is to check if the operation succeeds
+        // If the hook was not added correctly, the operation would fail
+        vm.stopPrank();
+        
+        // Create a separate test for the actual callStrategyToken function
+        testCallStrategyTokenDirectly();
+    }
+    
+    function testCallStrategyTokenDirectly() public {
+        vm.startPrank(owner);
+        
+        // Get initial token balance
+        uint256 initialBalance = token.totalAssets();
+        
+        // Call a safe known function on the token
+        strategy.callStrategyToken(
+            abi.encodeCall(token.name, ())
+        );
+        
+        // Verify state is unchanged
+        assertEq(token.totalAssets(), initialBalance, "Token balance should be unchanged");
+        
         vm.stopPrank();
     }
 }

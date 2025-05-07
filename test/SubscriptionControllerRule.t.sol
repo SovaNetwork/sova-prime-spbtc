@@ -4,20 +4,20 @@ pragma solidity ^0.8.25;
 import {BaseFountfiTest} from "./BaseFountfiTest.t.sol";
 import {SubscriptionController} from "../src/controllers/SubscriptionController.sol";
 import {ISubscriptionController} from "../src/controllers/ISubscriptionController.sol";
-import {SubscriptionControllerRule} from "../src/rules/SubscriptionControllerRule.sol";
-import {IRules} from "../src/rules/IRules.sol";
+import {SubscriptionControllerHook} from "../src/hooks/SubscriptionControllerHook.sol";
+import {IHook} from "../src/hooks/IHook.sol";
 import {tRWA} from "../src/token/tRWA.sol";
-import {RulesEngine} from "../src/rules/RulesEngine.sol";
+import {RulesEngine} from "../src/hooks/RulesEngine.sol";
 import {MockStrategy} from "../src/mocks/MockStrategy.sol";
 
 /**
- * @title SubscriptionControllerRuleTest
- * @notice Tests for the SubscriptionControllerRule
+ * @title SubscriptionControllerHookTest
+ * @notice Tests for the SubscriptionControllerHook
  */
-contract SubscriptionControllerRuleTest is BaseFountfiTest {
+contract SubscriptionControllerHookTest is BaseFountfiTest {
     // Test contracts
     SubscriptionController public controller;
-    SubscriptionControllerRule public controllerRule;
+    SubscriptionControllerHook public controllerHook;
     tRWA public token;
     MockStrategy public strategy;
     
@@ -33,40 +33,34 @@ contract SubscriptionControllerRuleTest is BaseFountfiTest {
         address[] memory managers = new address[](1);
         managers[0] = admin;
         
-        // Deploy subscription controller
+        // Deploy subscription controller (no token reference needed now)
         controller = new SubscriptionController(
-            address(token),
             owner,
             managers
         );
         
-        // Deploy controller rule
-        controllerRule = new SubscriptionControllerRule(address(controller));
+        // Deploy controller hook
+        controllerHook = new SubscriptionControllerHook(address(controller));
         
         vm.stopPrank();
     }
     
     function test_Constructor() public {
         // Verify controller reference
-        assertEq(address(controllerRule.controller()), address(controller), "Controller address mismatch");
+        assertEq(address(controllerHook.controller()), address(controller), "Controller address mismatch");
         
         // Verify constructor reverts with zero address
         vm.startPrank(owner);
-        vm.expectRevert(SubscriptionControllerRule.InvalidController.selector);
-        new SubscriptionControllerRule(address(0));
+        vm.expectRevert(SubscriptionControllerHook.InvalidController.selector);
+        new SubscriptionControllerHook(address(0));
         vm.stopPrank();
     }
     
-    function test_AppliesTo() public {
-        // The rule should only apply to deposits (0x2)
-        assertEq(controllerRule.appliesTo(), 0x2, "Rule should only apply to deposits");
-    }
-    
-    function test_EvaluateDeposit_WithoutActiveRound() public {
+    function test_OnBeforeDeposit_WithoutActiveRound() public {
         vm.startPrank(owner);
         
         // Evaluate deposit without an active round
-        IRules.RuleResult memory result = controllerRule.evaluateDeposit(
+        IHook.HookOutput memory result = controllerHook.onBeforeDeposit(
             address(token),
             alice,
             1000 * 1e6,
@@ -80,7 +74,7 @@ contract SubscriptionControllerRuleTest is BaseFountfiTest {
         vm.stopPrank();
     }
     
-    function test_EvaluateDeposit_WithActiveRound() public {
+    function test_OnBeforeDeposit_WithActiveRound() public {
         vm.startPrank(owner);
         
         // Open a subscription round
@@ -92,7 +86,7 @@ contract SubscriptionControllerRuleTest is BaseFountfiTest {
         );
         
         // Evaluate deposit with active round
-        IRules.RuleResult memory result = controllerRule.evaluateDeposit(
+        IHook.HookOutput memory result = controllerHook.onBeforeDeposit(
             address(token),
             alice,
             1000 * 1e6,
@@ -106,7 +100,7 @@ contract SubscriptionControllerRuleTest is BaseFountfiTest {
         vm.stopPrank();
     }
     
-    function test_EvaluateDeposit_RoundFull() public {
+    function test_OnBeforeDeposit_RoundFull() public {
         vm.startPrank(owner);
         
         // Open a subscription round with capacity 1
@@ -129,7 +123,7 @@ contract SubscriptionControllerRuleTest is BaseFountfiTest {
         
         // Now try to evaluate another deposit
         vm.startPrank(owner);
-        IRules.RuleResult memory result = controllerRule.evaluateDeposit(
+        IHook.HookOutput memory result = controllerHook.onBeforeDeposit(
             address(token),
             bob,
             1000 * 1e6,
@@ -143,7 +137,7 @@ contract SubscriptionControllerRuleTest is BaseFountfiTest {
         vm.stopPrank();
     }
     
-    function test_EvaluateDeposit_ExpiredRound() public {
+    function test_OnBeforeDeposit_ExpiredRound() public {
         vm.startPrank(owner);
         
         // Open a subscription round
@@ -158,7 +152,7 @@ contract SubscriptionControllerRuleTest is BaseFountfiTest {
         vm.warp(block.timestamp + 8 days);
         
         // Evaluate deposit with expired round
-        IRules.RuleResult memory result = controllerRule.evaluateDeposit(
+        IHook.HookOutput memory result = controllerHook.onBeforeDeposit(
             address(token),
             alice,
             1000 * 1e6,
@@ -168,6 +162,43 @@ contract SubscriptionControllerRuleTest is BaseFountfiTest {
         // Verify result (should be rejected)
         assertFalse(result.approved, "Deposit should be rejected with expired round");
         assertEq(result.reason, "Subscription round not active or expired", "Rejection reason mismatch");
+        
+        vm.stopPrank();
+    }
+    
+    function test_OnBeforeWithdraw_NotSupported() public {
+        vm.startPrank(owner);
+        
+        // The hook should reject withdrawals as it doesn't support them
+        IHook.HookOutput memory result = controllerHook.onBeforeWithdraw(
+            address(token),
+            alice,
+            1000 * 1e6,
+            alice,
+            alice
+        );
+        
+        // Verify result (should be rejected)
+        assertFalse(result.approved, "Withdraw should be rejected");
+        assertEq(result.reason, "SubscriptionControllerHook does not evaluate withdrawals", "Rejection reason mismatch");
+        
+        vm.stopPrank();
+    }
+    
+    function test_OnBeforeTransfer_NotSupported() public {
+        vm.startPrank(owner);
+        
+        // The hook should reject transfers as it doesn't support them
+        IHook.HookOutput memory result = controllerHook.onBeforeTransfer(
+            address(token),
+            alice,
+            bob,
+            1000 * 1e6
+        );
+        
+        // Verify result (should be rejected)
+        assertFalse(result.approved, "Transfer should be rejected");
+        assertEq(result.reason, "SubscriptionControllerHook does not evaluate transfers", "Rejection reason mismatch");
         
         vm.stopPrank();
     }
@@ -183,8 +214,8 @@ contract SubscriptionControllerRuleTest is BaseFountfiTest {
             100
         );
         
-        // Get direct evaluation from the controller rule
-        IRules.RuleResult memory result = controllerRule.evaluateDeposit(
+        // Get direct evaluation from the controller hook
+        IHook.HookOutput memory result = controllerHook.onBeforeDeposit(
             address(token),
             alice,
             1000 * 1e6,
@@ -199,7 +230,7 @@ contract SubscriptionControllerRuleTest is BaseFountfiTest {
         controller.closeSubscriptionRound();
         
         // Re-evaluate deposit after closing round
-        result = controllerRule.evaluateDeposit(
+        result = controllerHook.onBeforeDeposit(
             address(token),
             alice,
             1000 * 1e6,

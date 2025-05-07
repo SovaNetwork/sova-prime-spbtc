@@ -4,12 +4,14 @@ pragma solidity ^0.8.25;
 import "forge-std/Script.sol";
 import {Registry} from "../src/registry/Registry.sol";
 import {MockERC20} from "../src/mocks/MockERC20.sol";
-import {KycRules} from "../src/rules/KycRules.sol";
+import {KycRulesHook} from "../src/hooks/KycRulesHook.sol";
 import {PriceOracleReporter} from "../src/reporter/PriceOracleReporter.sol";
 import {ReportedStrategy} from "../src/strategy/ReportedStrategy.sol";
 import {SubscriptionController} from "../src/controllers/SubscriptionController.sol";
+import {SubscriptionControllerHook} from "../src/hooks/SubscriptionControllerHook.sol";
 import {RoleManager} from "../src/auth/RoleManager.sol";
 import {BasicStrategy} from "../src/strategy/BasicStrategy.sol";
+import {tRWA} from "../src/token/tRWA.sol";
 
 contract SimpleRWADeployScript is Script {
     // Management addresses
@@ -20,12 +22,13 @@ contract SimpleRWADeployScript is Script {
     RoleManager public roleManager;
     MockERC20 public usdToken;
     Registry public registry;
-    KycRules public kycRules;
+    KycRulesHook public kycRulesHook;
     PriceOracleReporter public priceOracle;
     ReportedStrategy public strategyImplementation;
     address public strategy;
     address public token;
     address public controller;
+    address public subscriptionControllerHook;
     uint256 public startTime;
     uint256 public endTime;
 
@@ -79,17 +82,17 @@ contract SimpleRWADeployScript is Script {
         // Allow USD token as an asset
         registry.setAsset(address(usdToken), true);
 
-        // Deploy KYC Rules with role manager
-        kycRules = new KycRules(address(roleManager));
-        console.log("KYC Rules deployed.");
+        // Deploy KYC Rules Hook with role manager
+        kycRulesHook = new KycRulesHook(address(roleManager));
+        console.log("KYC Rules Hook deployed.");
 
-        // Add this rule to allowed rules in registry
-        registry.setRules(address(kycRules), true);
+        // Add this hook to allowed hooks in registry
+        registry.setOperationHook(address(kycRulesHook), true);
 
         // Allow addresses in KYC rules
-        kycRules.allow(deployer);
-        kycRules.allow(MANAGER_1);
-        kycRules.allow(MANAGER_2);
+        kycRulesHook.allow(deployer);
+        kycRulesHook.allow(MANAGER_1);
+        kycRulesHook.allow(MANAGER_2);
         console.log("Managers allowed in KYC rules.");
 
         // Deploy Price Oracle Reporter with initial price of 1 USD
@@ -133,18 +136,36 @@ contract SimpleRWADeployScript is Script {
         managerAddresses[0] = MANAGER_1;
         managerAddresses[1] = MANAGER_2;
 
-        // Deploy a clone of ReportedStrategy with controller through the registry
-        (strategy, token, controller) = registry.deployWithController(
+        // Create array of hooks
+        address[] memory hookAddresses = new address[](1);
+        hookAddresses[0] = address(kycRulesHook);
+
+        // First deploy the controller
+        controller = address(new SubscriptionController(
+            deployer,
+            managerAddresses
+        ));
+
+        // Create subscription controller hook
+        subscriptionControllerHook = address(new SubscriptionControllerHook(controller));
+        
+        // Register hook in registry
+        registry.setOperationHook(subscriptionControllerHook, true);
+        
+        // Add subscription controller hook to hooks array
+        address[] memory allHookAddresses = new address[](2);
+        allHookAddresses[0] = address(kycRulesHook);
+        allHookAddresses[1] = subscriptionControllerHook;
+
+        // Deploy strategy through registry
+        (strategy, token) = registry.deploy(
             "Fountfi USD Token",      // name
             "fUSDC",                  // symbol
             address(strategyImplementation),
             address(usdToken),
             6, // assetDecimals
-            address(kycRules),
             deployer,                 // Manager of the strategy
-            managerAddresses,         // Additional manager addresses for controller
-            initData,
-            10000                     // Initial capacity of 10,000 subscribers
+            initData
         );
 
         // Configure subscription round - Start now, end in 90 days
@@ -161,8 +182,8 @@ contract SimpleRWADeployScript is Script {
 
     function configureController() internal {
         // Set up the token with the controller reference
-        BasicStrategy(strategy).configureController(controller);
-        console.log("Controller configured for strategy");
+        tRWA(token).setController(controller);
+        console.log("Controller configured for token");
     }
 
     function logDeployedContracts() internal view {
@@ -171,12 +192,13 @@ contract SimpleRWADeployScript is Script {
         console.log("Role Manager:", address(roleManager));
         console.log("Mock USD Token:", address(usdToken));
         console.log("Registry:", address(registry));
-        console.log("KYC Rules:", address(kycRules));
+        console.log("KYC Rules Hook:", address(kycRulesHook));
         console.log("Price Oracle Reporter:", address(priceOracle));
         console.log("Strategy Implementation:", address(strategyImplementation));
         console.log("Cloned Strategy:", strategy);
         console.log("Strategy Token:", token);
         console.log("Subscription Controller:", controller);
+        console.log("Subscription Controller Hook:", subscriptionControllerHook);
 
         console.log("\nSubscription Round Details:");
         console.log("Start Time:", startTime);

@@ -7,7 +7,7 @@ import {BasicStrategy} from "../src/strategy/BasicStrategy.sol";
 import {IStrategy} from "../src/strategy/IStrategy.sol";
 import {tRWA} from "../src/token/tRWA.sol";
 import {MockRoleManager} from "../src/mocks/MockRoleManager.sol";
-import {MockRules} from "../src/mocks/MockRules.sol";
+import {MockHook} from "../src/mocks/MockHook.sol";
 import {MockERC20} from "../src/mocks/MockERC20.sol";
 import {MockReporter} from "../src/mocks/MockReporter.sol";
 import {BaseReporter} from "../src/reporter/BaseReporter.sol";
@@ -21,7 +21,7 @@ contract ReportedStrategyTest is BaseFountfiTest {
     ReportedStrategy public strategy;
     tRWA public token;
     MockRoleManager public roleManager;
-    MockRules public strategyRules;
+    MockHook public strategyHook;
     MockERC20 public daiToken;
     MockReporter public reporter;
 
@@ -44,8 +44,8 @@ contract ReportedStrategyTest is BaseFountfiTest {
         // Deploy test DAI token as the asset
         daiToken = new MockERC20("DAI Stablecoin", "DAI", 18);
 
-        // Deploy rules
-        strategyRules = new MockRules(true, "");
+        // Deploy hook
+        strategyHook = new MockHook(true, "");
 
         // Deploy reporter with initial NAV value
         reporter = new MockReporter(INITIAL_NAV);
@@ -61,7 +61,6 @@ contract ReportedStrategyTest is BaseFountfiTest {
             manager,
             address(daiToken),
             18,
-            address(strategyRules),
             initData
         );
 
@@ -108,7 +107,6 @@ contract ReportedStrategyTest is BaseFountfiTest {
             manager,
             address(daiToken),
             18,
-            address(strategyRules),
             invalidInitData
         );
 

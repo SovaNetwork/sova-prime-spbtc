@@ -44,10 +44,10 @@ contract RegistryTest is Test {
         registry.setAsset(address(asset), false);
         assertFalse(registry.allowedAssets(address(asset)));
         
-        // Test rules registration
-        address mockRules = makeAddr("rules");
-        registry.setRules(mockRules, true);
-        assertTrue(registry.allowedRules(mockRules));
+        // Test operation hook registration
+        address mockHook = makeAddr("hook");
+        registry.setOperationHook(mockHook, true);
+        assertTrue(registry.allowedOperationHooks(mockHook));
         
         // Test strategy registration
         address mockStrategy = makeAddr("strategy");
@@ -65,7 +65,7 @@ contract RegistryTest is Test {
         registry.setAsset(address(0), true);
         
         vm.expectRevert(Registry.ZeroAddress.selector);
-        registry.setRules(address(0), true);
+        registry.setOperationHook(address(0), true);
         
         vm.expectRevert(Registry.ZeroAddress.selector);
         registry.setStrategy(address(0), true);
@@ -84,22 +84,22 @@ contract RegistryTest is Test {
         // Test require conditions on deploy
         
         registry.setAsset(address(localUsdc), true);
-        registry.setRules(localRules, true);
+        registry.setOperationHook(localRules, true);
         registry.setStrategy(localStrategy, true);
         
         // Check that we can register and toggle components
         assertTrue(registry.allowedAssets(address(localUsdc)));
-        assertTrue(registry.allowedRules(localRules));
+        assertTrue(registry.allowedOperationHooks(localRules));
         assertTrue(registry.allowedStrategies(localStrategy));
         
         // Set them to false again
         registry.setAsset(address(localUsdc), false);
-        registry.setRules(localRules, false);
+        registry.setOperationHook(localRules, false);
         registry.setStrategy(localStrategy, false);
         
         // Verify they're toggled off
         assertFalse(registry.allowedAssets(address(localUsdc)));
-        assertFalse(registry.allowedRules(localRules));
+        assertFalse(registry.allowedOperationHooks(localRules));
         assertFalse(registry.allowedStrategies(localStrategy));
         
         vm.stopPrank();
