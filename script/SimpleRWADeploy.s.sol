@@ -45,10 +45,7 @@ contract SimpleRWADeployScript is Script {
         deployInfrastructure(deployer);
 
         // Deploy strategy and controller
-        deployStrategyAndController(deployer);
-
-        // Configure controller and roles
-        configureController();
+        deployStrategy(deployer);
 
         // Log all deployed contracts
         logDeployedContracts();
@@ -79,6 +76,9 @@ contract SimpleRWADeployScript is Script {
         registry = new Registry(address(roleManager));
         console.log("Registry deployed.");
 
+        // Link registry to role manager
+        roleManager.initializeRegistry(address(registry));
+
         // Allow USD token as an asset
         registry.setAsset(address(usdToken), true);
 
@@ -87,7 +87,7 @@ contract SimpleRWADeployScript is Script {
         console.log("KYC Rules Hook deployed.");
 
         // Add this hook to allowed hooks in registry
-        registry.setOperationHook(address(kycRulesHook), true);
+        registry.setHook(address(kycRulesHook), true);
 
         // Allow addresses in KYC rules
         kycRulesHook.allow(deployer);
@@ -127,63 +127,22 @@ contract SimpleRWADeployScript is Script {
         roleManager.grantRole(MANAGER_2, roleManager.KYC_OPERATOR());
     }
 
-    function deployStrategyAndController(address deployer) internal {
+    function deployStrategy(address deployer) internal {
         // Encode initialization data for the strategy (reporter address)
         bytes memory initData = abi.encode(address(priceOracle));
 
-        // Create array of additional manager addresses
-        address[] memory managerAddresses = new address[](2);
-        managerAddresses[0] = MANAGER_1;
-        managerAddresses[1] = MANAGER_2;
-
-        // Create array of hooks
-        address[] memory hookAddresses = new address[](1);
-        hookAddresses[0] = address(kycRulesHook);
-
-        // First deploy the controller
-        controller = address(new SubscriptionController(
-            deployer,
-            managerAddresses
-        ));
-
-        // Create subscription controller hook
-        subscriptionControllerHook = address(new SubscriptionControllerHook(controller));
-        
-        // Register hook in registry
-        registry.setOperationHook(subscriptionControllerHook, true);
-        
-        // Add subscription controller hook to hooks array
-        address[] memory allHookAddresses = new address[](2);
-        allHookAddresses[0] = address(kycRulesHook);
-        allHookAddresses[1] = subscriptionControllerHook;
-
         // Deploy strategy through registry
         (strategy, token) = registry.deploy(
+            address(strategyImplementation),
             "Fountfi USD Token",      // name
             "fUSDC",                  // symbol
-            address(strategyImplementation),
             address(usdToken),
             6, // assetDecimals
             deployer,                 // Manager of the strategy
             initData
         );
 
-        // Configure subscription round - Start now, end in 90 days
-        startTime = block.timestamp;
-        endTime = startTime + 90 days;
-
-        SubscriptionController(controller).openSubscriptionRound(
-            "Genesis Offering Q2 2025",
-            startTime,
-            endTime,
-            10000                    // cap of 10,000 subscribers
-        );
-    }
-
-    function configureController() internal {
-        // Set up the token with the controller reference
-        tRWA(token).setController(controller);
-        console.log("Controller configured for token");
+        // TODO: Reintroduce subscription controller
     }
 
     function logDeployedContracts() internal view {
@@ -197,13 +156,5 @@ contract SimpleRWADeployScript is Script {
         console.log("Strategy Implementation:", address(strategyImplementation));
         console.log("Cloned Strategy:", strategy);
         console.log("Strategy Token:", token);
-        console.log("Subscription Controller:", controller);
-        console.log("Subscription Controller Hook:", subscriptionControllerHook);
-
-        console.log("\nSubscription Round Details:");
-        console.log("Start Time:", startTime);
-        console.log("End Time:", endTime);
-        console.log("Duration:", (endTime - startTime) / 1 days, "days");
-        console.log("Capacity:", 10000, "subscribers");
     }
 }

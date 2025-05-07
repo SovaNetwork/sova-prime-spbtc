@@ -21,7 +21,7 @@ abstract contract BasicStrategy is IStrategy, RoleManaged {
                             STATE
     //////////////////////////////////////////////////////////////*/
 
-    address public deployer;
+    // The registry field is inherited from RoleManaged
     address public manager;
     address public asset;
     address public sToken;
@@ -63,7 +63,6 @@ abstract contract BasicStrategy is IStrategy, RoleManaged {
 
         // Set up strategy configuration
         // Unlike other protocol roles, only a single manager is allowed
-        deployer = msg.sender;
         manager = manager_;
         asset = asset_;
 
@@ -218,8 +217,7 @@ abstract contract BasicStrategy is IStrategy, RoleManaged {
         controller = _controller;
         _controllerConfigured = true;
 
-        // Set controller reference in token
-        tRWA(sToken).setController(_controller);
+        // Setting controller is now handled internally - removed setController call
 
         emit ControllerConfigured(_controller);
     }

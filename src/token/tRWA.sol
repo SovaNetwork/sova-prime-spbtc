@@ -8,23 +8,9 @@ import {IHook} from "../hooks/IHook.sol";
 import {IStrategy} from "../strategy/IStrategy.sol";
 import {ItRWA} from "./ItRWA.sol";
 
-/**
- * @title ICallbackReceiver
- * @notice Interface for contracts that want to receive token operation callbacks
- */
-interface ICallbackReceiver {
-    /**
-     * @notice Callback function for token operations
-     * @param operationType Type of operation (keccak256 of operation name)
-     * @param success Whether the operation was successful
-     * @param data Additional data passed from the caller
-     */
-    function operationCallback(
-        bytes32 operationType,
-        bool success,
-        bytes memory data
-    ) external;
-}
+import {Conduit} from "../conduit/Conduit.sol";
+import {RoleManaged} from "../auth/RoleManaged.sol";
+import {Registry} from "../registry/Registry.sol";
 
 /**
  * @title tRWA
@@ -56,9 +42,8 @@ contract tRWA is ERC4626, ItRWA {
     uint8 private immutable _assetDecimals;
 
     // Logic contracts
-    IStrategy public immutable strategy;
+    address public immutable strategy;
     mapping(bytes32 => IHook[]) public operationHooks;
-    address public controller;
 
     // Events for withdrawal queueing
     event WithdrawalQueued(address indexed user, uint256 assets, uint256 shares);
@@ -89,21 +74,7 @@ contract tRWA is ERC4626, ItRWA {
         _symbol = symbol_;
         _asset = asset_;
         _assetDecimals = assetDecimals_;
-
-        strategy = IStrategy(strategy_);
-    }
-
-    /**
-     * @notice Set the controller address
-     * @param _controller Controller address
-     */
-    function setController(address _controller) external {
-        // Only callable once during initialization by strategy
-        if (msg.sender != address(strategy)) revert tRWAUnauthorized(msg.sender, address(strategy));
-        if (controller != address(0)) revert ControllerAlreadySet();
-        if (_controller == address(0)) revert InvalidAddress();
-
-        controller = _controller;
+        strategy = strategy_;
     }
 
     /**
@@ -126,7 +97,7 @@ contract tRWA is ERC4626, ItRWA {
      * @notice Returns the asset of the token
      * @return Asset of the token
      */
-    function asset() public view virtual override returns (address) {
+    function asset() public view virtual override(ERC4626, ItRWA) returns (address) {
         return _asset;
     }
 
@@ -136,7 +107,7 @@ contract tRWA is ERC4626, ItRWA {
      * @return Total assets in terms of _asset
      */
     function totalAssets() public view override returns (uint256) {
-        return strategy.balance(); // Returns balance in `_assetDecimals`
+        return IStrategy(strategy).balance(); // Returns balance in `_assetDecimals`
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -158,169 +129,6 @@ contract tRWA is ERC4626, ItRWA {
         return _DEFAULT_UNDERLYING_DECIMALS - _assetDecimals;
     }
 
-    /*//////////////////////////////////////////////////////////////
-                            CALLBACK OPERATIONS
-    //////////////////////////////////////////////////////////////*/
-
-    /**
-     * @notice Extended deposit function with callback support
-     * @param assets Amount of assets to deposit
-     * @param receiver Address receiving the shares
-     * @param useCallback Whether to use callback
-     * @param callbackData Data to pass to the callback
-     * @return shares Amount of shares minted
-     */
-    function deposit(
-        uint256 assets,
-        address receiver,
-        bool useCallback,
-        bytes calldata callbackData
-    ) external returns (uint256 shares) {
-        // Execute the standard deposit
-        shares = deposit(assets, receiver);
-
-        // Execute callback if requested
-        if (useCallback && msg.sender.code.length > 0) {
-            _executeCallback(OP_DEPOSIT, true, callbackData);
-        }
-
-        return shares;
-    }
-
-    /**
-     * @notice Extended mint function with callback support
-     * @param shares Amount of shares to mint
-     * @param receiver Address receiving the shares
-     * @param useCallback Whether to use callback
-     * @param callbackData Data to pass to the callback
-     * @return assets Amount of assets deposited
-     */
-    function mint(
-        uint256 shares,
-        address receiver,
-        bool useCallback,
-        bytes calldata callbackData
-    ) external returns (uint256 assets) {
-        // Execute the standard mint
-        assets = mint(shares, receiver);
-
-        // Execute callback if requested
-        if (useCallback && msg.sender.code.length > 0) {
-            _executeCallback(OP_DEPOSIT, true, callbackData);
-        }
-
-        return assets;
-    }
-
-    /**
-     * @notice Extended withdraw function with callback support
-     * @param assets Amount of assets to withdraw
-     * @param receiver Address receiving the assets
-     * @param owner Address owning the shares
-     * @param useCallback Whether to use callback
-     * @param callbackData Data to pass to the callback
-     * @return shares Amount of shares burned
-     */
-    function withdraw(
-        uint256 assets,
-        address receiver,
-        address owner,
-        bool useCallback,
-        bytes calldata callbackData
-    ) external returns (uint256 shares) {
-        bool success = false;
-
-        try this.withdraw(assets, receiver, owner) returns (uint256 _shares) {
-            shares = _shares;
-            success = true;
-        } catch Error(string memory reason) {
-            // Check if withdrawal was queued
-            if (keccak256(bytes(reason)) == keccak256(bytes("RuleCheckFailed(Direct withdrawals not supported. Withdrawal request created in queue.)"))) {
-                // This is a successful queuing, not a failure
-                shares = 0;
-                success = true;
-
-                // Need to calculate shares for the callback
-                shares = previewWithdraw(assets);
-            } else {
-                // Other error occurred
-                success = false;
-                shares = 0;
-            }
-        }
-
-        // Execute callback if requested
-        if (useCallback && msg.sender.code.length > 0) {
-            _executeCallback(OP_WITHDRAW, success, callbackData);
-        }
-
-        return shares;
-    }
-
-    /**
-     * @notice Extended redeem function with callback support
-     * @param shares Amount of shares to redeem
-     * @param receiver Address receiving the assets
-     * @param owner Address owning the shares
-     * @param useCallback Whether to use callback
-     * @param callbackData Data to pass to the callback
-     * @return assets Amount of assets redeemed
-     */
-    function redeem(
-        uint256 shares,
-        address receiver,
-        address owner,
-        bool useCallback,
-        bytes calldata callbackData
-    ) external returns (uint256 assets) {
-        bool success = false;
-
-        try this.redeem(shares, receiver, owner) returns (uint256 _assets) {
-            assets = _assets;
-            success = true;
-        } catch Error(string memory reason) {
-            // Check if withdrawal was queued
-            if (keccak256(bytes(reason)) == keccak256(bytes("RuleCheckFailed(Direct withdrawals not supported. Withdrawal request created in queue.)"))) {
-                // This is a successful queuing, not a failure
-                assets = 0;
-                success = true;
-
-                // Need to calculate assets for the callback
-                assets = previewRedeem(shares);
-            } else {
-                // Other error occurred
-                success = false;
-                assets = 0;
-            }
-        }
-
-        // Execute callback if requested
-        if (useCallback && msg.sender.code.length > 0) {
-            _executeCallback(OP_WITHDRAW, success, callbackData);
-        }
-
-        return assets;
-    }
-
-    /**
-     * @notice Helper function to execute callbacks
-     * @param operationType Type of operation
-     * @param success Whether operation was successful
-     * @param callbackData Data to pass to callback
-     */
-    function _executeCallback(
-        bytes32 operationType,
-        bool success,
-        bytes memory callbackData
-    ) internal {
-        try ICallbackReceiver(msg.sender).operationCallback(
-            operationType,
-            success,
-            callbackData
-        ) {} catch {
-            // Silently handle callback errors to avoid affecting main operations
-        }
-    }
 
     /*//////////////////////////////////////////////////////////////
                             ERC4626 OVERRIDES
@@ -342,23 +150,11 @@ contract tRWA is ERC4626, ItRWA {
             }
         }
 
-        SafeTransferLib.safeTransferFrom(asset(), by, address(this), assets);
+        Conduit(
+            Registry(RoleManaged(strategy).registry()).conduit()
+        ).collectDeposit(asset(), by, address(this), assets);
+
         _mint(to, shares);
-
-        // Notify subscription controller if set
-        if (controller != address(0)) {
-            // Pack data for callback
-            bytes memory callbackData = abi.encode(to, assets);
-
-            // Use callback pattern
-            if (controller.code.length > 0) {
-                try ICallbackReceiver(controller).operationCallback(
-                    OP_DEPOSIT,
-                    true,
-                    callbackData
-                ) {} catch {}
-            }
-        }
 
         emit Deposit(by, to, assets, shares);
     }

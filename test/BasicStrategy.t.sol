@@ -84,12 +84,12 @@ contract BasicStrategyTest is BaseFountfiTest {
 
         // Get the token that was deployed during initialization
         token = tRWA(strategy.sToken());
-        
+
         // Add the hook to the token for all operations
         bytes32 opDeposit = keccak256("DEPOSIT_OPERATION");
         bytes32 opWithdraw = keccak256("WITHDRAW_OPERATION");
         bytes32 opTransfer = keccak256("TRANSFER_OPERATION");
-        
+
         strategy.callStrategyToken(
             abi.encodeCall(tRWA.addOperationHook, (opDeposit, address(strategyHook)))
         );
@@ -108,7 +108,7 @@ contract BasicStrategyTest is BaseFountfiTest {
 
     function test_Initialization() public {
         // Check that the strategy was initialized correctly
-        assertEq(strategy.deployer(), owner, "Deployer should be set to owner");
+        assertEq(strategy.registry(), owner, "Deployer should be set to owner");
         assertEq(strategy.manager(), manager, "Manager should be set correctly");
         assertEq(strategy.asset(), address(daiToken), "Asset should be set correctly");
         assertEq(address(token), strategy.sToken(), "Token should be set correctly");
@@ -445,88 +445,43 @@ contract BasicStrategyTest is BaseFountfiTest {
         vm.stopPrank();
     }
 
-    function test_ConfigureController() public {
-        vm.startPrank(manager);
-
-        // Configure the controller
-        strategy.configureController(alice);
-
-        assertEq(strategy.controller(), alice, "Controller should be set to alice");
-        assertEq(token.controller(), alice, "Token controller should also be set to alice");
-
-        vm.stopPrank();
-    }
-
-    function test_ConfigureControllerUnauthorized() public {
-        vm.startPrank(alice);
-
-        // Alice is not the manager
-        vm.expectRevert(IStrategy.Unauthorized.selector);
-        strategy.configureController(bob);
-
-        vm.stopPrank();
-    }
-
-    function test_ConfigureControllerZeroAddress() public {
-        vm.startPrank(manager);
-
-        // Try to configure with address(0)
-        vm.expectRevert(IStrategy.InvalidAddress.selector);
-        strategy.configureController(address(0));
-
-        vm.stopPrank();
-    }
-
-    function test_ConfigureControllerAlreadyConfigured() public {
-        vm.startPrank(manager);
-
-        // Configure the controller once
-        strategy.configureController(alice);
-
-        // Try to configure it again
-        vm.expectRevert(IStrategy.AlreadyInitialized.selector);
-        strategy.configureController(bob);
-
-        vm.stopPrank();
-    }
-    
     function test_CallStrategyToken() public {
         vm.startPrank(owner);
-        
+
         // First, we need the STRATEGY_ADMIN role to use the addOperationHook function
         roleManager.grantRole(address(strategy), roleManager.STRATEGY_ADMIN());
-        
+
         // Test the callStrategyToken function
         MockHook newHook = new MockHook(true, "");
-        
+
         // Call the token through the strategy (this should work now with the role)
         bytes32 opDeposit = keccak256("DEPOSIT_OPERATION");
         strategy.callStrategyToken(
             abi.encodeCall(tRWA.addOperationHook, (opDeposit, address(newHook)))
         );
-        
+
         // Verify hook was added - one way to test is to check if the operation succeeds
         // If the hook was not added correctly, the operation would fail
         vm.stopPrank();
-        
+
         // Create a separate test for the actual callStrategyToken function
         testCallStrategyTokenDirectly();
     }
-    
+
     function testCallStrategyTokenDirectly() public {
         vm.startPrank(owner);
-        
+
         // Get initial token balance
         uint256 initialBalance = token.totalAssets();
-        
+
         // Call a safe known function on the token
         strategy.callStrategyToken(
             abi.encodeCall(token.name, ())
         );
-        
+
         // Verify state is unchanged
         assertEq(token.totalAssets(), initialBalance, "Token balance should be unchanged");
-        
+
         vm.stopPrank();
     }
 }

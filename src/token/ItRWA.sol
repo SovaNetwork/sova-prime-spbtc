@@ -15,43 +15,15 @@ interface ItRWA {
     error InvalidAddress();
     error AssetMismatch();
     error RuleCheckFailed(string reason);
-    error CallbackFailed();
-    error tRWAUnauthorized(address caller, address strategy);
-    error ControllerAlreadySet();
 
     // Logic contracts
-    function strategy() external view returns (IStrategy);
+    function strategy() external view returns (address);
 
-    // Callback-enabled operations
-    function deposit(
-        uint256 assets,
-        address receiver,
-        bool useCallback,
-        bytes calldata callbackData
-    ) external returns (uint256 shares);
+    // Returns the address of the underlying asset
+    function asset() external view returns (address);
 
-    function mint(
-        uint256 shares,
-        address receiver,
-        bool useCallback,
-        bytes calldata callbackData
-    ) external returns (uint256 assets);
-
-    function withdraw(
-        uint256 assets,
-        address receiver,
-        address owner,
-        bool useCallback,
-        bytes calldata callbackData
-    ) external returns (uint256 shares);
-
-    function redeem(
-        uint256 shares,
-        address receiver,
-        address owner,
-        bool useCallback,
-        bytes calldata callbackData
-    ) external returns (uint256 assets);
+    // Note: Standard ERC4626 operations are defined in the ERC4626 interface
+    // and are not redefined here to avoid conflicts
 
     /**
      * @notice Utility function to burn tokens

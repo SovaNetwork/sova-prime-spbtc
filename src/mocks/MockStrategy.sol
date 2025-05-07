@@ -9,7 +9,10 @@ import {tRWA} from "../token/tRWA.sol";
  * @notice A simple strategy implementation for testing
  */
 contract MockStrategy is IStrategy {
-    constructor(address _roleManager) {}
+    constructor(address _roleManager) {
+        _roleManager = _roleManager;
+    }
+
     address public manager;
     address public asset;
     address public sToken;
@@ -110,12 +113,11 @@ contract MockStrategy is IStrategy {
         controller = _controller;
         _controllerConfigured = true;
 
-        // Set controller reference in token
-        tRWA(sToken).setController(_controller);
+        // Setting controller is now handled internally - removed setController call
 
         emit ControllerConfigured(_controller);
     }
-    
+
     /**
      * @notice Call tRWA token with arbitrary data (for testing)
      * @param data The data to call the token with
@@ -123,7 +125,7 @@ contract MockStrategy is IStrategy {
     function callStrategyToken(bytes calldata data) external returns (bool success, bytes memory returnData) {
         // Only callable by manager
         if (msg.sender != manager && msg.sender != deployer) revert Unauthorized();
-        
+
         return sToken.call(data);
     }
 }

@@ -4,8 +4,9 @@ pragma solidity ^0.8.25;
 import {LibClone} from "solady/utils/LibClone.sol";
 import {IStrategy} from "../strategy/IStrategy.sol";
 import {RoleManaged} from "../auth/RoleManaged.sol";
-import {SubscriptionController} from "../controllers/SubscriptionController.sol";
-import {SubscriptionControllerHook} from "../hooks/SubscriptionControllerHook.sol";
+import {ItRWA} from "../token/ItRWA.sol";
+import {Conduit} from "../conduit/Conduit.sol";
+
 /**
  * @title Registry
  * @notice Central registry for strategies, rules, assets, and reporters
@@ -14,20 +15,21 @@ import {SubscriptionControllerHook} from "../hooks/SubscriptionControllerHook.so
 contract Registry is RoleManaged {
     using LibClone for address;
 
+    // Singleton contracts
+    address public immutable conduit;
+
     // Registry mappings
     mapping(address => bool) public allowedStrategies;
-    mapping(address => bool) public allowedOperationHooks;
+    mapping(address => bool) public allowedHooks;
     mapping(address => bool) public allowedAssets;
 
     // Deployed contracts registry
     address[] public allStrategies;
-
-    // Controller tracking
-    mapping(address => address) public strategyControllers;
+    mapping(address => bool) public isStrategy;
 
     // Events
     event SetStrategy(address indexed implementation, bool allowed);
-    event SetOperationHook(address indexed implementation, bool allowed);
+    event SetHook(address indexed implementation, bool allowed);
     event SetAsset(address indexed asset, bool allowed);
     event Deploy(address indexed strategy, address indexed sToken, address indexed asset);
     event DeployWithController(address indexed strategy, address indexed sToken, address indexed controller);
@@ -41,8 +43,14 @@ contract Registry is RoleManaged {
 
     /**
      * @notice Constructor
+     * @param _roleManager Address of the role manager - singleton contract for managing protocol roles
      */
-    constructor(address _roleManager) RoleManaged(_roleManager) {}
+    constructor(address _roleManager) RoleManaged(_roleManager) {
+        if (_roleManager == address(0)) revert ZeroAddress();
+
+        // Initialize the conduit with the registry address
+        conduit = address(new Conduit(address(this)));
+    }
 
     /**
      * @notice Register a strategy implementation template
@@ -60,10 +68,10 @@ contract Registry is RoleManaged {
      * @param implementation Address of the hook implementation
      * @param allowed Whether the implementation is allowed
      */
-    function setOperationHook(address implementation, bool allowed) external onlyRoles(roleManager.RULES_ADMIN()) {
+    function setHook(address implementation, bool allowed) external onlyRoles(roleManager.RULES_ADMIN()) {
         if (implementation == address(0)) revert ZeroAddress();
-        allowedOperationHooks[implementation] = allowed;
-        emit SetOperationHook(implementation, allowed);
+        allowedHooks[implementation] = allowed;
+        emit SetHook(implementation, allowed);
     }
 
     /**
@@ -89,88 +97,14 @@ contract Registry is RoleManaged {
      * @return token Address of the deployed tRWA token
      */
     function deploy(
+        address _implementation,
         string memory _name,
         string memory _symbol,
-        address _implementation,
         address _asset,
         uint8 _assetDecimals,
         address _manager,
         bytes memory _initData
     ) external onlyRoles(roleManager.STRATEGY_OPERATOR()) returns (address strategy, address token) {
-        return deployBase(_name, _symbol, _implementation, _asset, _assetDecimals, _manager, _initData);
-    }
-
-    /**
-     * @notice Deploy a strategy with a subscription controller
-     * @param _name Token name
-     * @param _symbol Token symbol
-     * @param _implementation Strategy implementation address
-     * @param _asset Asset address
-     * @param _assetDecimals Asset decimals
-     * @param _manager Manager address for the strategy
-     * @param _managerAddresses Additional manager addresses for the controller
-     * @param _initData Initialization data
-     * @param initialCapacity Initial subscription capacity
-     * @return strategy Address of the deployed strategy
-     * @return token Address of the deployed tRWA token
-     * @return controller Address of the deployed controller
-     */
-    function deployWithController(
-        string memory _name,
-        string memory _symbol,
-        address _implementation,
-        address _asset,
-        uint8 _assetDecimals,
-        address _manager,
-        address[] memory _managerAddresses,
-        bytes memory _initData,
-        uint256 initialCapacity
-    ) external onlyRoles(roleManager.STRATEGY_OPERATOR()) returns (address strategy, address token, address controller) {
-        // Deploy controller first (no longer needs token address at construction)
-        controller = address(new SubscriptionController(
-            _manager,
-            _managerAddresses
-        ));
-
-        // Deploy the hook for the controller
-        address controllerHook = address(new SubscriptionControllerHook(controller));
-
-        // Deploy strategy and token using the combined list of hooks
-        (strategy, token) = deployBase(_name, _symbol, _implementation, _asset, _assetDecimals, _manager, _initData);
-
-        // Register controller address with the strategy (for informational purposes in Registry)
-        strategyControllers[strategy] = controller;
-
-        // Note: The strategy's initialize function or a subsequent setup call by the manager
-        // is responsible for calling ITRWA(token).setController(controllerAddress)
-        // to enable the callback mechanism in SubscriptionController.
-
-        emit DeployWithController(strategy, token, controller);
-
-        return (strategy, token, controller);
-    }
-
-    /**
-     * @notice Base deployment function for strategies
-     * @param _name Token name
-     * @param _symbol Token symbol
-     * @param _implementation Strategy implementation address
-     * @param _asset Asset address
-     * @param _assetDecimals Asset decimals
-     * @param _manager Manager address
-     * @param _initData Initialization data
-     * @return strategy Deployed strategy address
-     * @return token Deployed token address
-     */
-    function deployBase(
-        string memory _name,
-        string memory _symbol,
-        address _implementation,
-        address _asset,
-        uint8 _assetDecimals,
-        address _manager,
-        bytes memory _initData
-    ) internal returns (address strategy, address token) {
         if (!allowedAssets[_asset]) revert UnauthorizedAsset();
         if (!allowedStrategies[_implementation]) revert UnauthorizedStrategy();
 
@@ -178,17 +112,48 @@ contract Registry is RoleManaged {
         strategy = _implementation.clone();
 
         // Initialize the strategy
-        IStrategy(strategy).initialize(_name, _symbol, _manager, _asset, _assetDecimals, _initData);
-
-        // Register strategy in the factory
-        allStrategies.push(strategy);
+        IStrategy(strategy).initialize(
+            _name,
+            _symbol,
+            _manager,
+            _asset,
+            _assetDecimals,
+            _initData
+        );
 
         // Get the token address
         token = IStrategy(strategy).sToken();
+
+        // Register strategy in the factory
+        allStrategies.push(strategy);
+        isStrategy[strategy] = true;
 
         emit Deploy(strategy, token, _asset);
 
         return (strategy, token);
     }
 
+    /**
+     * @notice Check if a token is a tRWA token
+     * @param token Address of the token
+     * @return bool True if the token is a tRWA token, false otherwise
+     */
+    function isToken(address token) external view returns (bool) {
+        ItRWA tokenContract = ItRWA(token);
+        address strategy = address(tokenContract.strategy());
+
+        return isStrategy[strategy];
+    }
+
+    /**
+     * @notice Get all tRWA tokens
+     * @return tokens Array of tRWA token addresses
+     */
+    function allTokens() external view returns (address[] memory tokens) {
+        tokens = new address[](allStrategies.length);
+
+        for (uint256 i = 0; i < allStrategies.length; i++) {
+            tokens[i] = IStrategy(allStrategies[i]).sToken();
+        }
+    }
 }

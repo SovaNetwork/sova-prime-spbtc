@@ -87,7 +87,7 @@ abstract contract BaseFountfiTest is Test {
 
         // Register the hook in the registry
         vm.prank(owner);
-        registry.setOperationHook(address(mockHookLocal), true);
+        registry.setHook(address(mockHookLocal), true);
 
         // Create array of hooks
         address[] memory hookAddresses = new address[](1);
@@ -96,7 +96,7 @@ abstract contract BaseFountfiTest is Test {
         // Deploy a new strategy
         vm.prank(owner);
         MockStrategy strategy = new MockStrategy(owner);
-        
+
         vm.prank(owner);
         strategy.initialize(
             name,
@@ -109,13 +109,13 @@ abstract contract BaseFountfiTest is Test {
 
         // Get the token the strategy created
         tRWA token = tRWA(strategy.sToken());
-        
+
         // Add hook to token for all operations
         vm.prank(owner);
         bytes32 opDeposit = keccak256("DEPOSIT_OPERATION");
         bytes32 opWithdraw = keccak256("WITHDRAW_OPERATION");
         bytes32 opTransfer = keccak256("TRANSFER_OPERATION");
-        
+
         vm.prank(owner);
         strategy.callStrategyToken(
             abi.encodeCall(tRWA.addOperationHook, (opDeposit, address(mockHookLocal)))
@@ -162,9 +162,9 @@ abstract contract BaseFountfiTest is Test {
         // Grant KYC roles to the owner for testing
         roleManager.grantRole(owner, roleManager.KYC_ADMIN());
         roleManager.grantRole(owner, roleManager.KYC_OPERATOR());
-        
+
         // Register the hook in the registry
-        registry.setOperationHook(address(kycRules), true);
+        registry.setHook(address(kycRules), true);
 
         // Create hook addresses array
         address[] memory hookAddresses = new address[](1);
@@ -179,9 +179,9 @@ abstract contract BaseFountfiTest is Test {
 
         // Deploy via registry
         (strategyAddr, tokenAddr) = registry.deploy(
+            address(strategyImpl),
             "Test RWA",
             "TRWA",
-            address(strategyImpl),
             address(usdc),
             6,
             manager,

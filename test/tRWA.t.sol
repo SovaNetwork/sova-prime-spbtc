@@ -9,44 +9,10 @@ import {WithdrawQueueMockHook} from "../src/mocks/WithdrawQueueMockHook.sol";
 import {MockStrategy} from "../src/mocks/MockStrategy.sol";
 import {MockRoleManager} from "../src/mocks/MockRoleManager.sol";
 import {tRWA} from "../src/token/tRWA.sol";
-import {ICallbackReceiver} from "../src/token/tRWA.sol";
 import {IHook} from "../src/hooks/IHook.sol";
 import {Registry} from "../src/registry/Registry.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 
-// Mock callback receiver for testing callback functionality
-contract MockCallbackReceiver is ICallbackReceiver {
-    bool public callbackReceived;
-    bytes32 public lastOperationType;
-    bool public lastSuccess;
-    bytes public lastData;
-    bool public shouldRevert;
-
-    function operationCallback(
-        bytes32 operationType,
-        bool success,
-        bytes memory data
-    ) external override {
-        if (shouldRevert) {
-            revert("Callback revert");
-        }
-        callbackReceived = true;
-        lastOperationType = operationType;
-        lastSuccess = success;
-        lastData = data;
-    }
-
-    function resetState() external {
-        callbackReceived = false;
-        lastOperationType = bytes32(0);
-        lastSuccess = false;
-        lastData = "";
-    }
-
-    function setShouldRevert(bool _shouldRevert) external {
-        shouldRevert = _shouldRevert;
-    }
-}
 
 /**
  * @title TRWATest
@@ -57,7 +23,6 @@ contract TRWATest is BaseFountfiTest {
     tRWA internal token;
     MockStrategy internal strategy;
     WithdrawQueueMockHook internal queueHook;
-    MockCallbackReceiver internal callbackReceiver;
 
     // Test constants
     uint256 internal constant INITIAL_DEPOSIT = 1000 * 10**6; // 1000 USDC
@@ -109,15 +74,13 @@ contract TRWATest is BaseFountfiTest {
 
         // Get the token the strategy created
         token = tRWA(strategy.sToken());
-        
+
         // Add hook to token for withdrawal operations
         bytes32 opWithdraw = keccak256("WITHDRAW_OPERATION");
         strategy.callStrategyToken(
             abi.encodeCall(tRWA.addOperationHook, (opWithdraw, address(queueHook)))
         );
 
-        // Setup callback receiver
-        callbackReceiver = new MockCallbackReceiver();
 
         // Since we're the owner, we can mint tokens freely
         usdc.mint(alice, 10_000 * 10**6);
@@ -166,25 +129,6 @@ contract TRWATest is BaseFountfiTest {
                          CONTROLLER TESTS
     //////////////////////////////////////////////////////////////*/
 
-    function test_SetController() public {
-        // Token was created by strategy which should set the controller
-        // Let's verify it's correctly initialized
-        vm.prank(address(strategy));
-        token.setController(address(callbackReceiver));
-
-        assertEq(token.controller(), address(callbackReceiver));
-    }
-
-    function test_SetController_Reverts_WhenCalledByNonStrategy() public {
-        vm.expectRevert(abi.encodeWithSignature("tRWAUnauthorized(address,address)", address(this), address(strategy)));
-        token.setController(address(callbackReceiver));
-    }
-
-    function test_SetController_Reverts_WithInvalidAddress() public {
-        vm.prank(address(strategy));
-        vm.expectRevert(abi.encodeWithSignature("InvalidAddress()"));
-        token.setController(address(0));
-    }
 
     /*//////////////////////////////////////////////////////////////
                           ERC4626 BASIC TESTS
@@ -240,127 +184,12 @@ contract TRWATest is BaseFountfiTest {
         // Skip the check of converting shares back to assets as this can cause division by zero
     }
 
-    function test_Deposit_WithCallback() public {
-        // Do a small deposit first to initialize the ERC4626 vault
-        vm.startPrank(owner);
-        usdc.mint(owner, 1);
-        usdc.approve(address(token), 1);
-        strategy.setBalance(1);
-        token.deposit(1, owner);
-
-        // Mint tokens to callback receiver contract
-        usdc.mint(address(callbackReceiver), INITIAL_DEPOSIT);
-
-        // Update strategy balance to handle deposit
-        strategy.setBalance(strategy.balance() + INITIAL_DEPOSIT);
-        vm.stopPrank();
-
-        vm.startPrank(address(callbackReceiver));
-
-        // Approve tokens
-        usdc.approve(address(token), INITIAL_DEPOSIT);
-
-        // Deposit with callback
-        uint256 shares = token.deposit(
-            INITIAL_DEPOSIT,
-            address(callbackReceiver),
-            true,
-            ""
-        );
-
-        vm.stopPrank();
-
-        // Check callback was received
-        assertTrue(callbackReceiver.callbackReceived());
-        assertEq(callbackReceiver.lastOperationType(), keccak256("DEPOSIT_OPERATION"));
-        assertTrue(callbackReceiver.lastSuccess());
-
-        // Check balances
-        assertEq(token.balanceOf(address(callbackReceiver)), shares);
-    }
-
-    function test_Deposit_WithCallbackRevert() public {
-        // Do a small deposit first to initialize the ERC4626 vault
-        vm.startPrank(owner);
-        usdc.mint(owner, 1);
-        usdc.approve(address(token), 1);
-        strategy.setBalance(1);
-        token.deposit(1, owner);
-
-        // Mint tokens to callback receiver contract
-        usdc.mint(address(callbackReceiver), INITIAL_DEPOSIT);
-
-        // Update strategy balance to handle deposit
-        strategy.setBalance(strategy.balance() + INITIAL_DEPOSIT);
-        vm.stopPrank();
-
-        vm.startPrank(address(callbackReceiver));
-
-        // Set callback to revert
-        callbackReceiver.setShouldRevert(true);
-
-        // Approve tokens
-        usdc.approve(address(token), INITIAL_DEPOSIT);
-
-        // Deposit should succeed even if callback reverts
-        uint256 shares = token.deposit(
-            INITIAL_DEPOSIT,
-            address(callbackReceiver),
-            true,
-            ""
-        );
-
-        vm.stopPrank();
-
-        // Check balances - deposit should succeed despite callback failure
-        assertEq(token.balanceOf(address(callbackReceiver)), shares);
-    }
-
-    function test_Deposit_WithControllerCallback() public {
-        // Do a small deposit first to initialize the ERC4626 vault
-        vm.startPrank(owner);
-        usdc.mint(owner, 1);
-        usdc.approve(address(token), 1);
-        strategy.setBalance(1);
-        token.deposit(1, owner);
-        vm.stopPrank();
-
-        // Set controller
-        vm.prank(address(strategy));
-        token.setController(address(callbackReceiver));
-
-        // Reset callback state
-        callbackReceiver.resetState();
-
-        // Update strategy and prepare for deposit
-        vm.prank(owner);
-        strategy.setBalance(strategy.balance() + INITIAL_DEPOSIT);
-
-        // Deposit tokens (should trigger controller callback)
-        vm.startPrank(alice);
-        usdc.approve(address(token), INITIAL_DEPOSIT);
-        uint256 shares = token.deposit(INITIAL_DEPOSIT, alice);
-        vm.stopPrank();
-
-        // Check callback was received
-        assertTrue(callbackReceiver.callbackReceived());
-        assertEq(callbackReceiver.lastOperationType(), keccak256("DEPOSIT_OPERATION"));
-        assertTrue(callbackReceiver.lastSuccess());
-
-        // Check encoded data
-        (address receiver, uint256 assets) = abi.decode(callbackReceiver.lastData(), (address, uint256));
-        assertEq(receiver, alice);
-        assertEq(assets, INITIAL_DEPOSIT);
-
-        // Check balances
-        assertEq(token.balanceOf(alice), shares);
-    }
 
     function test_Deposit_FailsWhenHookRejects() public {
         // Create a hook that rejects deposit operations
         vm.startPrank(address(strategy));
         MockHook rejectHook = new MockHook(false, "Test rejection");
-        
+
         // Add the deposit hook
         bytes32 opDeposit = keccak256("DEPOSIT_OPERATION");
         token.addOperationHook(opDeposit, address(rejectHook));
@@ -383,61 +212,6 @@ contract TRWATest is BaseFountfiTest {
         // has special behavior that's difficult to test.
     }
 
-    function test_Mint_WithCallback() public {
-        // Skip this test - similar to test_Mint, it's problematic due to ERC4626 virtual shares protection
-
-        // The issue is with the implementation of ERC4626 in Solady and how it
-        // handles virtual share protection. The mint operation in a vault with
-        // small initial deposit has conversion rates that are difficult to test precisely.
-
-        // Do a small deposit first to initialize the ERC4626 vault
-        vm.startPrank(owner);
-        usdc.mint(owner, 1000000); // Large initial deposit to stabilize share ratio
-        usdc.approve(address(token), 1000000);
-        strategy.setBalance(1000000);
-        token.deposit(1000000, owner);
-        vm.stopPrank();
-
-        // Calculate assets needed for desired shares - use a smaller value
-        uint256 desiredShares = 100 * 10**6; // 100 tokens with same decimals as USDC
-
-        // Setup strategy to allow minting
-        vm.prank(owner);
-        strategy.setBalance(1000000 + INITIAL_DEPOSIT); // Prepare for mint
-
-        // Preview how many assets will be needed - should be approximately equal to shares
-        uint256 assetsNeeded = token.previewMint(desiredShares);
-
-        // Mint tokens to callback receiver contract
-        vm.startPrank(owner);
-        usdc.mint(address(callbackReceiver), assetsNeeded);
-        vm.stopPrank();
-
-        vm.startPrank(address(callbackReceiver));
-
-        // Approve tokens
-        usdc.approve(address(token), assetsNeeded);
-
-        // Mint with callback
-        uint256 assets = token.mint(
-            desiredShares,
-            address(callbackReceiver),
-            true,
-            ""
-        );
-
-        vm.stopPrank();
-
-        // Check callback was received
-        assertTrue(callbackReceiver.callbackReceived(), "Callback was not received");
-        assertEq(callbackReceiver.lastOperationType(), keccak256("DEPOSIT_OPERATION"), "Operation type incorrect");
-        assertTrue(callbackReceiver.lastSuccess(), "Callback was not successful");
-
-        // Check balances - shares match exactly as requested
-        assertEq(token.balanceOf(address(callbackReceiver)), desiredShares, "Share balance does not match");
-
-        // Skip the asset/share conversion check that's problematic with ERC4626 virtual shares mechanism
-    }
 
     /*//////////////////////////////////////////////////////////////
                     WITHDRAWAL TESTS (DIRECT)
@@ -449,62 +223,9 @@ contract TRWATest is BaseFountfiTest {
         // making it impossible to withdraw (as 0 shares will never return assets)
     }
 
-    function test_Withdraw_WithCallback() public {
-        // Skip this test - it's problematic due to ERC4626 virtual shares protection
-        // Instead, focus on testing the callback feature without relying on actual shares
-
-        // Set up a mock for the withdrawal callback
-        // We'll test that the callback mechanism works by directly calling the callback method
-        vm.startPrank(address(callbackReceiver));
-
-        // Mock a successful withdraw to test the callback
-        // We'll pretend a withdraw already happened and just test the callback
-        bytes memory callbackData = "";
-        callbackReceiver.resetState();
-
-        // Call the callback directly (normally done by the token contract)
-        callbackReceiver.operationCallback(
-            keccak256("WITHDRAW_OPERATION"),
-            true,
-            callbackData
-        );
-
-        // Check callback was received
-        assertTrue(callbackReceiver.callbackReceived());
-        assertEq(callbackReceiver.lastOperationType(), keccak256("WITHDRAW_OPERATION"));
-        assertTrue(callbackReceiver.lastSuccess());
-        vm.stopPrank();
-    }
-
     function test_Redeem() public {
         // Skip this test - it's problematic due to ERC4626 virtual shares protection
         // Initial deposit returns 0 shares in this environment
-    }
-
-    function test_Redeem_WithCallback() public {
-        // Skip testing with actual deposits due to ERC4626 virtual shares protection
-        // Instead, directly test the callback functionality
-
-        // Set up a mock for the redeem callback
-        vm.startPrank(address(callbackReceiver));
-
-        // Mock a successful redeem to test the callback
-        // We'll pretend a redeem already happened and just test the callback
-        bytes memory callbackData = "";
-        callbackReceiver.resetState();
-
-        // Call the callback directly (normally done by the token contract)
-        callbackReceiver.operationCallback(
-            keccak256("WITHDRAW_OPERATION"),  // Now uses OP_WITHDRAW for redeem operations too
-            true,
-            callbackData
-        );
-
-        // Check callback was received
-        assertTrue(callbackReceiver.callbackReceived());
-        assertEq(callbackReceiver.lastOperationType(), keccak256("WITHDRAW_OPERATION"));
-        assertTrue(callbackReceiver.lastSuccess());
-        vm.stopPrank();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -543,28 +264,6 @@ contract TRWATest is BaseFountfiTest {
         // via other tests and direct inspection of the contract code
     }
 
-    function test_Withdraw_Queued_WithCallback() public {
-        // This test already has a specific error test for the callback functionality
-        // So we'll skip implementing a mock-based test and just directly test the callback
-        // Register this test function for completeness, but it's already covered by other tests
-
-        // Setup callback receiver
-        callbackReceiver.resetState();
-
-        // Test that the callback works correctly with the WITHDRAW operation type
-        vm.startPrank(address(callbackReceiver));
-        callbackReceiver.operationCallback(
-            keccak256("WITHDRAW_OPERATION"),
-            true,
-            ""
-        );
-
-        // Verify callback was handled correctly
-        assertTrue(callbackReceiver.callbackReceived(), "Callback wasn't received");
-        assertEq(callbackReceiver.lastOperationType(), keccak256("WITHDRAW_OPERATION"), "Wrong operation type");
-        assertTrue(callbackReceiver.lastSuccess(), "Callback wasn't marked successful");
-        vm.stopPrank();
-    }
 
     function test_Redeem_Queued() public {
         // Similar to test_Withdraw_Queued, we'll use a simplified approach
@@ -586,139 +285,11 @@ contract TRWATest is BaseFountfiTest {
         // via other tests and direct inspection of the contract
     }
 
-    function test_Redeem_Queued_WithCallback() public {
-        // Mint tokens to callback receiver (as owner)
-        vm.startPrank(owner);
-        usdc.mint(address(callbackReceiver), INITIAL_DEPOSIT);
-
-        // Setup strategy for deposit
-        strategy.setBalance(INITIAL_DEPOSIT);
-        vm.stopPrank();
-
-        // First deposit from callback receiver
-        vm.startPrank(address(callbackReceiver));
-        usdc.approve(address(token), INITIAL_DEPOSIT);
-        uint256 shares = token.deposit(INITIAL_DEPOSIT, address(callbackReceiver), false, "");
-        vm.stopPrank();
-
-        // Reset callback state
-        callbackReceiver.resetState();
-
-        // Configure hooks to queue withdrawals instead of processing them directly
-        queueHook.setWithdrawalsQueued(true);
-
-        // Calculate expected assets
-        uint256 sharesToRedeem = shares / 2;
-        uint256 expectedAssets = token.previewRedeem(sharesToRedeem);
-
-        // Try to redeem with callback - it will be queued but callback still fires
-        vm.startPrank(address(callbackReceiver));
-
-        // This should emit the queued event but ultimately revert
-        vm.expectEmit(true, false, false, true);
-        emit tRWA.WithdrawalQueued(address(callbackReceiver), expectedAssets, sharesToRedeem);
-
-        vm.expectRevert(abi.encodeWithSignature("HookCheckFailed(string)", "Direct withdrawals not supported. Withdrawal request created in queue."));
-        token.redeem(
-            sharesToRedeem,
-            address(callbackReceiver),
-            address(callbackReceiver),
-            true,
-            ""
-        );
-        vm.stopPrank();
-
-        // Check that tokens never left
-        assertEq(token.balanceOf(address(callbackReceiver)), shares);
-    }
 
     /*//////////////////////////////////////////////////////////////
                     WITHDRAWAL TESTS (OTHER ERRORS)
     //////////////////////////////////////////////////////////////*/
 
-    function test_Withdraw_FailsWithOtherError() public {
-        // Mint tokens to callback receiver (as owner)
-        vm.startPrank(owner);
-        usdc.mint(address(callbackReceiver), INITIAL_DEPOSIT);
-
-        // Setup strategy for deposit
-        strategy.setBalance(INITIAL_DEPOSIT);
-        vm.stopPrank();
-
-        // First deposit from callback receiver
-        vm.startPrank(address(callbackReceiver));
-        usdc.approve(address(token), INITIAL_DEPOSIT);
-        uint256 callbackShares = token.deposit(INITIAL_DEPOSIT, address(callbackReceiver), false, "");
-        vm.stopPrank();
-
-        // Reset callback state
-        callbackReceiver.resetState();
-
-        // Configure hook to reject withdrawals with non-queue error
-        queueHook.setApproveStatus(false, "Test rejection");
-
-        // Try withdraw with callback
-        vm.startPrank(address(callbackReceiver));
-
-        // Directly try redeem instead of withdraw as it doesn't check share balance first
-        vm.expectRevert(abi.encodeWithSignature("HookCheckFailed(string)", "Test rejection"));
-        token.redeem(
-            callbackShares / 2,
-            address(callbackReceiver),
-            address(callbackReceiver),
-            true,
-            ""
-        );
-
-        vm.stopPrank();
-
-        // Check balances unchanged
-        assertEq(token.balanceOf(address(callbackReceiver)), callbackShares);
-    }
-
-    function test_Redeem_FailsWithOtherError() public {
-        // Mint tokens to callback receiver (as owner)
-        vm.startPrank(owner);
-        usdc.mint(address(callbackReceiver), INITIAL_DEPOSIT);
-
-        // Setup strategy for deposit
-        strategy.setBalance(INITIAL_DEPOSIT);
-        vm.stopPrank();
-
-        // First deposit from callback receiver
-        vm.startPrank(address(callbackReceiver));
-        usdc.approve(address(token), INITIAL_DEPOSIT);
-        uint256 callbackShares = token.deposit(INITIAL_DEPOSIT, address(callbackReceiver), false, "");
-        vm.stopPrank();
-
-        // Reset callback state
-        callbackReceiver.resetState();
-
-        // Configure hooks to reject withdrawals with non-queue error
-        queueHook.setApproveStatus(false, "Test rejection");
-
-        // Setup strategy for redemption (even though it will fail)
-        vm.prank(owner);
-        strategy.setBalance(INITIAL_DEPOSIT);
-
-        // Try to redeem with callback
-        vm.startPrank(address(callbackReceiver));
-
-        // Try to redeem
-        vm.expectRevert(abi.encodeWithSignature("HookCheckFailed(string)", "Test rejection"));
-        token.redeem(
-            callbackShares / 2,
-            address(callbackReceiver),
-            address(callbackReceiver),
-            true,
-            ""
-        );
-
-        vm.stopPrank();
-
-        // Check balances unchanged
-        assertEq(token.balanceOf(address(callbackReceiver)), callbackShares);
-    }
 
     /*//////////////////////////////////////////////////////////////
                             BURN TESTS
@@ -747,155 +318,153 @@ contract TRWATest is BaseFountfiTest {
         // Skip this test - it's problematic due to ERC4626 virtual shares protection
         // Initial deposit returns 0 shares in this environment
     }
-    
+
     /*//////////////////////////////////////////////////////////////
                         HOOK MANAGEMENT TESTS
     //////////////////////////////////////////////////////////////*/
-    
+
     function test_AddOperationHook() public {
         vm.startPrank(address(strategy));
-        
+
         // Create a new hook
         MockHook newHook = new MockHook(true, "");
-        
+
         // Add the hook to deposit operations
         bytes32 opDeposit = keccak256("DEPOSIT_OPERATION");
         token.addOperationHook(opDeposit, address(newHook));
-        
+
         // Verify it was added (by checking if a deposit still works)
         vm.stopPrank();
-        
+
         vm.startPrank(alice);
         usdc.approve(address(token), 100);
         strategy.setBalance(100);
         uint256 shares = token.deposit(100, alice);
         vm.stopPrank();
-        
+
         // Check deposit succeeded
         assertGt(shares, 0);
     }
-    
+
     function test_ReorderOperationHooks() public {
         vm.startPrank(address(strategy));
-        
+
         // Create two hooks for deposit operation
         MockHook hook1 = new MockHook(true, "");
         MockHook hook2 = new MockHook(true, "");
         bytes32 opDeposit = keccak256("DEPOSIT_OPERATION");
-        
+
         // First, remove any existing hooks from setup
         address[] memory currentHooks = token.getHooksForOperation(opDeposit);
         for (uint i = 0; i < currentHooks.length; i++) {
             token.removeOperationHook(opDeposit, currentHooks[i]);
         }
-        
+
         // Add the new hooks
         token.addOperationHook(opDeposit, address(hook1));
         token.addOperationHook(opDeposit, address(hook2));
-        
+
         // Create reordering array
         uint256[] memory newOrder = new uint256[](2);
         newOrder[0] = 1; // The second hook (index 1) should be first
         newOrder[1] = 0; // The first hook (index 0) should be second
-        
+
         // Reorder hooks for deposit operation
         token.reorderOperationHooks(opDeposit, newOrder);
-        
+
         // Verification is hard since we can't directly access the hook order
         // But we can verify the operation still works
         vm.stopPrank();
-        
+
         vm.startPrank(alice);
         usdc.approve(address(token), 100);
         strategy.setBalance(100);
         uint256 shares = token.deposit(100, alice);
         vm.stopPrank();
-        
+
         // Check deposit succeeded
         assertGt(shares, 0);
     }
-    
+
     function test_RemoveOperationHook() public {
-        bytes32 opDeposit = keccak256("DEPOSIT_OPERATION");
-        
         vm.startPrank(address(strategy));
-        
+
         // Create a new hook that rejects operations
         MockHook rejectHook = new MockHook(false, "Operation rejected");
-        
+
         // Add the hook to deposit operations
-        token.addOperationHook(opDeposit, address(rejectHook));
-        
+        token.addOperationHook(token.OP_DEPOSIT(), address(rejectHook));
+
         // Verify it was added (by checking if a deposit fails)
         vm.stopPrank();
-        
+
         vm.startPrank(alice);
         usdc.approve(address(token), 100);
         strategy.setBalance(100);
-        
+
         // This should fail because the hook rejects the operation
         vm.expectRevert(abi.encodeWithSignature("HookCheckFailed(string)", "Operation rejected"));
         token.deposit(100, alice);
         vm.stopPrank();
-        
+
         // Now remove the hook
         vm.startPrank(address(strategy));
-        token.removeOperationHook(opDeposit, address(rejectHook));
+        token.removeOperationHook(token.OP_DEPOSIT(), address(rejectHook));
         vm.stopPrank();
-        
+
         // Now the deposit should work
         vm.startPrank(alice);
         uint256 shares = token.deposit(100, alice);
         vm.stopPrank();
-        
+
         // Check deposit succeeded after hook removal
         assertGt(shares, 0);
     }
-    
+
     function test_GetHooksForOperation() public {
         vm.startPrank(address(strategy));
-        
+
         // Create two hooks
         MockHook hook1 = new MockHook(true, "");
         MockHook hook2 = new MockHook(true, "");
-        
+
         // Add hooks to different operations
         bytes32 opDeposit = keccak256("DEPOSIT_OPERATION");
         bytes32 opWithdraw = keccak256("WITHDRAW_OPERATION");
         bytes32 opTransfer = keccak256("TRANSFER_OPERATION");
-        
+
         token.addOperationHook(opDeposit, address(hook1));
         token.addOperationHook(opTransfer, address(hook2));
-        
+
         // Get hooks for each operation
         address[] memory depositHooks = token.getHooksForOperation(opDeposit);
         address[] memory transferHooks = token.getHooksForOperation(opTransfer);
         address[] memory withdrawHooks = token.getHooksForOperation(opWithdraw);
-        
+
         // Verify hook counts
         assertEq(depositHooks.length, 1, "Should have 1 deposit hook");
         assertEq(transferHooks.length, 1, "Should have 1 transfer hook");
         assertEq(withdrawHooks.length, 1, "Should have 1 withdraw hook (from setup)");
-        
+
         // Verify hook addresses
         assertEq(depositHooks[0], address(hook1), "First deposit hook should be hook1");
         assertEq(transferHooks[0], address(hook2), "First transfer hook should be hook2");
         assertEq(withdrawHooks[0], address(queueHook), "First withdraw hook should be queueHook");
-        
+
         vm.stopPrank();
     }
-    
+
     function test_TransferHookTriggering() public {
         vm.startPrank(address(strategy));
-        
+
         // Create a hook that logs transfers
         MockHook transferHook = new MockHook(true, "");
-        
+
         // Add hook to transfer operations
         bytes32 opTransfer = keccak256("TRANSFER_OPERATION");
         token.addOperationHook(opTransfer, address(transferHook));
         vm.stopPrank();
-        
+
         // Make an initial deposit
         vm.startPrank(owner);
         usdc.mint(owner, 1000);
@@ -903,28 +472,28 @@ contract TRWATest is BaseFountfiTest {
         strategy.setBalance(1000);
         uint256 shares = token.deposit(1000, owner);
         vm.stopPrank();
-        
+
         // Verify the hook is called during transfer
         vm.expectEmit(true, true, true, false);
         emit MockHook.TransferHookCalled(address(token), owner, alice, 100);
-        
+
         // Transfer tokens
         vm.prank(owner);
         token.transfer(alice, 100);
-        
+
         // Verify token balances
         assertEq(token.balanceOf(alice), 100, "Alice should have 100 tokens");
         assertEq(token.balanceOf(owner), shares - 100, "Owner should have the rest");
     }
-    
+
     function test_OperationSpecificHooks() public {
         // This simpler test focuses on verifying that different operations
         // have independent hooks by checking the added hook counts are correct
-        
+
         bytes32 opDeposit = keccak256("DEPOSIT_OPERATION");
         bytes32 opWithdraw = keccak256("WITHDRAW_OPERATION");
         bytes32 opTransfer = keccak256("TRANSFER_OPERATION");
-        
+
         // Create a new token with no hooks
         vm.startPrank(owner);
         MockStrategy newStrategy = new MockStrategy(owner);
@@ -937,12 +506,12 @@ contract TRWATest is BaseFountfiTest {
             ""
         );
         tRWA newToken = tRWA(newStrategy.sToken());
-        
+
         // Create hooks for different operations
         MockHook hook1 = new MockHook(true, "");
         MockHook hook2 = new MockHook(true, "");
         MockHook hook3 = new MockHook(true, "");
-        
+
         // Add hooks to different operations via strategy
         // Two hooks for deposit, one for withdraw, none for transfer
         newStrategy.callStrategyToken(
@@ -954,22 +523,22 @@ contract TRWATest is BaseFountfiTest {
         newStrategy.callStrategyToken(
             abi.encodeCall(tRWA.addOperationHook, (opWithdraw, address(hook3)))
         );
-        
+
         // Fetch hooks for each operation
         address[] memory depositHooks = newToken.getHooksForOperation(opDeposit);
         address[] memory withdrawHooks = newToken.getHooksForOperation(opWithdraw);
         address[] memory transferHooks = newToken.getHooksForOperation(opTransfer);
-        
+
         // Verify hook counts
         assertEq(depositHooks.length, 2, "Should have 2 deposit hooks");
         assertEq(withdrawHooks.length, 1, "Should have 1 withdraw hook");
         assertEq(transferHooks.length, 0, "Should have 0 transfer hooks");
-        
+
         // Verify hook addresses
         assertEq(depositHooks[0], address(hook1), "First deposit hook should be hook1");
         assertEq(depositHooks[1], address(hook2), "Second deposit hook should be hook2");
         assertEq(withdrawHooks[0], address(hook3), "First withdraw hook should be hook3");
-        
+
         vm.stopPrank();
     }
 }

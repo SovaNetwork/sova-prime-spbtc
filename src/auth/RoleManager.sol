@@ -33,6 +33,10 @@ contract RoleManager is OwnableRoles, IRoleManager {
     /// @dev If a role maps to 0, only owner or PROTOCOL_ADMIN can manage it.
     mapping(uint256 => uint256) public roleAdminRole;
 
+    // --- Registry ---
+
+    address public registry;
+
     // Custom errors
     error InvalidRole();
     error OwnerCannotRenounceAdmin();
@@ -73,6 +77,17 @@ contract RoleManager is OwnableRoles, IRoleManager {
         _setInitialAdminRole(KYC_OPERATOR, RULES_ADMIN);
         // Add initial setup for other roles if needed (e.g., DATA_PROVIDER managed by REPORTER_ADMIN)
         // _setInitialAdminRole(DATA_PROVIDER, REPORTER_ADMIN);
+    }
+
+    /**
+     * @notice Initialize the role manager
+     * @param _registry The address of the registry
+     */
+    function initializeRegistry(address _registry) external {
+        if (msg.sender != owner()) revert Unauthorized();
+        if (registry != address(0)) revert AlreadyInitialized();
+
+        registry = _registry;
     }
 
     /// @notice Grants a role to a user

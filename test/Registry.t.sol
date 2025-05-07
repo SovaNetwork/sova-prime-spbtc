@@ -14,94 +14,94 @@ contract RegistryTest is Test {
     Registry public registry;
     RoleManager public roleManager;
     address public owner;
-    
+
     function setUp() public {
         owner = makeAddr("owner");
-        
+
         vm.startPrank(owner);
         roleManager = new RoleManager();
         registry = new Registry(address(roleManager));
-        
+
         // Grant necessary roles to owner
         roleManager.grantRole(owner, roleManager.PROTOCOL_ADMIN());
         roleManager.grantRole(owner, roleManager.STRATEGY_ADMIN());
         roleManager.grantRole(owner, roleManager.RULES_ADMIN());
-        
+
         vm.stopPrank();
     }
-    
+
     function test_RegistrationFunctions() public {
         vm.startPrank(owner);
-        
+
         // Create asset token
         MockERC20 asset = new MockERC20("USD Coin", "USDC", 6);
-        
+
         // Test asset registration
         registry.setAsset(address(asset), true);
         assertTrue(registry.allowedAssets(address(asset)));
-        
+
         // Test asset unregistration
         registry.setAsset(address(asset), false);
         assertFalse(registry.allowedAssets(address(asset)));
-        
+
         // Test operation hook registration
         address mockHook = makeAddr("hook");
-        registry.setOperationHook(mockHook, true);
-        assertTrue(registry.allowedOperationHooks(mockHook));
-        
+        registry.setHook(mockHook, true);
+        assertTrue(registry.allowedHooks(mockHook));
+
         // Test strategy registration
         address mockStrategy = makeAddr("strategy");
         registry.setStrategy(mockStrategy, true);
         assertTrue(registry.allowedStrategies(mockStrategy));
-        
+
         vm.stopPrank();
     }
-    
+
     function test_RegistrationChecks() public {
         vm.startPrank(owner);
-        
+
         // Zero address checks
         vm.expectRevert(Registry.ZeroAddress.selector);
         registry.setAsset(address(0), true);
-        
+
         vm.expectRevert(Registry.ZeroAddress.selector);
-        registry.setOperationHook(address(0), true);
-        
+        registry.setHook(address(0), true);
+
         vm.expectRevert(Registry.ZeroAddress.selector);
         registry.setStrategy(address(0), true);
-        
+
         vm.stopPrank();
     }
-    
+
     function test_DeployRequiresAuthorization() public {
         vm.startPrank(owner);
-        
+
         // Create local instances we control
         MockERC20 localUsdc = new MockERC20("USD Coin", "USDC", 6);
         address localRules = makeAddr("rules");
         address localStrategy = makeAddr("strategy");
-        
+
         // Test require conditions on deploy
-        
+
         registry.setAsset(address(localUsdc), true);
-        registry.setOperationHook(localRules, true);
+        registry.setHook(localRules, true);
         registry.setStrategy(localStrategy, true);
-        
+
         // Check that we can register and toggle components
         assertTrue(registry.allowedAssets(address(localUsdc)));
-        assertTrue(registry.allowedOperationHooks(localRules));
+        assertTrue(registry.allowedHooks(localRules));
         assertTrue(registry.allowedStrategies(localStrategy));
-        
+
         // Set them to false again
         registry.setAsset(address(localUsdc), false);
-        registry.setOperationHook(localRules, false);
+        registry.setHook(localRules, false);
         registry.setStrategy(localStrategy, false);
-        
+
         // Verify they're toggled off
         assertFalse(registry.allowedAssets(address(localUsdc)));
-        assertFalse(registry.allowedOperationHooks(localRules));
+        assertFalse(registry.allowedHooks(localRules));
         assertFalse(registry.allowedStrategies(localStrategy));
-        
+
         vm.stopPrank();
     }
 }

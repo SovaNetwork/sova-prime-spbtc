@@ -11,6 +11,7 @@ import {ERC20} from "solady/tokens/ERC20.sol";
  */
 contract ReportedStrategy is BasicStrategy {
     constructor(address _roleManager) BasicStrategy(_roleManager) {}
+
     /*//////////////////////////////////////////////////////////////
                             STATE
     //////////////////////////////////////////////////////////////*/
