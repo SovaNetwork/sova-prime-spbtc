@@ -186,12 +186,10 @@ contract SubscriptionController is ISubscriptionController, OwnableRoles {
 
     /**
      * @notice Validates deposit eligibility against current round constraints
-     * @param user User address
-     * @param assets Asset amount
      * @return valid Whether the deposit is valid
      * @return reason Reason for validation failure
      */
-    function validateDeposit(address user, uint256 assets) external view returns (bool valid, string memory reason) {
+    function validateDeposit(address, uint256) external view returns (bool valid, string memory reason) {
         // First check if there's a current round
         if (_currentRoundId == 0) {
             return (false, "No active subscription round");

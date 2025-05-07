@@ -12,20 +12,20 @@ contract MockSubscriptionHook is BaseHook {
     // Subscription status
     bool public subscriptionsOpen; // Whether subscriptions are open
     bool public enforceApproval; // Whether to enforce approval
-    
+
     // Approved subscribers
     mapping(address => bool) public isSubscriber;
-    
+
     // Events
     event SubscriberStatusChanged(address indexed subscriber, bool indexed approved);
     event SubscriptionStatusChanged(bool indexed open);
     event ApprovalEnforcementChanged(bool indexed enforced);
     event BatchSubscribersChanged(uint256 count, bool status);
-    
+
     // Errors
     error Unauthorized();
     error InvalidArrayLength();
-    
+
     /**
      * @notice Constructor
      * @param _manager Address of the manager
@@ -33,18 +33,18 @@ contract MockSubscriptionHook is BaseHook {
      * @param _subscriptionsOpen Whether subscriptions are open
      */
     constructor(
-        address _manager, 
-        bool _enforceApproval, 
+        address _manager,
+        bool _enforceApproval,
         bool _subscriptionsOpen
     ) BaseHook("MockSubscriptionHook") {
         manager = _manager;
         enforceApproval = _enforceApproval;
         subscriptionsOpen = _subscriptionsOpen;
     }
-    
+
     // Manager address that can configure the subscription rules
     address public manager;
-    
+
     /**
      * @notice Set subscriber status
      * @param subscriber Address of the subscriber
@@ -55,7 +55,7 @@ contract MockSubscriptionHook is BaseHook {
         isSubscriber[subscriber] = status;
         emit SubscriberStatusChanged(subscriber, status);
     }
-    
+
     /**
      * @notice Set subscription status
      * @param open Whether subscriptions are open
@@ -65,7 +65,7 @@ contract MockSubscriptionHook is BaseHook {
         subscriptionsOpen = open;
         emit SubscriptionStatusChanged(open);
     }
-    
+
     /**
      * @notice Set whether to enforce approval
      * @param enforce Whether to enforce approval
@@ -75,7 +75,7 @@ contract MockSubscriptionHook is BaseHook {
         enforceApproval = enforce;
         emit ApprovalEnforcementChanged(enforce);
     }
-    
+
     /**
      * @notice Batch set subscriber statuses
      * @param subscribers Array of subscriber addresses
@@ -83,30 +83,27 @@ contract MockSubscriptionHook is BaseHook {
      */
     function batchSetSubscribers(address[] calldata subscribers, bool status) external {
         if (msg.sender != manager) revert Unauthorized();
-        
+
         uint256 length = subscribers.length;
         if (length == 0) revert InvalidArrayLength();
-        
+
         for (uint256 i = 0; i < length; i++) {
             isSubscriber[subscribers[i]] = status;
             emit SubscriberStatusChanged(subscribers[i], status);
         }
-        
+
         emit BatchSubscribersChanged(length, status);
     }
-    
+
     /**
      * @notice Hook called before deposit
-     * @param token Address of the token
-     * @param user Address of the user
-     * @param assets Amount of assets
      * @param receiver Address of the receiver
      * @return output Hook output
      */
     function onBeforeDeposit(
-        address token,
-        address user,
-        uint256 assets,
+        address,
+        address,
+        uint256,
         address receiver
     ) public view override returns (IHook.HookOutput memory output) {
         // First check if subscriptions are open
@@ -116,7 +113,7 @@ contract MockSubscriptionHook is BaseHook {
                 reason: "Subscriptions are closed"
             });
         }
-        
+
         // Then check if user is approved (if enforcement is enabled)
         if (enforceApproval && !isSubscriber[receiver]) {
             return IHook.HookOutput({
@@ -124,7 +121,7 @@ contract MockSubscriptionHook is BaseHook {
                 reason: "Address is not approved for subscription"
             });
         }
-        
+
         // All checks passed
         return IHook.HookOutput({
             approved: true,

@@ -31,15 +31,13 @@ contract SubscriptionControllerHook is BaseHook {
 
     /**
      * @notice Delegates deposit validation to the controller
-     * @param token Address of the tRWA token (passed by tRWA, may not be used by controller directly)
-     * @param user Address initiating the deposit (passed as 'user' to controller.validateDeposit)
      * @param assets Amount of assets to deposit
      * @param receiver Address receiving the shares (passed as 'user' to controller.validateDeposit based on previous SCR logic)
      * @return output The hook evaluation output (approved, reason)
      */
     function onBeforeDeposit(
-        address token,
-        address user, // This is msg.sender in tRWA's _deposit
+        address,
+        address, // This is msg.sender in tRWA's _deposit
         uint256 assets,
         address receiver // This is the 'to' in tRWA's _deposit
     ) public override returns (IHook.HookOutput memory output) {

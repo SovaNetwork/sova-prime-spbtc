@@ -29,7 +29,6 @@ contract MockStrategy is IStrategy {
      * @param manager_ Address of the manager
      * @param asset_ Address of the underlying asset
      * @param assetDecimals_ Number of decimals of the asset
-     * @param initData Initialization data
      */
     function initialize(
         string calldata name_,
@@ -37,7 +36,7 @@ contract MockStrategy is IStrategy {
         address manager_,
         address asset_,
         uint8 assetDecimals_,
-        bytes memory initData
+        bytes memory
     ) external override {
         if (_initialized) revert AlreadyInitialized();
         _initialized = true;
@@ -74,10 +73,9 @@ contract MockStrategy is IStrategy {
 
     /**
      * @notice Transfer assets to a user
-     * @param user Address to transfer assets to
      * @param amount Amount of assets to transfer
      */
-    function transferAssets(address user, uint256 amount) external {
+    function transferAssets(address, uint256 amount) external {
         // Only callable by token or manager
         if (msg.sender != sToken && msg.sender != manager) revert Unauthorized();
 

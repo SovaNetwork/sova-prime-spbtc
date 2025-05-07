@@ -95,15 +95,14 @@ contract SubscriptionRulesHook is BaseHook, OwnableRoles {
 
     /**
      * @notice Hook that evaluates a deposit according to subscription rules
-     * @param user Address initiating the deposit (or msg.sender if not specified by a meta-tx)
      * @param receiver Address receiving the shares (often the same as user for deposits)
      * @return bytes4 Selector indicating success or specific failure reason
      */
     function onBeforeDeposit(
-        address, // token (unused in this specific hook logic)
-        address user, // user performing the action, could be different from receiver
-        uint256, // assets (unused in this specific hook logic)
-        address receiver // entity receiving the results of the deposit (e.g. shares)
+        address,
+        address,
+        uint256,
+        address receiver
     ) public view virtual override returns (IHook.HookOutput memory) {
         // Check if subscriptions are open
         if (!isOpen) {
