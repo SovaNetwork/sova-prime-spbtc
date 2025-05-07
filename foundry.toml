@@ -10,3 +10,5 @@ optimizer = true
 optimizer_runs = 20_000
 
 rpc_url = "https://rpc.testnet.sova.io"
+
+no_match_coverage = "(script|test|mocks)"
