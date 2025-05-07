@@ -3,11 +3,10 @@ pragma solidity ^0.8.25;
 
 import {LibClone} from "solady/utils/LibClone.sol";
 import {IStrategy} from "../strategy/IStrategy.sol";
-import {IRules} from "../rules/IRules.sol";
-import {IRulesEngine} from "../rules/IRulesEngine.sol";
+import {IOperationHook} from "../rules/IOperationHook.sol";
 import {RoleManaged} from "../auth/RoleManaged.sol";
 import {SubscriptionController} from "../controllers/SubscriptionController.sol";
-import {SubscriptionControllerRule} from "../rules/SubscriptionControllerRule.sol";
+import {SubscriptionControllerHook} from "../rules/SubscriptionControllerHook.sol";
 /**
  * @title Registry
  * @notice Central registry for strategies, rules, assets, and reporters
@@ -18,7 +17,7 @@ contract Registry is RoleManaged {
 
     // Registry mappings
     mapping(address => bool) public allowedStrategies;
-    mapping(address => bool) public allowedRules;
+    mapping(address => bool) public allowedOperationHooks;
     mapping(address => bool) public allowedAssets;
 
     // Deployed contracts registry
@@ -29,7 +28,7 @@ contract Registry is RoleManaged {
 
     // Events
     event SetStrategy(address indexed implementation, bool allowed);
-    event SetRules(address indexed implementation, bool allowed);
+    event SetOperationHook(address indexed implementation, bool allowed);
     event SetAsset(address indexed asset, bool allowed);
     event Deploy(address indexed strategy, address indexed sToken, address indexed asset);
     event DeployWithController(address indexed strategy, address indexed sToken, address indexed controller);
@@ -37,7 +36,7 @@ contract Registry is RoleManaged {
     // Errors
     error ZeroAddress();
     error UnauthorizedStrategy();
-    error UnauthorizedRule();
+    error UnauthorizedHook();
     error UnauthorizedAsset();
     error InvalidInitialization();
 
@@ -58,14 +57,14 @@ contract Registry is RoleManaged {
     }
 
     /**
-     * @notice Register a rules implementation template
-     * @param implementation Address of the rules implementation
+     * @notice Register an operation hook implementation template
+     * @param implementation Address of the hook implementation
      * @param allowed Whether the implementation is allowed
      */
-    function setRules(address implementation, bool allowed) external onlyRoles(roleManager.RULES_ADMIN()) {
+    function setOperationHook(address implementation, bool allowed) external onlyRoles(roleManager.RULES_ADMIN()) {
         if (implementation == address(0)) revert ZeroAddress();
-        allowedRules[implementation] = allowed;
-        emit SetRules(implementation, allowed);
+        allowedOperationHooks[implementation] = allowed;
+        emit SetOperationHook(implementation, allowed);
     }
 
     /**
@@ -85,7 +84,8 @@ contract Registry is RoleManaged {
      * @param _symbol Token symbol
      * @param _asset Asset address
      * @param _assetDecimals Asset decimals
-     * @param _rules Rules address
+     * @param _operationHook Operation hook address
+     * @param _operationHookAddresses Array of operation hook addresses
      * @param _manager Manager address for the strategy
      * @param _initData Initialization data
      * @return strategy Address of the deployed strategy
@@ -97,11 +97,11 @@ contract Registry is RoleManaged {
         address _implementation,
         address _asset,
         uint8 _assetDecimals,
-        address _rules,
+        address[] memory _operationHookAddresses,
         address _manager,
         bytes memory _initData
     ) external onlyRoles(roleManager.STRATEGY_OPERATOR()) returns (address strategy, address token) {
-        return deployBase(_name, _symbol, _implementation, _asset, _assetDecimals, _rules, _manager, _initData);
+        return deployBase(_name, _symbol, _implementation, _asset, _assetDecimals, _operationHookAddresses, _manager, _initData);
     }
 
     /**
@@ -111,9 +111,9 @@ contract Registry is RoleManaged {
      * @param _implementation Strategy implementation address
      * @param _asset Asset address
      * @param _assetDecimals Asset decimals
-     * @param _rules Rules address
      * @param _manager Manager address for the strategy
      * @param _managerAddresses Additional manager addresses for the controller
+     * @param _additionalHookAddresses Array of additional hook addresses to include
      * @param _initData Initialization data
      * @param initialCapacity Initial subscription capacity
      * @return strategy Address of the deployed strategy
@@ -126,27 +126,37 @@ contract Registry is RoleManaged {
         address _implementation,
         address _asset,
         uint8 _assetDecimals,
-        address _rules,
         address _manager,
         address[] memory _managerAddresses,
+        address[] calldata _additionalHookAddresses,
         bytes memory _initData,
         uint256 initialCapacity
     ) external onlyRoles(roleManager.STRATEGY_OPERATOR()) returns (address strategy, address token, address controller) {
-        // Deploy strategy and token
-        (strategy, token) = deployBase(_name, _symbol, _implementation, _asset, _assetDecimals, _rules, _manager, _initData);
-
-        // Deploy controller with main manager and additional managers
+        // Deploy controller first (no longer needs token address at construction)
         controller = address(new SubscriptionController(
-            token,
             _manager,
             _managerAddresses
         ));
 
-        // Register controller
+        // Deploy the hook for the controller
+        address controllerHook = address(new SubscriptionControllerHook(controller));
+
+        // Construct the full list of operation hooks
+        address[] memory allHookAddresses = new address[](_additionalHookAddresses.length + 1);
+        allHookAddresses[0] = controllerHook;
+        for (uint i = 0; i < _additionalHookAddresses.length; i++) {
+            allHookAddresses[i+1] = _additionalHookAddresses[i];
+        }
+
+        // Deploy strategy and token using the combined list of hooks
+        (strategy, token) = deployBase(_name, _symbol, _implementation, _asset, _assetDecimals, allHookAddresses, _manager, _initData);
+
+        // Register controller address with the strategy (for informational purposes in Registry)
         strategyControllers[strategy] = controller;
 
-        // Deploy controller rule and add it to the rules
-        address controllerRule = address(new SubscriptionControllerRule(controller));
+        // Note: The strategy's initialize function or a subsequent setup call by the manager
+        // is responsible for calling ITRWA(token).setController(controllerAddress)
+        // to enable the callback mechanism in SubscriptionController.
 
         emit DeployWithController(strategy, token, controller);
 
@@ -160,7 +170,7 @@ contract Registry is RoleManaged {
      * @param _implementation Strategy implementation address
      * @param _asset Asset address
      * @param _assetDecimals Asset decimals
-     * @param _rules Rules address
+     * @param _operationHookAddresses Array of operation hook addresses
      * @param _manager Manager address
      * @param _initData Initialization data
      * @return strategy Deployed strategy address
@@ -172,11 +182,16 @@ contract Registry is RoleManaged {
         address _implementation,
         address _asset,
         uint8 _assetDecimals,
-        address _rules,
+        address[] memory _operationHookAddresses,
         address _manager,
         bytes memory _initData
     ) internal returns (address strategy, address token) {
-        if (!allowedRules[_rules]) revert UnauthorizedRule();
+        // Validate all provided hook addresses
+        if (_operationHookAddresses.length == 0) revert UnauthorizedHook();
+        for (uint i = 0; i < _operationHookAddresses.length; i++) {
+            if (!allowedOperationHooks[_operationHookAddresses[i]]) revert UnauthorizedHook();
+        }
+
         if (!allowedAssets[_asset]) revert UnauthorizedAsset();
         if (!allowedStrategies[_implementation]) revert UnauthorizedStrategy();
 
@@ -184,7 +199,7 @@ contract Registry is RoleManaged {
         strategy = _implementation.clone();
 
         // Initialize the strategy
-        IStrategy(strategy).initialize(_name, _symbol, _manager, _asset, _assetDecimals, _rules, _initData);
+        IStrategy(strategy).initialize(_name, _symbol, _manager, _asset, _assetDecimals, _operationHookAddresses, _initData);
 
         // Register strategy in the factory
         allStrategies.push(strategy);

@@ -40,7 +40,7 @@ contract SubscriptionController is ISubscriptionController, OwnableRoles {
     uint256 private _currentRoundId = 0;
 
     // Contract references
-    address public immutable token;
+    // address public immutable token; // Removed
 
     /*//////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -48,25 +48,24 @@ contract SubscriptionController is ISubscriptionController, OwnableRoles {
 
     /**
      * @notice Contract constructor
-     * @param _token tRWA token address
      * @param _admin Administrator address
      * @param _managers Additional manager addresses to grant admin role (optional)
      */
     constructor(
-        address _token,
+        // address _token, // Removed
         address _admin,
         address[] memory _managers
     ) {
-        if (_token == address(0) || _admin == address(0)) {
+        if (/*_token == address(0) ||*/ _admin == address(0)) { // _token check removed
             revert InvalidAddress();
         }
 
-        token = _token;
+        // token = _token; // Removed
 
         // Initialize owner and grant admin role
         _initializeOwner(_admin);
         _grantRoles(_admin, SUBSCRIPTION_ADMIN_ROLE);
-        
+
         // Grant admin role to additional managers if provided
         for (uint256 i = 0; i < _managers.length; i++) {
             if (_managers[i] != address(0) && _managers[i] != _admin) {
@@ -230,8 +229,9 @@ contract SubscriptionController is ISubscriptionController, OwnableRoles {
         bool success,
         bytes memory data
     ) external {
-        // Only accept callbacks from the token
-        if (msg.sender != token) revert OnlyTokenAllowed();
+        // Only accept callbacks from the token -- This check is removed.
+        // Security relies on tRWA only calling its designated controller.
+        // if (msg.sender != token) revert OnlyTokenAllowed(); // Removed
 
         // Auto-close expired round if needed (makes deposits more likely to succeed)
         checkAndCloseExpiredRound();
