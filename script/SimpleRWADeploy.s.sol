@@ -7,8 +7,6 @@ import {MockERC20} from "../src/mocks/MockERC20.sol";
 import {KycRulesHook} from "../src/hooks/KycRulesHook.sol";
 import {PriceOracleReporter} from "../src/reporter/PriceOracleReporter.sol";
 import {ReportedStrategy} from "../src/strategy/ReportedStrategy.sol";
-import {SubscriptionController} from "../src/controllers/SubscriptionController.sol";
-import {SubscriptionControllerHook} from "../src/hooks/SubscriptionControllerHook.sol";
 import {RoleManager} from "../src/auth/RoleManager.sol";
 import {BasicStrategy} from "../src/strategy/BasicStrategy.sol";
 import {tRWA} from "../src/token/tRWA.sol";
@@ -27,8 +25,6 @@ contract SimpleRWADeployScript is Script {
     ReportedStrategy public strategyImplementation;
     address public strategy;
     address public token;
-    address public controller;
-    address public subscriptionControllerHook;
     uint256 public startTime;
     uint256 public endTime;
 
@@ -141,8 +137,6 @@ contract SimpleRWADeployScript is Script {
             deployer,                 // Manager of the strategy
             initData
         );
-
-        // TODO: Reintroduce subscription controller
     }
 
     function logDeployedContracts() internal view {

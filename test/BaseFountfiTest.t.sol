@@ -11,7 +11,6 @@ import {tRWA} from "../src/token/tRWA.sol";
 import {Registry} from "../src/registry/Registry.sol";
 import {RulesEngine} from "../src/hooks/RulesEngine.sol";
 import {KycRulesHook} from "../src/hooks/KycRulesHook.sol";
-import {SubscriptionRulesHook} from "../src/hooks/SubscriptionRulesHook.sol";
 import {MockCappedSubscriptionHook} from "../src/mocks/MockCappedSubscriptionHook.sol";
 import {BaseHook} from "../src/hooks/BaseHook.sol";
 import {IHook} from "../src/hooks/IHook.sol";
