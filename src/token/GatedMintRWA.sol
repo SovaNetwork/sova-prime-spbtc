@@ -7,42 +7,29 @@ import {IHook} from "../hooks/IHook.sol";
 import {IRegistry} from "../registry/IRegistry.sol";
 import {RoleManaged} from "../auth/RoleManaged.sol";
 import {Conduit} from "../conduit/Conduit.sol";
+import {Escrow} from "./Escrow.sol";
 
 /**
  * @title GatedMintRWA
- * @notice Extension of tRWA that implements a two-phase deposit process
- * @dev Deposits are first collected and stored pending approval; shares are only minted upon acceptance
+ * @notice Extension of tRWA that implements a two-phase deposit process using an Escrow
+ * @dev Deposits are first collected and stored in Escrow; shares are only minted upon acceptance
  */
 contract GatedMintRWA is tRWA {
     // Custom errors
-    error DepositNotFound();
-    error DepositNotPending();
-    error DepositNotExpired();
-    error NotDepositor();
+    error NotEscrow();
+    error EscrowNotSet();
     error InvalidExpirationPeriod();
 
-    // Enum to track the deposit state
-    enum DepositState {
-        PENDING,
-        ACCEPTED,
-        REFUNDED
-    }
-
-    struct PendingDeposit {
-        address depositor;       // Address that initiated the deposit
-        address recipient;       // Address that will receive shares if approved
-        uint256 assetAmount;     // Amount of assets deposited
-        uint256 expirationTime;  // Timestamp after which deposit can be reclaimed
-        DepositState state;      // Current state of the deposit
-    }
-
-    // Storage for pending deposits
-    mapping(bytes32 => PendingDeposit) public pendingDeposits;
+    // Deposit tracking (IDs only - Escrow has full state)
     bytes32[] public depositIds;
     mapping(address => bytes32[]) public userDepositIds;
 
     // Deposit expiration time (in seconds) - default to 7 days
     uint256 public depositExpirationPeriod = 7 days;
+    uint256 public constant MAX_DEPOSIT_EXPIRATION_PERIOD = 30 days;
+
+    // The escrow contract that holds assets and manages deposits
+    address public immutable escrow;
 
     // Events
     event DepositPending(
@@ -51,11 +38,21 @@ contract GatedMintRWA is tRWA {
         address indexed recipient,
         uint256 assets
     );
+
     event DepositAccepted(bytes32 indexed depositId, address indexed recipient, uint256 assets, uint256 shares);
     event DepositRefunded(bytes32 indexed depositId, address indexed depositor, uint256 assets);
-    event DepositReclaimed(bytes32 indexed depositId, address indexed depositor, uint256 assets);
     event DepositExpirationPeriodUpdated(uint256 oldPeriod, uint256 newPeriod);
 
+    constructor(
+        string memory name_,
+        string memory symbol_,
+        address asset_,
+        uint8 assetDecimals_,
+        address strategy_
+    ) tRWA(name_, symbol_, asset_, assetDecimals_, strategy_) {
+        // Deploy the Escrow contract with this token as the controller
+        escrow = address(new Escrow(address(this), asset_, strategy_));
+    }
 
     /**
      * @notice Sets the period after which deposits expire and can be reclaimed
@@ -63,6 +60,7 @@ contract GatedMintRWA is tRWA {
      */
     function setDepositExpirationPeriod(uint256 newExpirationPeriod) external onlyStrategy {
         if (newExpirationPeriod == 0) revert InvalidExpirationPeriod();
+        if (newExpirationPeriod > MAX_DEPOSIT_EXPIRATION_PERIOD) revert InvalidExpirationPeriod();
 
         uint256 oldPeriod = depositExpirationPeriod;
         depositExpirationPeriod = newExpirationPeriod;
@@ -75,12 +73,13 @@ contract GatedMintRWA is tRWA {
      * @param by Address of the sender
      * @param to Address of the recipient
      * @param assets Amount of assets to deposit
+     * @param unused Unused parameter, required for interface compatibility
      */
     function _deposit(
         address by,
         address to,
         uint256 assets,
-        uint256
+        uint256 unused
     ) internal override {
         // Run hooks (same as in tRWA)
         IHook[] storage opHooks = operationHooks[OP_DEPOSIT];
@@ -91,12 +90,7 @@ contract GatedMintRWA is tRWA {
             }
         }
 
-        // Collect assets
-        Conduit(
-            IRegistry(RoleManaged(strategy).registry()).conduit()
-        ).collectDeposit(asset(), by, address(this), assets);
-
-        // Instead of minting, store deposit information
+        // Generate deposit ID
         bytes32 depositId = keccak256(abi.encodePacked(
             by,
             to,
@@ -104,91 +98,47 @@ contract GatedMintRWA is tRWA {
             block.timestamp,
             address(this)
         ));
-        
-        pendingDeposits[depositId] = PendingDeposit({
-            depositor: by,
-            recipient: to,
-            assetAmount: assets,
-            expirationTime: block.timestamp + depositExpirationPeriod,
-            state: DepositState.PENDING
-        });
 
+        // Record the deposit ID for lookup
         depositIds.push(depositId);
         userDepositIds[by].push(depositId);
+
+        // Transfer assets to escrow
+        Conduit(
+            IRegistry(RoleManaged(strategy).registry()).conduit()
+        ).collectDeposit(asset(), by, escrow, assets);
+
+        // Register the deposit with the escrow
+        uint256 expTime = block.timestamp + depositExpirationPeriod;
+        Escrow(escrow).receiveDeposit(depositId, by, to, assets, expTime);
 
         // Emit a custom event for the pending deposit
         emit DepositPending(depositId, by, to, assets);
     }
 
     /**
-     * @notice Accept a pending deposit, minting tokens to the recipient
-     * @param depositId The unique identifier of the deposit to accept
-     * @return True if successful
+     * @notice Mint shares for an accepted deposit (called by Escrow)
+     * @param depositId The deposit ID
+     * @param recipient The recipient of shares
+     * @param assetAmount The asset amount
      */
-    function acceptDeposit(bytes32 depositId) external onlyStrategy returns (bool) {
-        PendingDeposit storage deposit = pendingDeposits[depositId];
-        if (deposit.depositor == address(0)) revert DepositNotFound();
-        if (deposit.state != DepositState.PENDING) revert DepositNotPending();
-
-        deposit.state = DepositState.ACCEPTED;
-
-        // Transfer the assets to the strategy
-        SafeTransferLib.safeTransfer(asset(), strategy, deposit.assetAmount);
+    function mintShares(bytes32 depositId, address recipient, uint256 assetAmount) external {
+        // Only escrow can call this
+        if (msg.sender != escrow) revert NotEscrow();
 
         // Calculate shares based on current exchange rate
-        uint256 shares = previewDeposit(deposit.assetAmount);
+        uint256 shares = previewDeposit(assetAmount);
 
         // Mint shares to the recipient
-        _mint(deposit.recipient, shares);
+        _mint(recipient, shares);
 
-        emit DepositAccepted(depositId, deposit.recipient, deposit.assetAmount, shares);
-        return true;
-    }
-
-    /**
-     * @notice Refund a pending deposit, returning assets to the depositor
-     * @param depositId The unique identifier of the deposit to refund
-     * @return True if successful
-     */
-    function refundDeposit(bytes32 depositId) external onlyStrategy returns (bool) {
-        PendingDeposit storage deposit = pendingDeposits[depositId];
-        if (deposit.depositor == address(0)) revert DepositNotFound();
-        if (deposit.state != DepositState.PENDING) revert DepositNotPending();
-
-        deposit.state = DepositState.REFUNDED;
-
-        // Return assets to the depositor
-        SafeTransferLib.safeTransfer(asset(), deposit.depositor, deposit.assetAmount);
-
-        emit DepositRefunded(depositId, deposit.depositor, deposit.assetAmount);
-        return true;
-    }
-
-    /**
-     * @notice Allow a user to reclaim their expired deposit
-     * @param depositId The unique identifier of the deposit to reclaim
-     * @return True if successful
-     */
-    function reclaimDeposit(bytes32 depositId) external returns (bool) {
-        PendingDeposit storage deposit = pendingDeposits[depositId];
-        if (deposit.depositor == address(0)) revert DepositNotFound();
-        if (deposit.state != DepositState.PENDING) revert DepositNotPending();
-        if (msg.sender != deposit.depositor) revert NotDepositor();
-        if (block.timestamp < deposit.expirationTime) revert DepositNotExpired();
-
-        deposit.state = DepositState.REFUNDED;
-
-        // Return assets to the depositor
-        SafeTransferLib.safeTransfer(asset(), deposit.depositor, deposit.assetAmount);
-
-        emit DepositReclaimed(depositId, deposit.depositor, deposit.assetAmount);
-        return true;
+        emit DepositAccepted(depositId, recipient, assetAmount, shares);
     }
 
     /**
      * @notice Get all pending deposit IDs for a specific user
      * @param user The user address
-     * @return Array of deposit IDs
+     * @return Array of deposit IDs that are still pending
      */
     function getUserPendingDeposits(address user) external view returns (bytes32[] memory) {
         bytes32[] memory userDeposits = new bytes32[](userDepositIds[user].length);
@@ -196,7 +146,12 @@ contract GatedMintRWA is tRWA {
 
         for (uint256 i = 0; i < userDepositIds[user].length; i++) {
             bytes32 depositId = userDepositIds[user][i];
-            if (pendingDeposits[depositId].state == DepositState.PENDING) {
+
+            // Query the escrow for deposit status
+            (, , , , uint8 state) = getDepositDetails(depositId);
+
+            // Only include if state is PENDING (0)
+            if (state == 0) { // 0 = PENDING in the DepositState enum
                 userDeposits[count] = depositId;
                 count++;
             }
@@ -212,12 +167,28 @@ contract GatedMintRWA is tRWA {
     }
 
     /**
-     * @notice Get details for a specific deposit
+     * @notice Get details for a specific deposit (from Escrow)
      * @param depositId The unique identifier of the deposit
-     * @return The deposit details
+     * @return depositor The address that initiated the deposit
+     * @return recipient The address that will receive shares if approved
+     * @return assetAmount The amount of assets deposited
+     * @return expirationTime The timestamp after which deposit can be reclaimed
+     * @return state The current state of the deposit (0=PENDING, 1=ACCEPTED, 2=REFUNDED)
      */
-    function getPendingDeposit(bytes32 depositId) external view returns (PendingDeposit memory) {
-        return pendingDeposits[depositId];
+    function getDepositDetails(bytes32 depositId) public view returns (
+        address depositor,
+        address recipient,
+        uint256 assetAmount,
+        uint256 expirationTime,
+        uint8 state
+    ) {
+        Escrow.PendingDeposit memory deposit = Escrow(escrow).getPendingDeposit(depositId);
+        return (
+            deposit.depositor,
+            deposit.recipient,
+            deposit.assetAmount,
+            deposit.expirationTime,
+            uint8(deposit.state)
+        );
     }
-
 }
