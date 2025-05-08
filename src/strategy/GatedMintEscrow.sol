@@ -57,6 +57,7 @@ contract GatedMintEscrow {
     event DepositRefunded(bytes32 indexed depositId, address indexed depositor, uint256 assets);
     event DepositReclaimed(bytes32 indexed depositId, address indexed depositor, uint256 assets);
     event BatchDepositsAccepted(bytes32[] depositIds, uint256 totalAssets);
+    event BatchDepositsRefunded(bytes32[] depositIds, uint256 totalAssets);
 
     /**
      * @notice Constructor
@@ -139,7 +140,7 @@ contract GatedMintEscrow {
 
         emit DepositAccepted(depositId, deposit.recipient, deposit.assetAmount);
     }
-    
+
     /**
      * @notice Accept multiple pending deposits as a batch with equal share accounting
      * @param depositIds Array of deposit IDs to accept
@@ -147,45 +148,40 @@ contract GatedMintEscrow {
     function batchAcceptDeposits(bytes32[] calldata depositIds) external {
         // Only strategy can call this function
         if (msg.sender != strategy) revert Unauthorized();
-        
+
         // Skip empty arrays
         if (depositIds.length == 0) return;
-        
+
         uint256 totalBatchAssets = 0;
+
         address[] memory recipients = new address[](depositIds.length);
         uint256[] memory assetAmounts = new uint256[](depositIds.length);
-        
+
         // First pass: validate all deposits and collect information
         for (uint256 i = 0; i < depositIds.length; i++) {
             bytes32 depositId = depositIds[i];
             PendingDeposit storage deposit = pendingDeposits[depositId];
-            
+
+            // Mark as accepted
+            deposit.state = DepositState.ACCEPTED;
+
             // Validate deposit
             if (deposit.depositor == address(0)) revert DepositNotFound();
             if (deposit.state != DepositState.PENDING) revert DepositNotPending();
-            
+
             // Accumulate total assets and store recipient and asset amount
             totalBatchAssets += deposit.assetAmount;
+            userPendingAssets[deposit.depositor] -= deposit.assetAmount;
+
             recipients[i] = deposit.recipient;
             assetAmounts[i] = deposit.assetAmount;
         }
-        
-        // Second pass: update states and accounting
-        for (uint256 i = 0; i < depositIds.length; i++) {
-            bytes32 depositId = depositIds[i];
-            PendingDeposit storage deposit = pendingDeposits[depositId];
-            
-            // Mark as accepted
-            deposit.state = DepositState.ACCEPTED;
-            
-            // Update accounting
-            totalPendingAssets -= deposit.assetAmount;
-            userPendingAssets[deposit.depositor] -= deposit.assetAmount;
-        }
-        
+
+        totalPendingAssets -= totalBatchAssets;
+
         // Transfer all assets to the strategy in one transaction
         SafeTransferLib.safeTransfer(asset, strategy, totalBatchAssets);
-        
+
         // Tell the GatedMintRWA token to mint shares for all deposits with equal treatment
         GatedMintRWA(token).batchMintShares(
             depositIds,
@@ -193,7 +189,7 @@ contract GatedMintEscrow {
             assetAmounts,
             totalBatchAssets
         );
-        
+
         emit BatchDepositsAccepted(depositIds, totalBatchAssets);
     }
 
@@ -220,6 +216,47 @@ contract GatedMintEscrow {
         SafeTransferLib.safeTransfer(asset, deposit.depositor, deposit.assetAmount);
 
         emit DepositRefunded(depositId, deposit.depositor, deposit.assetAmount);
+    }
+
+    /**
+     * @notice Refund multiple pending deposits in a batch
+     * @param depositIds Array of deposit IDs to refund
+     */
+    function batchRefundDeposits(bytes32[] calldata depositIds) external {
+        // Only strategy can call this function
+        if (msg.sender != strategy) revert Unauthorized();
+
+        // Skip empty arrays
+        if (depositIds.length == 0) return;
+
+        uint256 totalRefundedAssets = 0;
+
+        // Process each deposit
+        for (uint256 i = 0; i < depositIds.length; i++) {
+            bytes32 depositId = depositIds[i];
+            PendingDeposit storage deposit = pendingDeposits[depositId];
+
+            // Validate deposit
+            if (deposit.depositor == address(0)) revert DepositNotFound();
+            if (deposit.state != DepositState.PENDING) revert DepositNotPending();
+
+            // Mark as refunded
+            deposit.state = DepositState.REFUNDED;
+            userPendingAssets[deposit.depositor] -= deposit.assetAmount;
+            totalRefundedAssets += deposit.assetAmount;
+
+            // Return assets to the depositor (individual transfers for each depositor)
+            SafeTransferLib.safeTransfer(asset, deposit.depositor, deposit.assetAmount);
+
+            // Emit individual refund event
+            emit DepositRefunded(depositId, deposit.depositor, deposit.assetAmount);
+        }
+
+        // Update accounting
+        totalPendingAssets -= totalRefundedAssets;
+
+        // Emit batch event
+        emit BatchDepositsRefunded(depositIds, totalRefundedAssets);
     }
 
     /**
