@@ -24,16 +24,6 @@ contract TestableBasicStrategy is BasicStrategy {
     function balance() external view override returns (uint256) {
         return MockERC20(asset).balanceOf(address(this));
     }
-
-    /**
-     * @notice Transfer assets from the strategy to a user
-     * @param user Address to transfer assets to
-     * @param amount Amount of assets to transfer
-     */
-    function transferAssets(address user, uint256 amount) external override onlyManager {
-        // Transfer the asset to the user
-        MockERC20(asset).transfer(user, amount);
-    }
 }
 
 /**
@@ -200,31 +190,6 @@ contract BasicStrategyTest is BaseFountfiTest {
     function test_Balance() public view {
         uint256 bal = strategy.balance();
         assertEq(bal, 1000 * 10**18, "Balance should match minted amount");
-    }
-
-    function test_TransferAssets() public {
-        vm.startPrank(manager);
-
-        uint256 initialBob = daiToken.balanceOf(bob);
-        uint256 initialStrategy = daiToken.balanceOf(address(strategy));
-
-        // Transfer 100 DAI to bob
-        strategy.transferAssets(bob, 100 * 10**18);
-
-        assertEq(daiToken.balanceOf(bob), initialBob + 100 * 10**18, "Bob should receive 100 DAI");
-        assertEq(daiToken.balanceOf(address(strategy)), initialStrategy - 100 * 10**18, "Strategy should send 100 DAI");
-
-        vm.stopPrank();
-    }
-
-    function test_TransferAssetsUnauthorized() public {
-        vm.startPrank(alice);
-
-        // Alice is not the manager
-        vm.expectRevert(IStrategy.Unauthorized.selector);
-        strategy.transferAssets(bob, 100 * 10**18);
-
-        vm.stopPrank();
     }
 
     function test_SendETH() public {

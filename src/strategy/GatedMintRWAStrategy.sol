@@ -1,30 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
-import {BasicStrategy} from "./BasicStrategy.sol";
 import {GatedMintRWA} from "../token/GatedMintRWA.sol";
-import {Escrow} from "../token/Escrow.sol";
-import {IStrategy} from "./IStrategy.sol";
-import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
-
+import {ReportedStrategy} from "./ReportedStrategy.sol";
+import {BaseReporter} from "../reporter/BaseReporter.sol";
 /**
- * @title GatedMintRWAStrategy
- * @notice Extension of BasicStrategy that deploys and configures GatedMintRWA tokens and Escrow
+ * @title GatedMintReportedStrategy
+ * @notice Extension of ReportedStrategy that deploys and configures GatedMintRWA tokens
  */
-contract GatedMintRWAStrategy is BasicStrategy {
-    // Additional state
-    address public escrow;
-
-    /**
-     * @notice Event emitted when the escrow is created
-     * @param escrow The address of the escrow
-     */
-    event EscrowCreated(address escrow);
-
+contract GatedMintReportedStrategy is ReportedStrategy {
     /**
      * @notice Initialize the strategy implementation
      */
-    constructor(address _roleManager) BasicStrategy(_roleManager) {}
+    constructor(address _roleManager) ReportedStrategy(_roleManager) {}
 
     /**
      * @notice Initialize the strategy with GatedMintRWA token
@@ -66,57 +54,11 @@ contract GatedMintRWAStrategy is BasicStrategy {
 
         sToken = address(newToken);
 
-        // Create escrow contract
-        Escrow newEscrow = new Escrow(
-            sToken,       // GatedMintRWA token
-            asset,        // Underlying asset
-            address(this),// Strategy
-            manager       // Manager
-        );
+        address reporter_ = abi.decode(initData, (address));
+        if (reporter_ == address(0)) revert InvalidReporter();
+        reporter = BaseReporter(reporter_);
 
-        escrow = address(newEscrow);
-        
-        // Configure the token to use the escrow
-        GatedMintRWA(sToken).setEscrow(escrow);
-
+        emit SetReporter(reporter_);
         emit StrategyInitialized(address(0), manager, asset, sToken);
-        emit EscrowCreated(escrow);
-    }
-
-    /**
-     * @notice Get the balance of the strategy
-     * @return The balance of the strategy
-     */
-    function balance() external view override returns (uint256) {
-        return SafeTransferLib.balanceOf(asset, address(this));
-    }
-
-    /**
-     * @notice Transfer assets from the strategy to a user
-     * @param user The user address
-     * @param amount The amount to transfer
-     */
-    function transferAssets(address user, uint256 amount) external override {
-        // Only callable by token, which will have verified caller permissions
-        if (msg.sender != sToken) revert Unauthorized();
-        
-        // Call the appropriate functionality to transfer assets to the user
-        SafeTransferLib.safeTransfer(asset, user, amount);
-    }
-
-    /**
-     * @notice Accept a deposit in the escrow
-     * @param depositId The ID of the deposit to accept
-     */
-    function acceptDeposit(bytes32 depositId) external onlyManager {
-        Escrow(escrow).acceptDeposit(depositId);
-    }
-
-    /**
-     * @notice Refund a deposit in the escrow
-     * @param depositId The ID of the deposit to refund
-     */
-    function refundDeposit(bytes32 depositId) external onlyManager {
-        Escrow(escrow).refundDeposit(depositId);
     }
 }

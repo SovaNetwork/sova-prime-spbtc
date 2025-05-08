@@ -39,6 +39,10 @@ contract Escrow {
     // Storage for deposits
     mapping(bytes32 => PendingDeposit) public pendingDeposits;
 
+    // Accounting for total amounts
+    uint256 public totalPendingAssets;
+    mapping(address => uint256) public userPendingAssets;
+
     // Events
     event DepositReceived(
         bytes32 indexed depositId,
@@ -98,6 +102,10 @@ contract Escrow {
             state: DepositState.PENDING
         });
 
+        // Update accounting
+        totalPendingAssets += amount;
+        userPendingAssets[depositor] += amount;
+
         emit DepositReceived(depositId, depositor, recipient, amount, expirationTime);
     }
 
@@ -116,11 +124,15 @@ contract Escrow {
         // Mark as accepted
         deposit.state = DepositState.ACCEPTED;
 
+        // Update accounting
+        totalPendingAssets -= deposit.assetAmount;
+        userPendingAssets[deposit.depositor] -= deposit.assetAmount;
+
         // Transfer assets to the strategy
         SafeTransferLib.safeTransfer(asset, strategy, deposit.assetAmount);
 
         // Tell the GatedMintRWA token to mint shares
-        GatedMintRWA(token).mintShares(depositId, deposit.recipient, deposit.assetAmount);
+        GatedMintRWA(token).mintShares(deposit.recipient, deposit.assetAmount);
 
         emit DepositAccepted(depositId, deposit.recipient, deposit.assetAmount);
     }
@@ -139,6 +151,10 @@ contract Escrow {
 
         // Mark as refunded
         deposit.state = DepositState.REFUNDED;
+
+        // Update accounting
+        totalPendingAssets -= deposit.assetAmount;
+        userPendingAssets[deposit.depositor] -= deposit.assetAmount;
 
         // Return assets to the depositor
         SafeTransferLib.safeTransfer(asset, deposit.depositor, deposit.assetAmount);
@@ -159,6 +175,10 @@ contract Escrow {
 
         // Mark as refunded
         deposit.state = DepositState.REFUNDED;
+
+        // Update accounting
+        totalPendingAssets -= deposit.assetAmount;
+        userPendingAssets[deposit.depositor] -= deposit.assetAmount;
 
         // Return assets to the depositor
         SafeTransferLib.safeTransfer(asset, deposit.depositor, deposit.assetAmount);

@@ -39,8 +39,6 @@ contract GatedMintRWA is tRWA {
         uint256 assets
     );
 
-    event DepositAccepted(bytes32 indexed depositId, address indexed recipient, uint256 assets, uint256 shares);
-    event DepositRefunded(bytes32 indexed depositId, address indexed depositor, uint256 assets);
     event DepositExpirationPeriodUpdated(uint256 oldPeriod, uint256 newPeriod);
 
     constructor(
@@ -73,13 +71,12 @@ contract GatedMintRWA is tRWA {
      * @param by Address of the sender
      * @param to Address of the recipient
      * @param assets Amount of assets to deposit
-     * @param unused Unused parameter, required for interface compatibility
      */
     function _deposit(
         address by,
         address to,
         uint256 assets,
-        uint256 unused
+        uint256 // shares
     ) internal override {
         // Run hooks (same as in tRWA)
         IHook[] storage opHooks = operationHooks[OP_DEPOSIT];
@@ -118,11 +115,10 @@ contract GatedMintRWA is tRWA {
 
     /**
      * @notice Mint shares for an accepted deposit (called by Escrow)
-     * @param depositId The deposit ID
      * @param recipient The recipient of shares
      * @param assetAmount The asset amount
      */
-    function mintShares(bytes32 depositId, address recipient, uint256 assetAmount) external {
+    function mintShares(address recipient, uint256 assetAmount) external {
         // Only escrow can call this
         if (msg.sender != escrow) revert NotEscrow();
 
@@ -131,8 +127,6 @@ contract GatedMintRWA is tRWA {
 
         // Mint shares to the recipient
         _mint(recipient, shares);
-
-        emit DepositAccepted(depositId, recipient, assetAmount, shares);
     }
 
     /**

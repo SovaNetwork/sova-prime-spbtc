@@ -2,7 +2,6 @@
 pragma solidity 0.8.25;
 
 import {RoleManager} from "./RoleManager.sol";
-import {Registry} from "../registry/Registry.sol";
 
 /// @title RoleManaged
 /// @notice Base contract for role-managed contracts in the Fountfi protocol

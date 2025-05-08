@@ -53,7 +53,7 @@ contract ReportedStrategy is BasicStrategy {
         address asset_,
         uint8 assetDecimals_,
         bytes memory initData
-    ) public override {
+    ) public virtual override {
         super.initialize(name_, symbol_, manager_, asset_, assetDecimals_, initData);
 
         address reporter_ = abi.decode(initData, (address));
@@ -81,15 +81,5 @@ contract ReportedStrategy is BasicStrategy {
         reporter = BaseReporter(_reporter);
 
         emit SetReporter(_reporter);
-    }
-
-    /**
-     * @notice Transfer assets from the strategy to a user
-     * @param user Address to transfer assets to
-     * @param amount Amount of assets to transfer
-     */
-    function transferAssets(address user, uint256 amount) external override onlyManager {
-        // Transfer the asset to the user
-        ERC20(asset).transfer(user, amount);
     }
 }

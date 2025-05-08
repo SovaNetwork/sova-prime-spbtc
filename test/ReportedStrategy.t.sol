@@ -164,31 +164,6 @@ contract ReportedStrategyTest is BaseFountfiTest {
         vm.stopPrank();
     }
 
-    function test_TransferAssets() public {
-        vm.startPrank(manager);
-
-        uint256 initialBob = daiToken.balanceOf(bob);
-        uint256 initialStrategy = daiToken.balanceOf(address(strategy));
-
-        // Transfer 100 DAI to bob
-        strategy.transferAssets(bob, 100 * 10**18);
-
-        assertEq(daiToken.balanceOf(bob), initialBob + 100 * 10**18, "Bob should receive 100 DAI");
-        assertEq(daiToken.balanceOf(address(strategy)), initialStrategy - 100 * 10**18, "Strategy should send 100 DAI");
-
-        vm.stopPrank();
-    }
-
-    function test_TransferAssetsUnauthorized() public {
-        vm.startPrank(alice);
-
-        // Alice is not the manager
-        vm.expectRevert(IStrategy.Unauthorized.selector);
-        strategy.transferAssets(bob, 100 * 10**18);
-
-        vm.stopPrank();
-    }
-
     function test_InheritedFeatures() public {
         // Test some inherited features from BasicStrategy
 

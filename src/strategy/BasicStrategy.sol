@@ -28,7 +28,7 @@ abstract contract BasicStrategy is IStrategy, RoleManaged {
     address public controller;
 
     // Initialization flags to prevent re-initialization
-    bool private _initialized;
+    bool internal _initialized;
     bool private _controllerConfigured;
 
     /*//////////////////////////////////////////////////////////////
@@ -103,13 +103,6 @@ abstract contract BasicStrategy is IStrategy, RoleManaged {
      * @return The balance of the strategy in the underlying asset
      */
     function balance() external view virtual returns (uint256);
-
-    /**
-     * @notice Transfer assets from the strategy to a user
-     * @param user Address to transfer assets to
-     * @param amount Amount of assets to transfer
-     */
-    function transferAssets(address user, uint256 amount) external virtual;
 
     /**
      * @notice Send owned ETH to an address
