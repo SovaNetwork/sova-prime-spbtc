@@ -4,7 +4,7 @@ pragma solidity ^0.8.25;
 import {tRWA} from "./tRWA.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {IHook} from "../hooks/IHook.sol";
-import {Registry} from "../registry/Registry.sol";
+import {IRegistry} from "../registry/IRegistry.sol";
 import {RoleManaged} from "../auth/RoleManaged.sol";
 import {Conduit} from "../conduit/Conduit.sol";
 
@@ -80,10 +80,10 @@ contract GatedMintRWA is tRWA {
      */
     function setDepositExpirationPeriod(uint256 newExpirationPeriod) external onlyStrategy {
         if (newExpirationPeriod == 0) revert InvalidExpirationPeriod();
-        
+
         uint256 oldPeriod = depositExpirationPeriod;
         depositExpirationPeriod = newExpirationPeriod;
-        
+
         emit DepositExpirationPeriodUpdated(oldPeriod, newExpirationPeriod);
     }
 
@@ -92,13 +92,12 @@ contract GatedMintRWA is tRWA {
      * @param by Address of the sender
      * @param to Address of the recipient
      * @param assets Amount of assets to deposit
-     * @param shares Amount of shares to mint (not used directly, only for hook compatibility)
      */
     function _deposit(
         address by,
         address to,
         uint256 assets,
-        uint256 shares
+        uint256
     ) internal override {
         // Run hooks (same as in tRWA)
         IHook[] storage opHooks = operationHooks[OP_DEPOSIT];
@@ -111,9 +110,9 @@ contract GatedMintRWA is tRWA {
 
         // Collect assets
         Conduit(
-            Registry(RoleManaged(strategy).registry()).conduit()
+            IRegistry(RoleManaged(strategy).registry()).conduit()
         ).collectDeposit(asset(), by, address(this), assets);
-        
+
         // Instead of minting, store deposit information
         bytes32 depositId = _generateDepositId(by, to, assets);
         pendingDeposits[depositId] = PendingDeposit({
@@ -123,10 +122,10 @@ contract GatedMintRWA is tRWA {
             expirationTime: block.timestamp + depositExpirationPeriod,
             state: DepositState.PENDING
         });
-        
+
         depositIds.push(depositId);
         userDepositIds[by].push(depositId);
-        
+
         // Emit a custom event for the pending deposit
         emit DepositPending(depositId, by, to, assets);
     }
@@ -140,18 +139,18 @@ contract GatedMintRWA is tRWA {
         PendingDeposit storage deposit = pendingDeposits[depositId];
         if (deposit.depositor == address(0)) revert DepositNotFound();
         if (deposit.state != DepositState.PENDING) revert DepositNotPending();
-        
+
         _processDeposit(depositId, DepositState.ACCEPTED);
-        
+
         // Transfer the assets to the strategy
         SafeTransferLib.safeTransfer(asset(), strategy, deposit.assetAmount);
-        
+
         // Calculate shares based on current exchange rate
         uint256 shares = previewDeposit(deposit.assetAmount);
-        
+
         // Mint shares to the recipient
         _mint(deposit.recipient, shares);
-        
+
         emit DepositAccepted(depositId, deposit.recipient, deposit.assetAmount, shares);
         return true;
     }
@@ -165,12 +164,12 @@ contract GatedMintRWA is tRWA {
         PendingDeposit storage deposit = pendingDeposits[depositId];
         if (deposit.depositor == address(0)) revert DepositNotFound();
         if (deposit.state != DepositState.PENDING) revert DepositNotPending();
-        
+
         _processDeposit(depositId, DepositState.REFUNDED);
-        
+
         // Return assets to the depositor
         SafeTransferLib.safeTransfer(asset(), deposit.depositor, deposit.assetAmount);
-        
+
         emit DepositRefunded(depositId, deposit.depositor, deposit.assetAmount);
         return true;
     }
@@ -186,12 +185,12 @@ contract GatedMintRWA is tRWA {
         if (deposit.state != DepositState.PENDING) revert DepositNotPending();
         if (deposit.depositor != msg.sender) revert NotDepositor();
         if (block.timestamp < deposit.expirationTime) revert DepositNotExpired();
-        
+
         _processDeposit(depositId, DepositState.REFUNDED);
-        
+
         // Return assets to the depositor
         SafeTransferLib.safeTransfer(asset(), deposit.depositor, deposit.assetAmount);
-        
+
         emit DepositReclaimed(depositId, deposit.depositor, deposit.assetAmount);
         return true;
     }
@@ -204,7 +203,7 @@ contract GatedMintRWA is tRWA {
     function getUserPendingDeposits(address user) external view returns (bytes32[] memory) {
         bytes32[] memory userDeposits = new bytes32[](userDepositIds[user].length);
         uint256 count = 0;
-        
+
         for (uint256 i = 0; i < userDepositIds[user].length; i++) {
             bytes32 depositId = userDepositIds[user][i];
             if (pendingDeposits[depositId].state == DepositState.PENDING) {
@@ -212,13 +211,13 @@ contract GatedMintRWA is tRWA {
                 count++;
             }
         }
-        
+
         // Resize array to fit only pending deposits
         bytes32[] memory result = new bytes32[](count);
         for (uint256 i = 0; i < count; i++) {
             result[i] = userDeposits[i];
         }
-        
+
         return result;
     }
 

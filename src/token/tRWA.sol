@@ -10,7 +10,7 @@ import {ItRWA} from "./ItRWA.sol";
 
 import {Conduit} from "../conduit/Conduit.sol";
 import {RoleManaged} from "../auth/RoleManaged.sol";
-import {Registry} from "../registry/Registry.sol";
+import {IRegistry} from "../registry/IRegistry.sol";
 
 /**
  * @title tRWA
@@ -141,7 +141,7 @@ contract tRWA is ERC4626, ItRWA {
      * @param assets Amount of assets to deposit
      * @param shares Amount of shares to mint
      */
-    function _deposit(address by, address to, uint256 assets, uint256 shares) internal override {
+    function _deposit(address by, address to, uint256 assets, uint256 shares) internal virtual override {
         IHook[] storage opHooks = operationHooks[OP_DEPOSIT];
         for (uint i = 0; i < opHooks.length; i++) {
             IHook.HookOutput memory hookOutput = opHooks[i].onBeforeDeposit(address(this), by, assets, to);
@@ -151,7 +151,7 @@ contract tRWA is ERC4626, ItRWA {
         }
 
         Conduit(
-            Registry(RoleManaged(strategy).registry()).conduit()
+            IRegistry(RoleManaged(strategy).registry()).conduit()
         ).collectDeposit(asset(), by, address(this), assets);
 
         _mint(to, shares);
