@@ -4,6 +4,7 @@ pragma solidity 0.8.25;
 import {Test} from "forge-std/Test.sol";
 import {RoleManager} from "../src/auth/RoleManager.sol";
 import {RoleManaged} from "../src/auth/RoleManaged.sol";
+import {LibRoleManaged} from "../src/auth/LibRoleManaged.sol";
 import {MockRoleManaged} from "../src/mocks/MockRoleManaged.sol";
 import {OwnableRoles} from "solady/auth/OwnableRoles.sol";
 
@@ -367,7 +368,7 @@ contract RoleManagerTest is Test {
         vm.stopPrank();
 
         vm.startPrank(user);
-        vm.expectRevert(abi.encodeWithSelector(RoleManaged.UnauthorizedRole.selector, user, roleManager.PROTOCOL_ADMIN()));
+        vm.expectRevert(abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, user, roleManager.PROTOCOL_ADMIN()));
         mockRoleManaged.incrementAsProtocolAdmin();
         vm.stopPrank();
     }
@@ -381,7 +382,7 @@ contract RoleManagerTest is Test {
         vm.stopPrank();
 
         vm.startPrank(user);
-        vm.expectRevert(abi.encodeWithSelector(RoleManaged.UnauthorizedRole.selector, user, roleManager.RULES_ADMIN()));
+        vm.expectRevert(abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, user, roleManager.RULES_ADMIN()));
         mockRoleManaged.incrementAsRulesAdmin();
         vm.stopPrank();
     }
@@ -408,7 +409,7 @@ contract RoleManagerTest is Test {
 
         // Unprivileged user cannot access
         vm.startPrank(unprivileged);
-        vm.expectRevert(abi.encodeWithSelector(RoleManaged.UnauthorizedRole.selector, unprivileged, roleManager.STRATEGY_ADMIN() | roleManager.STRATEGY_OPERATOR()));
+        vm.expectRevert(abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, unprivileged, roleManager.STRATEGY_ADMIN() | roleManager.STRATEGY_OPERATOR()));
         mockRoleManaged.incrementAsStrategyRole();
         vm.stopPrank();
     }
@@ -422,7 +423,7 @@ contract RoleManagerTest is Test {
         vm.stopPrank();
 
         vm.startPrank(user);
-        vm.expectRevert(abi.encodeWithSelector(RoleManaged.UnauthorizedRole.selector, user, roleManager.KYC_OPERATOR()));
+        vm.expectRevert(abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, user, roleManager.KYC_OPERATOR()));
         mockRoleManaged.incrementAsKycOperator();
         vm.stopPrank();
     }

@@ -15,7 +15,7 @@ import {MockERC20} from "../src/mocks/MockERC20.sol";
  * @notice Concrete implementation of BasicStrategy for testing
  */
 contract TestableBasicStrategy is BasicStrategy {
-    constructor(address _roleManager) BasicStrategy(_roleManager) {}
+    constructor() {}
 
     /**
      * @notice Get the balance of the strategy
@@ -60,12 +60,13 @@ contract BasicStrategyTest is BaseFountfiTest {
         strategyHook = new MockHook(true, "");
 
         // Deploy the strategy
-        strategy = new TestableBasicStrategy(address(roleManager));
+        strategy = new TestableBasicStrategy();
 
         // Initialize the strategy (without hooks)
         strategy.initialize(
             TOKEN_NAME,
             TOKEN_SYMBOL,
+            address(roleManager),
             manager, // 'manager' from BaseFountfiTest.t.sol will be the strategy manager
             address(daiToken),
             18,
@@ -118,6 +119,7 @@ contract BasicStrategyTest is BaseFountfiTest {
         strategy.initialize(
             "New Name",
             "NEW",
+            address(roleManager),
             alice,
             address(daiToken),
             18,
@@ -131,13 +133,14 @@ contract BasicStrategyTest is BaseFountfiTest {
         vm.startPrank(owner);
 
         // Deploy a new strategy to test initialization with invalid params
-        TestableBasicStrategy newStrategy = new TestableBasicStrategy(address(roleManager));
+        TestableBasicStrategy newStrategy = new TestableBasicStrategy();
 
         // Test zero address for manager
         vm.expectRevert(IStrategy.InvalidAddress.selector);
         newStrategy.initialize(
             TOKEN_NAME,
             TOKEN_SYMBOL,
+            address(roleManager),
             address(0),
             address(daiToken),
             18,
@@ -149,6 +152,7 @@ contract BasicStrategyTest is BaseFountfiTest {
         newStrategy.initialize(
             TOKEN_NAME,
             TOKEN_SYMBOL,
+            address(roleManager),
             manager,
             address(0),
             18,

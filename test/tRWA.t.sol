@@ -62,10 +62,11 @@ contract TRWATest is BaseFountfiTest {
         vm.startPrank(owner);
 
         // Deploy a fresh strategy (initially without hooks)
-        strategy = new MockStrategy(owner);
+        strategy = new MockStrategy();
         strategy.initialize(
             "Tokenized RWA",
             "tRWA",
+            owner,
             manager,
             address(usdc),
             6, // assetDecimals
@@ -496,10 +497,11 @@ contract TRWATest is BaseFountfiTest {
 
         // Create a new token with no hooks
         vm.startPrank(owner);
-        MockStrategy newStrategy = new MockStrategy(owner);
+        MockStrategy newStrategy = new MockStrategy();
         newStrategy.initialize(
             "Test RWA",
             "tTEST",
+            owner,
             manager,
             address(usdc),
             6,

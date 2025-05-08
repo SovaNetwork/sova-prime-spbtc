@@ -50,13 +50,14 @@ contract ReportedStrategyTest is BaseFountfiTest {
         reporter = new MockReporter(INITIAL_NAV);
 
         // Deploy the strategy
-        strategy = new ReportedStrategy(address(roleManager));
+        strategy = new ReportedStrategy();
 
         // Initialize the strategy
         bytes memory initData = abi.encode(address(reporter));
         strategy.initialize(
             TOKEN_NAME,
             TOKEN_SYMBOL,
+            address(roleManager),
             manager,
             address(daiToken),
             18,
@@ -93,7 +94,7 @@ contract ReportedStrategyTest is BaseFountfiTest {
         vm.startPrank(owner);
 
         // Deploy a new strategy to test initialization with invalid reporter
-        ReportedStrategy newStrategy = new ReportedStrategy(address(roleManager));
+        ReportedStrategy newStrategy = new ReportedStrategy();
 
         // Create init data with address(0) reporter
         bytes memory invalidInitData = abi.encode(address(0));
@@ -103,6 +104,7 @@ contract ReportedStrategyTest is BaseFountfiTest {
         newStrategy.initialize(
             TOKEN_NAME,
             TOKEN_SYMBOL,
+            address(roleManager),
             manager,
             address(daiToken),
             18,

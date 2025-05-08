@@ -6,8 +6,8 @@ import {RulesEngine} from "../src/hooks/RulesEngine.sol";
 import {MockHook} from "../src/mocks/MockHook.sol";
 import {RoleManager} from "../src/auth/RoleManager.sol";
 import {IHook} from "../src/hooks/IHook.sol";
-
 import {RoleManaged} from "../src/auth/RoleManaged.sol";
+import {LibRoleManaged} from "../src/auth/LibRoleManaged.sol";
 
 /**
  * @title CustomMockHook
@@ -487,7 +487,7 @@ contract RulesEngineTests is BaseFountfiTest {
         vm.startPrank(alice); // Alice does not have RULES_ADMIN
 
         // Expect revert due to unauthorized access
-        vm.expectRevert(abi.encodeWithSelector(RoleManaged.UnauthorizedRole.selector, alice, roleManager.RULES_ADMIN()));
+        vm.expectRevert(abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, alice, roleManager.RULES_ADMIN()));
         rulesEngine.addHook(address(allowHook), 0); // Use priority 0
 
         vm.stopPrank();
@@ -536,7 +536,7 @@ contract RulesEngineTests is BaseFountfiTest {
 
         vm.startPrank(alice); // Alice does not have RULES_ADMIN
         // Expect revert due to unauthorized access
-        vm.expectRevert(abi.encodeWithSelector(RoleManaged.UnauthorizedRole.selector, alice, roleManager.RULES_ADMIN()));
+        vm.expectRevert(abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, alice, roleManager.RULES_ADMIN()));
         rulesEngine.removeHook(addedHookId); // Call with hookId
         vm.stopPrank();
     }

@@ -70,7 +70,7 @@ abstract contract BaseFountfiTest is Test {
         // Deploy mocks
         mockHook = new MockHook(true, "Mock rejection");
         mockReporter = new MockReporter(1000 * 10**6); // 1000 USDC initial value
-        mockStrategy = new MockStrategy(owner);
+        mockStrategy = new MockStrategy();
 
         // Deploy Registry with the owner as role manager
         registry = new Registry(owner);
@@ -96,12 +96,13 @@ abstract contract BaseFountfiTest is Test {
 
         // Deploy a new strategy
         vm.prank(owner);
-        MockStrategy strategy = new MockStrategy(owner);
+        MockStrategy strategy = new MockStrategy();
 
         vm.prank(owner);
         strategy.initialize(
             name,
             symbol,
+            owner, // roleManager
             manager,
             address(usdc),
             6,
@@ -175,7 +176,7 @@ abstract contract BaseFountfiTest is Test {
         reporter = new MockReporter(1000 * 10**6);
 
         // Setup an implementation of MockStrategy
-        MockStrategy strategyImpl = new MockStrategy(owner);
+        MockStrategy strategyImpl = new MockStrategy();
         registry.setStrategy(address(strategyImpl), true);
 
         // Deploy via registry
