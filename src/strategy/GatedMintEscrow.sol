@@ -2,14 +2,14 @@
 pragma solidity ^0.8.25;
 
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
-import {GatedMintRWA} from "./GatedMintRWA.sol";
+import {GatedMintRWA} from "../token/GatedMintRWA.sol";
 
 /**
- * @title Escrow
+ * @title GatedMintEscrow
  * @notice Contract to hold assets during the two-phase deposit process
  * @dev Deployed alongside each GatedMintRWA token to manage pending deposits
  */
-contract Escrow {
+contract GatedMintEscrow {
     // Custom errors
     error Unauthorized();
     error DepositNotFound();

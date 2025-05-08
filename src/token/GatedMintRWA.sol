@@ -7,7 +7,7 @@ import {IHook} from "../hooks/IHook.sol";
 import {IRegistry} from "../registry/IRegistry.sol";
 import {RoleManaged} from "../auth/RoleManaged.sol";
 import {Conduit} from "../conduit/Conduit.sol";
-import {Escrow} from "./Escrow.sol";
+import {GatedMintEscrow} from "../strategy/GatedMintEscrow.sol";
 
 /**
  * @title GatedMintRWA
@@ -48,8 +48,8 @@ contract GatedMintRWA is tRWA {
         uint8 assetDecimals_,
         address strategy_
     ) tRWA(name_, symbol_, asset_, assetDecimals_, strategy_) {
-        // Deploy the Escrow contract with this token as the controller
-        escrow = address(new Escrow(address(this), asset_, strategy_));
+        // Deploy the GatedMintEscrow contract with this token as the controller
+        escrow = address(new GatedMintEscrow(address(this), asset_, strategy_));
     }
 
     /**
@@ -107,7 +107,7 @@ contract GatedMintRWA is tRWA {
 
         // Register the deposit with the escrow
         uint256 expTime = block.timestamp + depositExpirationPeriod;
-        Escrow(escrow).receiveDeposit(depositId, by, to, assets, expTime);
+        GatedMintEscrow(escrow).receiveDeposit(depositId, by, to, assets, expTime);
 
         // Emit a custom event for the pending deposit
         emit DepositPending(depositId, by, to, assets);
@@ -176,7 +176,7 @@ contract GatedMintRWA is tRWA {
         uint256 expirationTime,
         uint8 state
     ) {
-        Escrow.PendingDeposit memory deposit = Escrow(escrow).getPendingDeposit(depositId);
+        GatedMintEscrow.PendingDeposit memory deposit = GatedMintEscrow(escrow).getPendingDeposit(depositId);
         return (
             deposit.depositor,
             deposit.recipient,
