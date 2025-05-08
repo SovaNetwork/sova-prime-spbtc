@@ -19,6 +19,7 @@ contract GatedMintRWA is tRWA {
     error NotEscrow();
     error EscrowNotSet();
     error InvalidExpirationPeriod();
+    error InvalidArrayLengths();
 
     // Deposit tracking (IDs only - Escrow has full state)
     bytes32[] public depositIds;
@@ -40,6 +41,12 @@ contract GatedMintRWA is tRWA {
     );
 
     event DepositExpirationPeriodUpdated(uint256 oldPeriod, uint256 newPeriod);
+
+    event BatchSharesMinted(
+        bytes32[] depositIds,
+        uint256 totalAssets,
+        uint256 totalShares
+    );
 
     constructor(
         string memory name_,
@@ -127,6 +134,43 @@ contract GatedMintRWA is tRWA {
 
         // Mint shares to the recipient
         _mint(recipient, shares);
+    }
+
+    /**
+     * @notice Mint shares for a batch of accepted deposits with equal share pricing
+     * @param ids Array of deposit IDs being processed in this batch
+     * @param recipients Array of recipient addresses aligned with ids
+     * @param assetAmounts Array of asset amounts aligned with ids
+     * @param totalAssets Total assets in the batch (sum of assetAmounts)
+     */
+    function batchMintShares(
+        bytes32[] calldata ids,
+        address[] calldata recipients,
+        uint256[] calldata assetAmounts,
+        uint256 totalAssets
+    ) external {
+        // Only escrow can call this
+        if (msg.sender != escrow) revert NotEscrow();
+
+        // Validate array lengths match
+        if (ids.length != recipients.length || recipients.length != assetAmounts.length) {
+            revert InvalidArrayLengths();
+        }
+
+        // Calculate total shares based on the sum of all assets in the batch
+        // This ensures all deposits get the same exchange rate
+        uint256 totalShares = previewDeposit(totalAssets);
+
+        // Distribute shares proportionally to each recipient based on their contribution
+        for (uint256 i = 0; i < recipients.length; i++) {
+            // Calculate this recipient's share of the total
+            uint256 recipientShares = (assetAmounts[i] * totalShares) / totalAssets;
+
+            // Mint shares to the recipient
+            _mint(recipients[i], recipientShares);
+        }
+
+        emit BatchSharesMinted(depositIds, totalAssets, totalShares);
     }
 
     /**

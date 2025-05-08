@@ -15,6 +15,8 @@ contract GatedMintEscrow {
     error DepositNotFound();
     error DepositNotPending();
     error InvalidAddress();
+    error InvalidArrayLengths();
+    error BatchFailed();
 
     // Enum to track the deposit state
     enum DepositState {
@@ -54,6 +56,7 @@ contract GatedMintEscrow {
     event DepositAccepted(bytes32 indexed depositId, address indexed recipient, uint256 assets);
     event DepositRefunded(bytes32 indexed depositId, address indexed depositor, uint256 assets);
     event DepositReclaimed(bytes32 indexed depositId, address indexed depositor, uint256 assets);
+    event BatchDepositsAccepted(bytes32[] depositIds, uint256 totalAssets);
 
     /**
      * @notice Constructor
@@ -135,6 +138,63 @@ contract GatedMintEscrow {
         GatedMintRWA(token).mintShares(deposit.recipient, deposit.assetAmount);
 
         emit DepositAccepted(depositId, deposit.recipient, deposit.assetAmount);
+    }
+    
+    /**
+     * @notice Accept multiple pending deposits as a batch with equal share accounting
+     * @param depositIds Array of deposit IDs to accept
+     */
+    function batchAcceptDeposits(bytes32[] calldata depositIds) external {
+        // Only strategy can call this function
+        if (msg.sender != strategy) revert Unauthorized();
+        
+        // Skip empty arrays
+        if (depositIds.length == 0) return;
+        
+        uint256 totalBatchAssets = 0;
+        address[] memory recipients = new address[](depositIds.length);
+        uint256[] memory assetAmounts = new uint256[](depositIds.length);
+        
+        // First pass: validate all deposits and collect information
+        for (uint256 i = 0; i < depositIds.length; i++) {
+            bytes32 depositId = depositIds[i];
+            PendingDeposit storage deposit = pendingDeposits[depositId];
+            
+            // Validate deposit
+            if (deposit.depositor == address(0)) revert DepositNotFound();
+            if (deposit.state != DepositState.PENDING) revert DepositNotPending();
+            
+            // Accumulate total assets and store recipient and asset amount
+            totalBatchAssets += deposit.assetAmount;
+            recipients[i] = deposit.recipient;
+            assetAmounts[i] = deposit.assetAmount;
+        }
+        
+        // Second pass: update states and accounting
+        for (uint256 i = 0; i < depositIds.length; i++) {
+            bytes32 depositId = depositIds[i];
+            PendingDeposit storage deposit = pendingDeposits[depositId];
+            
+            // Mark as accepted
+            deposit.state = DepositState.ACCEPTED;
+            
+            // Update accounting
+            totalPendingAssets -= deposit.assetAmount;
+            userPendingAssets[deposit.depositor] -= deposit.assetAmount;
+        }
+        
+        // Transfer all assets to the strategy in one transaction
+        SafeTransferLib.safeTransfer(asset, strategy, totalBatchAssets);
+        
+        // Tell the GatedMintRWA token to mint shares for all deposits with equal treatment
+        GatedMintRWA(token).batchMintShares(
+            depositIds,
+            recipients,
+            assetAmounts,
+            totalBatchAssets
+        );
+        
+        emit BatchDepositsAccepted(depositIds, totalBatchAssets);
     }
 
     /**
