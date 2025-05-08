@@ -9,10 +9,6 @@ import {tRWA} from "../token/tRWA.sol";
  * @notice A simple strategy implementation for testing
  */
 contract MockStrategy is IStrategy {
-    constructor(address _roleManager) {
-        _roleManager = _roleManager;
-    }
-
     address public manager;
     address public asset;
     address public sToken;
@@ -26,6 +22,7 @@ contract MockStrategy is IStrategy {
      * @notice Initialize the strategy
      * @param name_ Name of the token
      * @param symbol_ Symbol of the token
+     * @param roleManager_ Address of the role manager
      * @param manager_ Address of the manager
      * @param asset_ Address of the underlying asset
      * @param assetDecimals_ Number of decimals of the asset
@@ -33,6 +30,7 @@ contract MockStrategy is IStrategy {
     function initialize(
         string calldata name_,
         string calldata symbol_,
+        address roleManager_,
         address manager_,
         address asset_,
         uint8 assetDecimals_,
@@ -43,7 +41,7 @@ contract MockStrategy is IStrategy {
 
         if (manager_ == address(0)) revert InvalidAddress();
         if (asset_ == address(0)) revert InvalidAddress();
-
+        if (roleManager_ == address(0)) revert InvalidAddress();
         // Deploy token with no hooks initially
         sToken = address(new tRWA(name_, symbol_, asset_, assetDecimals_, address(this)));
 

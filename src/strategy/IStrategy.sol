@@ -29,6 +29,7 @@ interface IStrategy {
     function initialize(
         string calldata name,
         string calldata symbol,
+        address roleManager,
         address manager,
         address asset,
         uint8 assetDecimals,

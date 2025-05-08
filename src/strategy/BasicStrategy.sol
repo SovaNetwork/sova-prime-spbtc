@@ -5,7 +5,7 @@ import {ERC20} from "solady/tokens/ERC20.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {IStrategy} from "./IStrategy.sol";
 import {tRWA} from "../token/tRWA.sol";
-import {RoleManaged} from "../auth/RoleManaged.sol";
+import {CloneableRoleManaged} from "../auth/CloneableRoleManaged.sol";
 
 /**
  * @title BasicStrategy
@@ -14,14 +14,14 @@ import {RoleManaged} from "../auth/RoleManaged.sol";
  *
  * Consider for future: Making BasicStrategy an ERC4337-compatible smart account
  */
-abstract contract BasicStrategy is IStrategy, RoleManaged {
+abstract contract BasicStrategy is IStrategy, CloneableRoleManaged {
     using SafeTransferLib for address;
 
     /*//////////////////////////////////////////////////////////////
                             STATE
     //////////////////////////////////////////////////////////////*/
 
-    // The registry field is inherited from RoleManaged
+    // The registry field is inherited from CloneableRoleManaged
     address public manager;
     address public asset;
     address public sToken;
@@ -36,19 +36,18 @@ abstract contract BasicStrategy is IStrategy, RoleManaged {
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * @notice Initialize the strategy implementation
-     * @dev Empty constructor for implementation contract
-     */
-    constructor(address _roleManager) RoleManaged(_roleManager) {}
-
-    /**
      * @notice Initialize the strategy
+     * @param name_ Name of the token
+     * @param symbol_ Symbol of the token
+     * @param roleManager_ Address of the role manager
      * @param manager_ Address of the manager
      * @param asset_ Address of the underlying asset
+     * @param assetDecimals_ Decimals of the asset
      */
     function initialize(
         string calldata name_,
         string calldata symbol_,
+        address roleManager_,
         address manager_,
         address asset_,
         uint8 assetDecimals_,
@@ -65,6 +64,7 @@ abstract contract BasicStrategy is IStrategy, RoleManaged {
         // Unlike other protocol roles, only a single manager is allowed
         manager = manager_;
         asset = asset_;
+        _initializeRoleManager(roleManager_);
 
         tRWA newToken = new tRWA(
             name_,

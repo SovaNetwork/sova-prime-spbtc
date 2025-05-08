@@ -10,14 +10,10 @@ import {BaseReporter} from "../reporter/BaseReporter.sol";
  */
 contract GatedMintReportedStrategy is ReportedStrategy {
     /**
-     * @notice Initialize the strategy implementation
-     */
-    constructor(address _roleManager) ReportedStrategy(_roleManager) {}
-
-    /**
      * @notice Initialize the strategy with GatedMintRWA token
      * @param name_ Name of the token
      * @param symbol_ Symbol of the token
+     * @param roleManager_ Address of the role manager
      * @param manager_ Address of the manager
      * @param asset_ Address of the underlying asset
      * @param assetDecimals_ Decimals of the asset
@@ -26,6 +22,7 @@ contract GatedMintReportedStrategy is ReportedStrategy {
     function initialize(
         string calldata name_,
         string calldata symbol_,
+        address roleManager_,
         address manager_,
         address asset_,
         uint8 assetDecimals_,
@@ -42,6 +39,7 @@ contract GatedMintReportedStrategy is ReportedStrategy {
         // Set up strategy configuration
         manager = manager_;
         asset = asset_;
+        _initializeRoleManager(roleManager_);
 
         // Deploy GatedMintRWA token
         GatedMintRWA newToken = new GatedMintRWA(

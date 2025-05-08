@@ -102,6 +102,7 @@ contract Registry is IRegistry, RoleManaged {
         IStrategy(strategy).initialize(
             _name,
             _symbol,
+            address(roleManager),
             _manager,
             _asset,
             _assetDecimals,

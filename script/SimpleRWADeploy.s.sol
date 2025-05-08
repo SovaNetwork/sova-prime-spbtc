@@ -101,7 +101,7 @@ contract SimpleRWADeployScript is Script {
         console.log("Price Oracle Reporter deployed.");
 
         // Deploy ReportedStrategy implementation to be used as a template
-        strategyImplementation = new ReportedStrategy(address(roleManager));
+        strategyImplementation = new ReportedStrategy();
         console.log("ReportedStrategy implementation deployed.");
 
         // Register the strategy implementation in the registry
