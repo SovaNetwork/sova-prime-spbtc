@@ -56,23 +56,6 @@ contract GatedMintRWA is tRWA {
     event DepositReclaimed(bytes32 indexed depositId, address indexed depositor, uint256 assets);
     event DepositExpirationPeriodUpdated(uint256 oldPeriod, uint256 newPeriod);
 
-    /**
-     * @notice Contract constructor
-     * @param name_ Token name
-     * @param symbol_ Token symbol
-     * @param asset_ Asset address
-     * @param assetDecimals_ Decimals of the asset token
-     * @param strategy_ Strategy address
-     */
-    constructor(
-        string memory name_,
-        string memory symbol_,
-        address asset_,
-        uint8 assetDecimals_,
-        address strategy_
-    ) tRWA(name_, symbol_, asset_, assetDecimals_, strategy_) {
-        // depositExpirationPeriod initialized with default value (7 days)
-    }
 
     /**
      * @notice Sets the period after which deposits expire and can be reclaimed
@@ -114,7 +97,14 @@ contract GatedMintRWA is tRWA {
         ).collectDeposit(asset(), by, address(this), assets);
 
         // Instead of minting, store deposit information
-        bytes32 depositId = _generateDepositId(by, to, assets);
+        bytes32 depositId = keccak256(abi.encodePacked(
+            by,
+            to,
+            assets,
+            block.timestamp,
+            address(this)
+        ));
+        
         pendingDeposits[depositId] = PendingDeposit({
             depositor: by,
             recipient: to,
@@ -140,7 +130,7 @@ contract GatedMintRWA is tRWA {
         if (deposit.depositor == address(0)) revert DepositNotFound();
         if (deposit.state != DepositState.PENDING) revert DepositNotPending();
 
-        _processDeposit(depositId, DepositState.ACCEPTED);
+        deposit.state = DepositState.ACCEPTED;
 
         // Transfer the assets to the strategy
         SafeTransferLib.safeTransfer(asset(), strategy, deposit.assetAmount);
@@ -165,7 +155,7 @@ contract GatedMintRWA is tRWA {
         if (deposit.depositor == address(0)) revert DepositNotFound();
         if (deposit.state != DepositState.PENDING) revert DepositNotPending();
 
-        _processDeposit(depositId, DepositState.REFUNDED);
+        deposit.state = DepositState.REFUNDED;
 
         // Return assets to the depositor
         SafeTransferLib.safeTransfer(asset(), deposit.depositor, deposit.assetAmount);
@@ -183,10 +173,10 @@ contract GatedMintRWA is tRWA {
         PendingDeposit storage deposit = pendingDeposits[depositId];
         if (deposit.depositor == address(0)) revert DepositNotFound();
         if (deposit.state != DepositState.PENDING) revert DepositNotPending();
-        if (deposit.depositor != msg.sender) revert NotDepositor();
+        if (msg.sender != deposit.depositor) revert NotDepositor();
         if (block.timestamp < deposit.expirationTime) revert DepositNotExpired();
 
-        _processDeposit(depositId, DepositState.REFUNDED);
+        deposit.state = DepositState.REFUNDED;
 
         // Return assets to the depositor
         SafeTransferLib.safeTransfer(asset(), deposit.depositor, deposit.assetAmount);
@@ -226,38 +216,8 @@ contract GatedMintRWA is tRWA {
      * @param depositId The unique identifier of the deposit
      * @return The deposit details
      */
-    function getDepositDetails(bytes32 depositId) external view returns (PendingDeposit memory) {
+    function getPendingDeposit(bytes32 depositId) external view returns (PendingDeposit memory) {
         return pendingDeposits[depositId];
     }
 
-    /**
-     * @notice Generate a unique deposit ID
-     * @param depositor The depositor address
-     * @param recipient The recipient address
-     * @param assets The amount of assets
-     * @return A unique identifier for the deposit
-     */
-    function _generateDepositId(
-        address depositor,
-        address recipient,
-        uint256 assets
-    ) internal view returns (bytes32) {
-        return keccak256(abi.encodePacked(
-            depositor,
-            recipient,
-            assets,
-            block.timestamp,
-            address(this)
-        ));
-    }
-
-    /**
-     * @notice Process deposit status updates
-     * @param depositId The deposit ID to process
-     * @param newState The new state (ACCEPTED or REFUNDED)
-     */
-    function _processDeposit(bytes32 depositId, DepositState newState) internal {
-        PendingDeposit storage deposit = pendingDeposits[depositId];
-        deposit.state = newState;
-    }
 }

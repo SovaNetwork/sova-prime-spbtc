@@ -24,6 +24,17 @@
 - **Documentation**: SPDX license identifier required for all files
 - **Events**: Emit events for important state changes
 
+## Code Change Protocol
+
+  - **STRICT RULE:** NEVER write or modify actual code files unless explicitly instructed with the exact phrase "execute
+  the changes".
+  - When discussing potential changes, only provide design sketches, outlines, and explanations.
+  - For design documents, write to separate `.md` files when requested.
+  - When asked to "sketch" a solution, provide pseudocode, explanatory text, or code snippets within a `.md` file only, not actual implementation files.
+  - Always confirm before implementing any changes with "Should I proceed with executing these changes?"
+  - Remember that even draft implementations should be put in files with extensions like `.draft.sol` or `.sketch.md` to
+  avoid confusion with actual implementation files.
+
 ## Guidelines for Claude
 
 - When fixing tests, try to only change the test files. If it's necessary to update the smart contracts, stop, explain why, and confirm before proceeding.

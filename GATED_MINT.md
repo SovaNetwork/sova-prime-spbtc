@@ -310,6 +310,6 @@ Tests should cover the following scenarios:
 
 2. **Batch Processing**: Enable processing multiple deposits in a single transaction, with all deposits in the batch receiving equal "post-money" share treatment.
 
-3. **Holding Contract**: Move tokens representing pending deposits to a separate holding contract, which strategists can then call to accept deposits.
+3. **Holding Contract**: Move tokens representing pending deposits to a separate holding contract, which strategists can then call to accept
 
 5. **Delegated Reclaiming**: Allow depositors to delegate reclaiming rights to other addresses.
