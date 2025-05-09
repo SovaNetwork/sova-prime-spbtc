@@ -355,12 +355,6 @@ contract TRWATest is BaseFountfiTest {
         MockHook hook2 = new MockHook(true, "");
         bytes32 opDeposit = keccak256("DEPOSIT_OPERATION");
 
-        // First, remove any existing hooks from setup
-        address[] memory currentHooks = token.getHooksForOperation(opDeposit);
-        for (uint i = 0; i < currentHooks.length; i++) {
-            token.removeOperationHook(opDeposit, currentHooks[i]);
-        }
-
         // Add the new hooks
         token.addOperationHook(opDeposit, address(hook1));
         token.addOperationHook(opDeposit, address(hook2));
@@ -384,41 +378,6 @@ contract TRWATest is BaseFountfiTest {
         vm.stopPrank();
 
         // Check deposit succeeded
-        assertGt(shares, 0);
-    }
-
-    function test_RemoveOperationHook() public {
-        vm.startPrank(address(strategy));
-
-        // Create a new hook that rejects operations
-        MockHook rejectHook = new MockHook(false, "Operation rejected");
-
-        // Add the hook to deposit operations
-        token.addOperationHook(token.OP_DEPOSIT(), address(rejectHook));
-
-        // Verify it was added (by checking if a deposit fails)
-        vm.stopPrank();
-
-        vm.startPrank(alice);
-        usdc.approve(address(token), 100);
-        strategy.setBalance(100);
-
-        // This should fail because the hook rejects the operation
-        vm.expectRevert(abi.encodeWithSignature("HookCheckFailed(string)", "Operation rejected"));
-        token.deposit(100, alice);
-        vm.stopPrank();
-
-        // Now remove the hook
-        vm.startPrank(address(strategy));
-        token.removeOperationHook(token.OP_DEPOSIT(), address(rejectHook));
-        vm.stopPrank();
-
-        // Now the deposit should work
-        vm.startPrank(alice);
-        uint256 shares = token.deposit(100, alice);
-        vm.stopPrank();
-
-        // Check deposit succeeded after hook removal
         assertGt(shares, 0);
     }
 

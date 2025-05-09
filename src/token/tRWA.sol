@@ -228,37 +228,6 @@ contract tRWA is ERC4626, ItRWA {
     }
 
     /**
-     * @notice Removes an operation hook.
-     * @dev Callable only by the strategy contract.
-     * @param operationType The type of operation this hook applies to.
-     * @param hookAddressToRemove The address of the hook contract to remove.
-     */
-    function removeOperationHook(bytes32 operationType, address hookAddressToRemove) external onlyStrategy {
-        if (hookAddressToRemove == address(0)) revert HookAddressZero();
-        IHook[] storage opHooks = operationHooks[operationType];
-        uint256 numHooks = opHooks.length;
-        uint256 foundIndex = numHooks; // Use numHooks as a sentinel for not found
-
-        for (uint256 i = 0; i < numHooks; i++) {
-            if (address(opHooks[i]) == hookAddressToRemove) {
-                foundIndex = i;
-                break;
-            }
-        }
-
-        if (foundIndex < numHooks) {
-            // If found, remove it by shifting elements
-            for (uint256 i = foundIndex; i < numHooks - 1; i++) {
-                opHooks[i] = opHooks[i + 1];
-            }
-            opHooks.pop();
-            emit HookRemoved(operationType, hookAddressToRemove);
-        }
-        // Optionally revert if not found, or silently succeed:
-        // else { revert HookNotFound(); }
-    }
-
-    /**
      * @notice Reorders the existing operation hooks for a specific operation type.
      * @dev Callable only by the strategy contract. The newOrderIndices array must be a permutation
      *      of the current hook indices (0 to length-1) for the given operation type.
