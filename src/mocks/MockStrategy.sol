@@ -94,27 +94,6 @@ contract MockStrategy is IStrategy {
     }
 
     /**
-     * @notice Configure the controller for this strategy
-     * @param _controller Controller address
-     */
-    function configureController(address _controller) external {
-        // In a real implementation, this would have proper access control
-
-        // Can only be configured once
-        if (_controllerConfigured) revert AlreadyInitialized();
-
-        // Validate controller address
-        if (_controller == address(0)) revert InvalidAddress();
-
-        controller = _controller;
-        _controllerConfigured = true;
-
-        // Setting controller is now handled internally - removed setController call
-
-        emit ControllerConfigured(_controller);
-    }
-
-    /**
      * @notice Call tRWA token with arbitrary data (for testing)
      * @param data The data to call the token with
      */

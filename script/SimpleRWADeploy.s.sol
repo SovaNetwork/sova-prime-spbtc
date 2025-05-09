@@ -76,7 +76,7 @@ contract SimpleRWADeployScript is Script {
         roleManager.initializeRegistry(address(registry));
 
         // Allow USD token as an asset
-        registry.setAsset(address(usdToken), true);
+        registry.setAsset(address(usdToken), 6);
 
         // Deploy KYC Rules Hook with role manager
         kycRulesHook = new KycRulesHook(address(roleManager));
@@ -133,7 +133,6 @@ contract SimpleRWADeployScript is Script {
             "Fountfi USD Token",      // name
             "fUSDC",                  // symbol
             address(usdToken),
-            6, // assetDecimals
             deployer,                 // Manager of the strategy
             initData
         );

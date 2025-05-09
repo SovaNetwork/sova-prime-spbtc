@@ -40,12 +40,9 @@ contract Conduit is RoleManaged {
         uint256 amount
     ) external returns (bool) {
         if (amount == 0) revert InvalidAmount();
-        if (!IRegistry(registry()).allowedAssets(token)) revert InvalidToken();
+        if (IRegistry(registry()).allowedAssets(token) == 0) revert InvalidToken();
         if (!IRegistry(registry()).isToken(msg.sender)) revert InvalidDestination();
         if (ItRWA(msg.sender).asset() != token) revert UnsupportedAsset();
-
-        // TODO: Possible remove this, based on subscription queue pattern
-        if (!IRegistry(registry()).isToken(to)) revert InvalidDestination();
 
         // The core logic: transfer tokens from 'from' to 'to'.
         // This relies on the user ('from') having previously called approve() on the 'token'

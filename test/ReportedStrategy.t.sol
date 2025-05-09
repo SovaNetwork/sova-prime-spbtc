@@ -165,29 +165,4 @@ contract ReportedStrategyTest is BaseFountfiTest {
 
         vm.stopPrank();
     }
-
-    function test_InheritedFeatures() public {
-        // Test some inherited features from BasicStrategy
-
-        vm.startPrank(manager);
-
-        // Configure the controller
-        strategy.configureController(alice);
-        assertEq(strategy.controller(), alice, "Controller should be set to alice");
-
-        // Try to configure it again (should fail)
-        vm.expectRevert(IStrategy.AlreadyInitialized.selector);
-        strategy.configureController(bob);
-
-        vm.stopPrank();
-
-        // Test other access controls
-        vm.startPrank(alice);
-
-        // Alice is not the manager
-        vm.expectRevert(IStrategy.Unauthorized.selector);
-        strategy.sendETH(bob);
-
-        vm.stopPrank();
-    }
 }

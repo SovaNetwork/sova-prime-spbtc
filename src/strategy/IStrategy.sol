@@ -36,17 +36,12 @@ interface IStrategy {
         bytes memory initData
     ) external;
 
-
     // Role Management
     function manager() external view returns (address);
-    function asset() external view returns (address);
-    function sToken() external view returns (address);
-
     function setManager(address newManager) external;
 
     // Asset Management
+    function asset() external view returns (address);
+    function sToken() external view returns (address);
     function balance() external view returns (uint256);
-
-    // Configure the controller for this strategy
-    function configureController(address controller) external;
 }

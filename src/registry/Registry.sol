@@ -22,7 +22,9 @@ contract Registry is IRegistry, RoleManaged {
     // Registry mappings
     mapping(address => bool) public override allowedStrategies;
     mapping(address => bool) public override allowedHooks;
-    mapping(address => bool) public override allowedAssets;
+
+    /// @notice asset => decimals (0 if not allowed)
+    mapping(address => uint8) public override allowedAssets;
 
     // Deployed contracts registry
     address[] private _allStrategies;
@@ -64,12 +66,12 @@ contract Registry is IRegistry, RoleManaged {
     /**
      * @notice Register an asset
      * @param asset Address of the asset
-     * @param allowed Whether the asset is allowed
+     * @param decimals Decimals of the asset (set 0 to disallow)
      */
-    function setAsset(address asset, bool allowed) external onlyRoles(roleManager.PROTOCOL_ADMIN()) {
+    function setAsset(address asset, uint8 decimals) external onlyRoles(roleManager.PROTOCOL_ADMIN()) {
         if (asset == address(0)) revert ZeroAddress();
-        allowedAssets[asset] = allowed;
-        emit SetAsset(asset, allowed);
+        allowedAssets[asset] = decimals;
+        emit SetAsset(asset, decimals);
     }
 
      /**
@@ -77,7 +79,6 @@ contract Registry is IRegistry, RoleManaged {
      * @param _name Token name
      * @param _symbol Token symbol
      * @param _asset Asset address
-     * @param _assetDecimals Asset decimals
      * @param _manager Manager address for the strategy
      * @param _initData Initialization data
      * @return strategy Address of the deployed strategy
@@ -88,11 +89,10 @@ contract Registry is IRegistry, RoleManaged {
         string memory _name,
         string memory _symbol,
         address _asset,
-        uint8 _assetDecimals,
         address _manager,
         bytes memory _initData
     ) external override onlyRoles(roleManager.STRATEGY_OPERATOR()) returns (address strategy, address token) {
-        if (!allowedAssets[_asset]) revert UnauthorizedAsset();
+        if (allowedAssets[_asset] == 0) revert UnauthorizedAsset();
         if (!allowedStrategies[_implementation]) revert UnauthorizedStrategy();
 
         // Clone the implementation
@@ -105,7 +105,7 @@ contract Registry is IRegistry, RoleManaged {
             address(roleManager),
             _manager,
             _asset,
-            _assetDecimals,
+            allowedAssets[_asset],
             _initData
         );
 

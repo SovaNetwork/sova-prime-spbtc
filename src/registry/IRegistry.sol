@@ -5,7 +5,7 @@ interface IRegistry {
     // Events
     event SetStrategy(address indexed implementation, bool allowed);
     event SetHook(address indexed implementation, bool allowed);
-    event SetAsset(address indexed asset, bool allowed);
+    event SetAsset(address indexed asset, uint8 decimals);
     event Deploy(address indexed strategy, address indexed sToken, address indexed asset);
     event DeployWithController(address indexed strategy, address indexed sToken, address indexed controller);
 
@@ -20,7 +20,7 @@ interface IRegistry {
 
     function allowedStrategies(address implementation) external view returns (bool);
     function allowedHooks(address implementation) external view returns (bool);
-    function allowedAssets(address asset) external view returns (bool);
+    function allowedAssets(address asset) external view returns (uint8);
 
     function isStrategy(address implementation) external view returns (bool);
     function allStrategies() external view returns (address[] memory);
@@ -32,7 +32,6 @@ interface IRegistry {
         string memory _name,
         string memory _symbol,
         address _asset,
-        uint8 _assetDecimals,
         address _manager,
         bytes memory _initData
     ) external returns (address strategy, address token);

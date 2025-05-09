@@ -152,7 +152,7 @@ abstract contract BaseFountfiTest is Test {
         vm.startPrank(owner);
 
         // Setup Registry
-        registry.setAsset(address(usdc), true);
+        registry.setAsset(address(usdc), 6);
 
         // Deploy real RoleManager
         RoleManager roleManager = new RoleManager();
@@ -184,7 +184,6 @@ abstract contract BaseFountfiTest is Test {
             "Test RWA",
             "TRWA",
             address(usdc),
-            6,
             manager,
             ""
         );

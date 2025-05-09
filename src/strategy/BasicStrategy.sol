@@ -195,26 +195,6 @@ abstract contract BasicStrategy is IStrategy, CloneableRoleManaged {
         (success, returnData) = target.delegatecall(data);
     }
 
-    /**
-     * @notice Configure the subscription controller for this strategy
-     * @param _controller Controller address
-     */
-    function configureController(address _controller) external {
-        // Only callable by the manager - in production this would be the registry
-        if (msg.sender != manager) revert Unauthorized();
-        // Can only be configured once
-        if (_controllerConfigured) revert AlreadyInitialized();
-        // Validate controller address
-        if (_controller == address(0)) revert InvalidAddress();
-
-        controller = _controller;
-        _controllerConfigured = true;
-
-        // Setting controller is now handled internally - removed setController call
-
-        emit ControllerConfigured(_controller);
-    }
-
     /*//////////////////////////////////////////////////////////////
                             MODIFIERS
     //////////////////////////////////////////////////////////////*/
