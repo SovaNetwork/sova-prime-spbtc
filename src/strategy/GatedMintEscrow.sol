@@ -29,7 +29,8 @@ contract GatedMintEscrow {
         address depositor;      // Address that initiated the deposit
         address recipient;      // Address that will receive shares if approved
         uint256 assetAmount;    // Amount of assets deposited
-        uint256 expirationTime; // Timestamp after which deposit can be reclaimed
+        uint96 expirationTime; // Timestamp after which deposit can be reclaimed
+        uint96 atRound;         // Round number at which the deposit was received
         DepositState state;     // Current state of the deposit
     }
 
@@ -45,6 +46,9 @@ contract GatedMintEscrow {
     uint256 public totalPendingAssets;
     mapping(address => uint256) public userPendingAssets;
 
+    // Tracking of batch acceptances
+    uint96 public currentRound;
+
     // Events
     event DepositReceived(
         bytes32 indexed depositId,
@@ -53,6 +57,7 @@ contract GatedMintEscrow {
         uint256 assets,
         uint256 expirationTime
     );
+
     event DepositAccepted(bytes32 indexed depositId, address indexed recipient, uint256 assets);
     event DepositRefunded(bytes32 indexed depositId, address indexed depositor, uint256 assets);
     event DepositReclaimed(bytes32 indexed depositId, address indexed depositor, uint256 assets);
@@ -102,8 +107,9 @@ contract GatedMintEscrow {
             depositor: depositor,
             recipient: recipient,
             assetAmount: amount,
-            expirationTime: expirationTime,
-            state: DepositState.PENDING
+            expirationTime: uint96(expirationTime),
+            state: DepositState.PENDING,
+            atRound: currentRound
         });
 
         // Update accounting
@@ -131,6 +137,9 @@ contract GatedMintEscrow {
         // Update accounting
         totalPendingAssets -= deposit.assetAmount;
         userPendingAssets[deposit.depositor] -= deposit.assetAmount;
+
+        // Increment the round number, even for a single deposit
+        currentRound++;
 
         // Transfer assets to the strategy
         SafeTransferLib.safeTransfer(asset, strategy, deposit.assetAmount);
@@ -178,6 +187,9 @@ contract GatedMintEscrow {
         }
 
         totalPendingAssets -= totalBatchAssets;
+
+        // Increment the round number
+        currentRound++;
 
         // Transfer all assets to the strategy in one transaction
         SafeTransferLib.safeTransfer(asset, strategy, totalBatchAssets);
@@ -268,7 +280,12 @@ contract GatedMintEscrow {
         if (deposit.depositor == address(0)) revert DepositNotFound();
         if (deposit.state != DepositState.PENDING) revert DepositNotPending();
         if (msg.sender != deposit.depositor) revert Unauthorized();
-        if (block.timestamp < deposit.expirationTime) revert Unauthorized();
+
+        // Allow reclamation if round has passed without acceptance
+        if (
+            block.timestamp < deposit.expirationTime &&
+            deposit.atRound == currentRound
+        ) revert Unauthorized();
 
         // Mark as refunded
         deposit.state = DepositState.REFUNDED;
