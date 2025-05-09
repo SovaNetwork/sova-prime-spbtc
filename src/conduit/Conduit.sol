@@ -41,7 +41,7 @@ contract Conduit is RoleManaged {
     ) external returns (bool) {
         if (amount == 0) revert InvalidAmount();
         if (IRegistry(registry()).allowedAssets(token) == 0) revert InvalidToken();
-        if (!IRegistry(registry()).isToken(msg.sender)) revert InvalidDestination();
+        if (!IRegistry(registry()).isStrategyToken(msg.sender)) revert InvalidDestination();
         if (ItRWA(msg.sender).asset() != token) revert UnsupportedAsset();
 
         // The core logic: transfer tokens from 'from' to 'to'.

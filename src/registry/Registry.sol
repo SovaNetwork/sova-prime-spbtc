@@ -126,7 +126,7 @@ contract Registry is IRegistry, RoleManaged {
      * @param token Address of the token
      * @return bool True if the token is a tRWA token, false otherwise
      */
-    function isToken(address token) external view override returns (bool) {
+    function isStrategyToken(address token) external view override returns (bool) {
         ItRWA tokenContract = ItRWA(token);
         address strategy = address(tokenContract.strategy());
 
@@ -137,7 +137,7 @@ contract Registry is IRegistry, RoleManaged {
      * @notice Get all tRWA tokens
      * @return tokens Array of tRWA token addresses
      */
-    function allTokens() external view override returns (address[] memory tokens) {
+    function allStrategyTokens() external view override returns (address[] memory tokens) {
         tokens = new address[](_allStrategies.length);
 
         for (uint256 i = 0; i < _allStrategies.length; i++) {

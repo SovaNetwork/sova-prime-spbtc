@@ -24,8 +24,8 @@ interface IRegistry {
 
     function isStrategy(address implementation) external view returns (bool);
     function allStrategies() external view returns (address[] memory);
-    function isToken(address token) external view returns (bool);
-    function allTokens() external view returns (address[] memory tokens);
+    function isStrategyToken(address token) external view returns (bool);
+    function allStrategyTokens() external view returns (address[] memory tokens);
 
     function deploy(
         address _implementation,
