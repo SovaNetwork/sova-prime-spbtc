@@ -114,7 +114,7 @@ contract GatedMintRWA is tRWA {
 
         // Register the deposit with the escrow
         uint256 expTime = block.timestamp + depositExpirationPeriod;
-        GatedMintEscrow(escrow).receiveDeposit(depositId, by, to, assets, expTime);
+        GatedMintEscrow(escrow).handleDepositReceived(depositId, by, to, assets, expTime);
 
         // Emit a custom event for the pending deposit
         emit DepositPending(depositId, by, to, assets);

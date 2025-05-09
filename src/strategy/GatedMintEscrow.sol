@@ -87,7 +87,7 @@ contract GatedMintEscrow {
      * @param amount Amount of assets deposited
      * @param expirationTime Time after which deposit can be reclaimed
      */
-    function receiveDeposit(
+    function handleDepositReceived(
         bytes32 depositId,
         address depositor,
         address recipient,
