@@ -75,7 +75,8 @@ contract Registry is IRegistry, RoleManaged {
     }
 
      /**
-     * @notice Deploy a new ReportedStrategy and its associated tRWA token
+     * @notice Deploy a new strategy and its associated tRWA token
+     * @param _strategyImpl Address of the strategy implementation
      * @param _name Token name
      * @param _symbol Token symbol
      * @param _asset Asset address
@@ -85,7 +86,7 @@ contract Registry is IRegistry, RoleManaged {
      * @return token Address of the deployed tRWA token
      */
     function deploy(
-        address _implementation,
+        address _strategyImpl,
         string memory _name,
         string memory _symbol,
         address _asset,
@@ -93,10 +94,10 @@ contract Registry is IRegistry, RoleManaged {
         bytes memory _initData
     ) external override onlyRoles(roleManager.STRATEGY_OPERATOR()) returns (address strategy, address token) {
         if (allowedAssets[_asset] == 0) revert UnauthorizedAsset();
-        if (!allowedStrategies[_implementation]) revert UnauthorizedStrategy();
+        if (!allowedStrategies[_strategyImpl]) revert UnauthorizedStrategy();
 
         // Clone the implementation
-        strategy = _implementation.clone();
+        strategy = _strategyImpl.clone();
 
         // Initialize the strategy
         IStrategy(strategy).initialize(
