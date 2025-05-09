@@ -2,6 +2,29 @@
 
 Fountfi is a protocol for tokenizing Real World Assets (RWA) on-chain, providing a secure and compliant framework for bringing traditional finance assets into DeFi.
 
+## Key Terms and Concepts
+
+- **tRWA (Tokenized Real World Asset)**: An ERC4626-compatible token that represents ownership shares in an underlying real-world asset strategy.
+
+- **Strategy**: A contract that manages underlying assets and deploys its own tRWA token. Strategies implement different investment approaches for the underlying assets.
+
+- **Registry**: The central hub of the protocol that manages all component registrations and deployments, ensuring only authorized components can interact.
+
+- **Conduit**: A security contract that manages all asset transfers between users and the protocol, providing a layer of protection for token movements.
+
+- **Hook**: A pluggable validation component that enforces rules before token operations (deposits, withdrawals, transfers). Hooks enable extensible compliance mechanisms.
+
+- **Rules Engine**: A special type of hook that coordinates multiple sub-hooks, allowing complex validation logic to be composed from simpler rules.
+
+- **Reporter**: An oracle contract that provides asset valuations to the protocol, enabling accurate share pricing.
+
+- **GatedMint**: A two-phase deposit mechanism where assets are held in escrow pending explicit approval, allowing for issuer control over flow of funds and timing of acceptance.
+
+- **Deposit Escrow**: A contract that temporarily holds assets during the two-phase deposit process until they are either accepted or refunded.
+
+- **Withdrawal Queue**: A mechanism for managing withdrawals from illiquid assets, allowing for orderly processing of redemption requests.
+
+
 ## Protocol Overview
 
 The Fountfi protocol enables:
@@ -920,18 +943,6 @@ forge snapshot
 ```bash
 forge script script/SimpleRWADeploy.s.sol:SimpleRWADeployScript --rpc-url <your_rpc_url> --private-key <your_private_key> --broadcast
 ```
-
-## Contract Addresses
-
-When deploying to various networks, the protocol deploys the following components:
-
-### Ethereum Mainnet
-- Registry: Not yet deployed
-- RoleManager: Not yet deployed
-
-### Goerli Testnet
-- Registry: Not yet deployed
-- RoleManager: Not yet deployed
 
 ## License
 
