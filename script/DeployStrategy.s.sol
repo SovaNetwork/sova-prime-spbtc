@@ -14,44 +14,38 @@ contract DeployStrategyScript is Script {
     MockERC20 public usdToken;
     PriceOracleReporter public priceOracle;
     address public strategyImplementation;
-    
+
     // Deployment results
     address public strategy;
     address public token;
 
     function setUp() public {
-        // Load deployed addresses from latest.json broadcast
-        string memory root = vm.projectRoot();
-        string memory path = string.concat(root, "/broadcast/DeployProtocol.s.sol/run-latest.json");
-        string memory json = vm.readFile(path);
-        
+        // // Load deployed addresses from latest.json broadcast
+        // string memory root = vm.projectRoot();
+        // string memory path = string.concat(root, "/broadcast/DeployProtocol.s.sol/120893/run-latest.json");
+        // string memory json = vm.readFile(path);
+
         // Parse addresses from the JSON file
-        address registryAddress = abi.decode(vm.parseJson(json, ".transactions[?(@.contractName=='Registry')].contractAddress"), (address));
-        address usdTokenAddress = abi.decode(vm.parseJson(json, ".transactions[?(@.contractName=='MockERC20')].contractAddress"), (address));
-        address priceOracleAddress = abi.decode(vm.parseJson(json, ".transactions[?(@.contractName=='PriceOracleReporter')].contractAddress"), (address));
-        
+        address registryAddress = 0x9D9f34369AaC65f1506D57a0Ce57757C2821429f;
+        address usdTokenAddress = 0x0864c69458072126424029192f0250a123C6a10C;
+        address priceOracleAddress = 0x42A54c50e941f438d85bDdf4216666fB6876aB18;
+
         // Initialize contract references
         registry = Registry(registryAddress);
         usdToken = MockERC20(usdTokenAddress);
         priceOracle = PriceOracleReporter(priceOracleAddress);
-        
+
         // Determine which strategy implementation to use based on environment variable
         string memory strategyType = vm.envOr("STRATEGY_TYPE", string("standard"));
-        
+
         if (keccak256(abi.encodePacked(strategyType)) == keccak256(abi.encodePacked("gated"))) {
             // Use GatedMintReportedStrategy
-            address gatedImpl = abi.decode(
-                vm.parseJson(json, ".transactions[?(@.contractName=='GatedMintReportedStrategy')].contractAddress"), 
-                (address)
-            );
+            address gatedImpl = 0x98975467905E1e63cC78B35997de82488100e66e;
             strategyImplementation = gatedImpl;
             console.log("Using GatedMintReportedStrategy implementation");
         } else {
             // Default to standard ReportedStrategy
-            address standardImpl = abi.decode(
-                vm.parseJson(json, ".transactions[?(@.contractName=='ReportedStrategy')].contractAddress"), 
-                (address)
-            );
+            address standardImpl = 0xa8f206F6bC165BbCE0B3346469c1cCEF3d7936f1;
             strategyImplementation = standardImpl;
             console.log("Using ReportedStrategy implementation");
         }
@@ -86,7 +80,7 @@ contract DeployStrategyScript is Script {
             deployer,                 // Manager of the strategy
             initData
         );
-        
+
         console.log("Strategy successfully deployed");
     }
 
