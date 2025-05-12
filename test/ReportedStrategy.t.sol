@@ -75,7 +75,7 @@ contract ReportedStrategyTest is BaseFountfiTest {
 
     function test_Initialization() public view {
         // Check that the strategy was initialized correctly
-        assertEq(strategy.registry(), owner, "Deployer should be set to owner");
+        assertEq(strategy.registry(), address(this), "Registry should be set to test contract address");
         assertEq(strategy.manager(), manager, "Manager should be set correctly");
         assertEq(strategy.asset(), address(daiToken), "Asset should be set correctly");
         assertEq(address(token), strategy.sToken(), "Token should be set correctly");

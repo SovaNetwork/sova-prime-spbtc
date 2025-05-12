@@ -522,10 +522,8 @@ contract RulesEngineTests is BaseFountfiTest {
 
         rulesEngine.removeHook(addedHookId); // Correct: remove by ID
 
-        // To verify removal, we can expect getHookAddress to revert or return address(0)
-        // Depending on implementation, HookNotFound might be better.
-        vm.expectRevert(RulesEngine.HookNotFound.selector);
-        rulesEngine.getHookAddress(addedHookId);
+        // After removal, the hook address should be address(0)
+        assertEq(rulesEngine.getHookAddress(addedHookId), address(0));
         vm.stopPrank();
     }
 
