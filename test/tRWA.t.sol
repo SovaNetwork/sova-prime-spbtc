@@ -8,6 +8,8 @@ import {MockHook} from "../src/mocks/MockHook.sol";
 import {WithdrawQueueMockHook} from "../src/mocks/WithdrawQueueMockHook.sol";
 import {MockStrategy} from "../src/mocks/MockStrategy.sol";
 import {MockRoleManager} from "../src/mocks/MockRoleManager.sol";
+import {MockRegistry} from "../src/mocks/MockRegistry.sol";
+import {MockConduit} from "../src/mocks/MockConduit.sol";
 import {tRWA} from "../src/token/tRWA.sol";
 import {IHook} from "../src/hooks/IHook.sol";
 import {Registry} from "../src/registry/Registry.sol";
@@ -52,6 +54,10 @@ contract TRWATest is BaseFountfiTest {
         return shares;
     }
 
+    // Mock registry and conduit for testing
+    MockRegistry internal mockRegistry;
+    MockConduit internal mockConduit;
+
     function setUp() public override {
         // Call parent setup
         super.setUp();
@@ -60,6 +66,14 @@ contract TRWATest is BaseFountfiTest {
         queueHook = new WithdrawQueueMockHook(true, "Test rejection");
 
         vm.startPrank(owner);
+
+        // Create mock registry and conduit
+        mockRegistry = new MockRegistry();
+        mockConduit = new MockConduit();
+        mockRegistry.setConduit(address(mockConduit));
+
+        // Configure mock registry with USDC as allowed asset
+        mockRegistry.setAsset(address(usdc), 6);
 
         // Deploy a fresh strategy (initially without hooks)
         strategy = new MockStrategy();
@@ -73,6 +87,16 @@ contract TRWATest is BaseFountfiTest {
             ""
         );
 
+        // Mock the registry function in MockStrategy to return our mockRegistry
+        vm.mockCall(
+            address(strategy),
+            abi.encodeWithSelector(bytes4(keccak256("registry()"))),
+            abi.encode(address(mockRegistry))
+        );
+
+        // Register the strategy token in the mock registry
+        mockRegistry.setStrategyToken(strategy.sToken(), true);
+
         // Get the token the strategy created
         token = tRWA(strategy.sToken());
 
@@ -81,7 +105,6 @@ contract TRWATest is BaseFountfiTest {
         strategy.callStrategyToken(
             abi.encodeCall(tRWA.addOperationHook, (opWithdraw, address(queueHook)))
         );
-
 
         // Since we're the owner, we can mint tokens freely
         usdc.mint(alice, 10_000 * 10**6);
@@ -153,21 +176,20 @@ contract TRWATest is BaseFountfiTest {
         // Do a small deposit first to initialize the ERC4626 vault
         vm.startPrank(owner);
         usdc.mint(owner, 1);
+        usdc.approve(address(mockConduit), 1);
         usdc.approve(address(token), 1);
         strategy.setBalance(1);
         token.deposit(1, owner);
         vm.stopPrank();
 
         // Now do a real deposit
-        vm.startPrank(alice);
-
         // Prepare strategy with actual balance
-        vm.stopPrank();
         vm.prank(owner);
         strategy.setBalance(strategy.balance() + INITIAL_DEPOSIT);
 
-        // Deposit as alice
+        // Deposit as alice - approve for conduit and token
         vm.startPrank(alice);
+        usdc.approve(address(mockConduit), INITIAL_DEPOSIT);
         usdc.approve(address(token), INITIAL_DEPOSIT);
         uint256 shares = token.deposit(INITIAL_DEPOSIT, alice);
         vm.stopPrank();
@@ -337,9 +359,20 @@ contract TRWATest is BaseFountfiTest {
         // Verify it was added (by checking if a deposit still works)
         vm.stopPrank();
 
+        // Grant MockConduit approval to spend alice's USDC
         vm.startPrank(alice);
+        usdc.approve(address(mockConduit), 100);
+
+        // Approve token contract as well for safety
         usdc.approve(address(token), 100);
+        vm.stopPrank();
+
+        // Set the initial balance
+        vm.prank(owner);
         strategy.setBalance(100);
+
+        // Do the deposit
+        vm.startPrank(alice);
         uint256 shares = token.deposit(100, alice);
         vm.stopPrank();
 
@@ -371,9 +404,18 @@ contract TRWATest is BaseFountfiTest {
         // But we can verify the operation still works
         vm.stopPrank();
 
+        // Approvals for both token and conduit
         vm.startPrank(alice);
+        usdc.approve(address(mockConduit), 100);
         usdc.approve(address(token), 100);
+        vm.stopPrank();
+
+        // Set the balance
+        vm.prank(owner);
         strategy.setBalance(100);
+
+        // Make the deposit
+        vm.startPrank(alice);
         uint256 shares = token.deposit(100, alice);
         vm.stopPrank();
 
@@ -428,6 +470,8 @@ contract TRWATest is BaseFountfiTest {
         // Make an initial deposit
         vm.startPrank(owner);
         usdc.mint(owner, 1000);
+        // Approve for both conduit and token
+        usdc.approve(address(mockConduit), 1000);
         usdc.approve(address(token), 1000);
         strategy.setBalance(1000);
         uint256 shares = token.deposit(1000, owner);
