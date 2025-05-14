@@ -15,9 +15,9 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
     error WithdrawRequestLapsedRound();
     error WithdrawNonceReuse();
     error WithdrawInvalidSignature();
-
+    error InvalidArrayLengths();
     struct WithdrawalRequest {
-        uint256 assets;
+        uint256 shares;
         address owner;
         uint96 nonce;
         address to;
@@ -37,7 +37,7 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
     );
 
     bytes32 private constant WITHDRAWAL_REQUEST_TYPEHASH = keccak256(
-        "WithdrawalRequest(address owner,address to,uint256 assets,uint256 nonce,uint96 expirationTime,uint96 maxRound)"
+        "WithdrawalRequest(address owner,address to,uint256 shares,uint256 nonce,uint96 expirationTime,uint96 maxRound)"
     );
 
     // Domain separator for signatures
@@ -116,9 +116,7 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
         WithdrawalRequest calldata request,
         Signature calldata userSig
     ) external onlyManager returns (uint256 assets) {
-        if (request.expirationTime < block.timestamp) revert WithdrawalRequestExpired();
-        if (request.maxRound < currentRound) revert WithdrawRequestLapsedRound();
-        if (usedNonces[request.owner][request.nonce]) revert WithdrawNonceReuse();
+        _validateRedeem(request);
 
         // Verify signature
         _verifySignature(request, userSig);
@@ -129,7 +127,45 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
         // Increment round
         currentRound++;
 
-        assets = ManagedWithdrawRWA(sToken).redeem(request.assets, request.to, request.owner);
+        assets = ManagedWithdrawRWA(sToken).redeem(request.shares, request.to, request.owner);
+    }
+
+    /**
+     * @notice Process a batch of user-requested withdrawals
+     * @param requests The withdrawal requests
+     * @param signatures The signatures of the requests
+     * @return assets The amount of assets received
+     */
+    function batchRedeem(
+        WithdrawalRequest[] calldata requests,
+        Signature[] calldata signatures
+    ) external onlyManager returns (uint256[] memory assets) {
+        if (requests.length != signatures.length) revert InvalidArrayLengths();
+
+        uint256[] memory shares = new uint256[](requests.length);
+        address[] memory recipients = new address[](requests.length);
+        address[] memory owners = new address[](requests.length);
+
+        for (uint256 i = 0; i < requests.length; i++) {
+            _validateRedeem(requests[i]);
+            _verifySignature(requests[i], signatures[i]);
+            usedNonces[requests[i].owner][requests[i].nonce] = true;
+
+            shares[i] = requests[i].shares;
+            recipients[i] = requests[i].to;
+            owners[i] = requests[i].owner;
+        }
+
+        // Increment round
+        currentRound++;
+
+        assets = ManagedWithdrawRWA(sToken).batchRedeemShares(shares, recipients, owners);
+    }
+
+    function _validateRedeem(WithdrawalRequest calldata request) internal view {
+        if (request.expirationTime < block.timestamp) revert WithdrawalRequestExpired();
+        if (request.maxRound < currentRound) revert WithdrawRequestLapsedRound();
+        if (usedNonces[request.owner][request.nonce]) revert WithdrawNonceReuse();
     }
 
     /**
@@ -144,7 +180,7 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
                 WITHDRAWAL_REQUEST_TYPEHASH,
                 request.owner,
                 request.to,
-                request.assets,
+                request.shares,
                 request.nonce,
                 request.expirationTime,
                 request.maxRound
@@ -167,7 +203,7 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
             signature.s
         );
 
-        // Verify the signer is the owner of the assets
+        // Verify the signer is the owner of the shares
         if (signer != request.owner) revert WithdrawInvalidSignature();
     }
 }
