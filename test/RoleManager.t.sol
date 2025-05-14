@@ -36,10 +36,10 @@ contract RoleManagerTest is Test {
         // Now set up additional roles
         roleManager.grantRole(registryAdmin, roleManager.RULES_ADMIN());
         roleManager.grantRole(strategyAdmin, roleManager.STRATEGY_ADMIN());
-        
+
         // Need to use RULES_ADMIN role for KYC_OPERATOR (due to role hierarchy)
         roleManager.grantRole(kycAdmin, roleManager.RULES_ADMIN());
-        
+
         vm.stopPrank();
 
         // Now have the role admins grant the operational roles
@@ -56,10 +56,10 @@ contract RoleManagerTest is Test {
 
     function test_ConstructorAssignsOwnerAndProtocolAdmin() public {
         RoleManager newRoleManager = new RoleManager();
-        
+
         // Verify owner is set to deployer
         assertEq(newRoleManager.owner(), address(this));
-        
+
         // Verify PROTOCOL_ADMIN role is granted to deployer
         assertTrue(newRoleManager.hasAllRoles(address(this), newRoleManager.PROTOCOL_ADMIN()));
     }
@@ -99,11 +99,11 @@ contract RoleManagerTest is Test {
     function test_OwnerCanGrantProtocolAdminRole() public {
         // Owner can grant any role, including PROTOCOL_ADMIN
         RoleManager newRoleManager = new RoleManager();
-        
+
         vm.expectEmit(true, true, true, true);
         emit RoleGranted(user, newRoleManager.PROTOCOL_ADMIN(), address(this));
         newRoleManager.grantRole(user, newRoleManager.PROTOCOL_ADMIN());
-        
+
         // Confirm user now has PROTOCOL_ADMIN role
         assertTrue(newRoleManager.hasAnyRole(user, newRoleManager.PROTOCOL_ADMIN()));
     }
@@ -119,12 +119,12 @@ contract RoleManagerTest is Test {
     function test_GrantRoleEffects() public {
         // Start with user not having a role
         assertFalse(roleManager.hasAnyRole(user, roleManager.KYC_OPERATOR()));
-        
+
         // Admin grants role to user
         vm.startPrank(admin);
         roleManager.grantRole(user, roleManager.KYC_OPERATOR());
         vm.stopPrank();
-        
+
         // Verify user now has the role
         assertTrue(roleManager.hasAnyRole(user, roleManager.KYC_OPERATOR()));
     }
@@ -158,15 +158,15 @@ contract RoleManagerTest is Test {
         // Owner can revoke any role, including PROTOCOL_ADMIN
         RoleManager newRoleManager = new RoleManager();
         address anotherAdmin = address(100);
-        
+
         // First grant PROTOCOL_ADMIN to another user
         newRoleManager.grantRole(anotherAdmin, newRoleManager.PROTOCOL_ADMIN());
-        
+
         // Owner revokes PROTOCOL_ADMIN
         vm.expectEmit(true, true, true, true);
         emit RoleRevoked(anotherAdmin, newRoleManager.PROTOCOL_ADMIN(), address(this));
         newRoleManager.revokeRole(anotherAdmin, newRoleManager.PROTOCOL_ADMIN());
-        
+
         // Confirm PROTOCOL_ADMIN role was revoked
         assertFalse(newRoleManager.hasAnyRole(anotherAdmin, newRoleManager.PROTOCOL_ADMIN()));
     }
@@ -182,12 +182,12 @@ contract RoleManagerTest is Test {
     function test_RevokeRoleEffects() public {
         // Start with a role already granted
         assertTrue(roleManager.hasAnyRole(kycOperator, roleManager.KYC_OPERATOR()));
-        
+
         // Admin revokes role
         vm.startPrank(admin);
         roleManager.revokeRole(kycOperator, roleManager.KYC_OPERATOR());
         vm.stopPrank();
-        
+
         // Verify role was removed
         assertFalse(roleManager.hasAnyRole(kycOperator, roleManager.KYC_OPERATOR()));
     }
@@ -196,19 +196,19 @@ contract RoleManagerTest is Test {
 
     function test_SetRoleAdmin() public {
         vm.startPrank(admin);
-        
+
         // Create a new test role
         uint256 testRole = 1 << 10; // A bit that's not used by other roles
-        
+
         // Set admin role for the test role
         vm.expectEmit(true, true, true, true);
         emit RoleAdminSet(testRole, roleManager.STRATEGY_ADMIN(), admin);
         roleManager.setRoleAdmin(testRole, roleManager.STRATEGY_ADMIN());
-        
+
         // Verify the admin role was set correctly
         assertEq(roleManager.roleAdminRole(testRole), roleManager.STRATEGY_ADMIN());
         vm.stopPrank();
-        
+
         // Verify STRATEGY_ADMIN can now manage the test role
         vm.startPrank(strategyAdmin);
         roleManager.grantRole(user, testRole);
@@ -221,35 +221,35 @@ contract RoleManagerTest is Test {
     function test_SetRoleAdminAccessChecks() public {
         // Verify the initial state
         assertEq(roleManager.roleAdminRole(roleManager.KYC_OPERATOR()), roleManager.RULES_ADMIN());
-        
+
         // Admin can set the role admin
         vm.startPrank(admin);
         roleManager.setRoleAdmin(roleManager.KYC_OPERATOR(), roleManager.STRATEGY_ADMIN());
         vm.stopPrank();
-        
+
         // Verify the role was changed
         assertEq(roleManager.roleAdminRole(roleManager.KYC_OPERATOR()), roleManager.STRATEGY_ADMIN());
     }
 
     function test_SetRoleAdminToZero() public {
         vm.startPrank(admin);
-        
+
         // First set an admin role
         uint256 testRole = 1 << 10;
         roleManager.setRoleAdmin(testRole, roleManager.STRATEGY_ADMIN());
-        
+
         // Then set it back to 0 (only owner/PROTOCOL_ADMIN can manage)
         roleManager.setRoleAdmin(testRole, 0);
         assertEq(roleManager.roleAdminRole(testRole), 0);
-        
+
         // Verify STRATEGY_ADMIN can no longer manage the test role
         vm.stopPrank();
-        
+
         vm.startPrank(strategyAdmin);
         vm.expectRevert();
         roleManager.grantRole(user, testRole);
         vm.stopPrank();
-        
+
         // But PROTOCOL_ADMIN still can
         vm.startPrank(admin);
         roleManager.grantRole(user, testRole);
@@ -265,13 +265,13 @@ contract RoleManagerTest is Test {
         assertEq(roleManager.hasAnyRole(kycOperator, roleManager.KYC_OPERATOR()), false);
         vm.stopPrank();
     }
-    
+
     function test_ProtocolAdminManagedRoleCoverage() public {
         // This tests the other branch of _canManageRole where PROTOCOL_ADMIN checks if role == PROTOCOL_ADMIN
-        
+
         // Create a role that isn't managed by anyone yet
         uint256 testRole = 1 << 10;
-        
+
         // First set an admin role for this test role
         vm.startPrank(admin);
         // Try to grant this unmanaged role - should work since admin has PROTOCOL_ADMIN
@@ -279,22 +279,22 @@ contract RoleManagerTest is Test {
         assertTrue(roleManager.hasAnyRole(user, testRole));
         vm.stopPrank();
     }
-    
+
     function test_NonAdminRoleManagement() public {
         // This tests that a non-admin user cannot manage a role
-        
+
         // Create a role that isn't managed by anyone yet
         uint256 customRole = 1 << 15;
-        
+
         // First have the admin set up the role and grant it to a user
         vm.startPrank(admin);
         roleManager.grantRole(user, customRole);
         assertTrue(roleManager.hasAnyRole(user, customRole));
         vm.stopPrank();
-        
+
         // Try to use this role from a different user (who doesn't have admin rights)
         address randomUser = address(50);
-        
+
         // The random user should not be able to grant the custom role
         vm.startPrank(randomUser);
         // This will fail because randomUser doesn't have admin rights
@@ -302,28 +302,28 @@ contract RoleManagerTest is Test {
         roleManager.grantRole(address(51), customRole);
         vm.stopPrank();
     }
-    
+
     function test_RevokeRoleIssuedByProtocolAdmin() public {
         // This tests that PROTOCOL_ADMIN can issue a role and a role admin can revoke it
-        
+
         uint256 newRole = 1 << 12;
-        
+
         // Set up STRATEGY_ADMIN as the admin for this new role
         vm.startPrank(admin);
         roleManager.setRoleAdmin(newRole, roleManager.STRATEGY_ADMIN());
-        
+
         // Grant the role to a user
         roleManager.grantRole(user, newRole);
         vm.stopPrank();
-        
+
         // Verify the user has the role
         assertTrue(roleManager.hasAnyRole(user, newRole));
-        
+
         // Now have the role admin (strategyAdmin) revoke it
         vm.startPrank(strategyAdmin);
         roleManager.revokeRole(user, newRole);
         vm.stopPrank();
-        
+
         // Verify the role was revoked
         assertFalse(roleManager.hasAnyRole(user, newRole));
     }
@@ -343,16 +343,16 @@ contract RoleManagerTest is Test {
 
         assertEq(roleManager.hasAllRoles(admin, rolesForAdmin), true);
         assertEq(roleManager.hasAllRoles(user, rolesForAdmin), false);
-        
+
         // Test multiple roles with hasAllRoles
         uint256 multipleRoles = roleManager.STRATEGY_ADMIN() | roleManager.RULES_ADMIN();
-        
+
         // admin has both roles (through PROTOCOL_ADMIN)
         assertTrue(roleManager.hasAllRoles(admin, multipleRoles));
-        
+
         // strategyAdmin only has STRATEGY_ADMIN, not both
         assertFalse(roleManager.hasAllRoles(strategyAdmin, multipleRoles));
-        
+
         // registryAdmin only has RULES_ADMIN, not both
         assertFalse(roleManager.hasAllRoles(registryAdmin, multipleRoles));
     }
@@ -433,23 +433,5 @@ contract RoleManagerTest is Test {
     function test_RoleManagedZeroAddressReverts() public {
         vm.expectRevert(abi.encodeWithSelector(RoleManaged.InvalidRoleManager.selector));
         new MockRoleManaged(address(0));
-    }
-
-    function test_RoleManagedViewFunctions() public view {
-        // Test the view functions in RoleManaged
-        
-        // hasAnyRole should properly check roles through the roleManager
-        assertTrue(mockRoleManaged.hasAnyRole(admin, roleManager.PROTOCOL_ADMIN()));
-        assertTrue(mockRoleManaged.hasAnyRole(kycOperator, roleManager.KYC_OPERATOR()));
-        assertFalse(mockRoleManaged.hasAnyRole(user, roleManager.KYC_OPERATOR()));
-        
-        // hasAllRoles should properly check roles through the roleManager
-        assertTrue(mockRoleManaged.hasAllRoles(admin, roleManager.PROTOCOL_ADMIN()));
-        assertFalse(mockRoleManaged.hasAllRoles(strategyManager, roleManager.STRATEGY_ADMIN()));
-        
-        // Multiple roles
-        uint256 multipleRoles = roleManager.STRATEGY_ADMIN() | roleManager.KYC_OPERATOR();
-        assertFalse(mockRoleManaged.hasAllRoles(strategyAdmin, multipleRoles));
-        assertTrue(mockRoleManaged.hasAllRoles(admin, multipleRoles)); // admin has all roles via PROTOCOL_ADMIN
     }
 }

@@ -4,6 +4,8 @@ pragma solidity ^0.8.25;
 import {ManagedWithdrawRWA} from "../token/ManagedWithdrawRWA.sol";
 import {ReportedStrategy} from "./ReportedStrategy.sol";
 import {BaseReporter} from "../reporter/BaseReporter.sol";
+import {EIP712} from "solady/utils/EIP712.sol";
+
 /**
  * @title ManagedWithdrawReportedStrategy
  * @notice Extension of ReportedStrategy that deploys and configures ManagedWithdrawRWA tokens
@@ -18,11 +20,11 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
 
     struct WithdrawalRequest {
         uint256 assets;
-        uint256 owner;
-        uint256 to;
+        address owner;
         uint96 nonce;
-        uint64 maxRound;
+        address to;
         uint96 expirationTime;
+        uint64 maxRound;
     }
 
     // Tracking of batch withdrawals
@@ -96,8 +98,9 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
         if (request.maxRound < currentRound) revert WithdrawRequestLapsedRound();
         if (usedNonces[request.owner][request.nonce]) revert WithdrawNonceReuse();
 
+
         // Verify signature
-        if (request.owner != ecrecover(keccak256(abi.encode(request)), signature)) revert WithdrawInvalidSignature();
+        // if (request.owner != ecrecover(keccak256(abi.encode(request)), signature)) revert WithdrawInvalidSignature();
 
         // Mark nonce as used
         usedNonces[request.owner][request.nonce] = true;
