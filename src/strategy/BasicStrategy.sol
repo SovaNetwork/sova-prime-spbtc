@@ -66,17 +66,33 @@ abstract contract BasicStrategy is IStrategy, CloneableRoleManaged {
         asset = asset_;
         _initializeRoleManager(roleManager_);
 
+        sToken = _deployToken(name_, symbol_, asset, assetDecimals_);
+
+        emit StrategyInitialized(address(0), manager, asset, sToken);
+    }
+
+    /**
+     * @notice Deploy a new tRWA token
+     * @param name_ Name of the token
+     * @param symbol_ Symbol of the token
+     * @param asset_ Address of the underlying asset
+     * @param assetDecimals_ Decimals of the asset
+     */
+    function _deployToken(
+        string calldata name_,
+        string calldata symbol_,
+        address asset_,
+        uint8 assetDecimals_
+    ) internal virtual returns (address) {
         tRWA newToken = new tRWA(
             name_,
             symbol_,
-            asset,
+            asset_,
             assetDecimals_,
             address(this)
         );
 
-        sToken = address(newToken);
-
-        emit StrategyInitialized(address(0), manager, asset, sToken);
+        return address(newToken);
     }
 
     /*//////////////////////////////////////////////////////////////

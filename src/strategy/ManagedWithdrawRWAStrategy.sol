@@ -3,8 +3,6 @@ pragma solidity ^0.8.25;
 
 import {ManagedWithdrawRWA} from "../token/ManagedWithdrawRWA.sol";
 import {ReportedStrategy} from "./ReportedStrategy.sol";
-import {BaseReporter} from "../reporter/BaseReporter.sol";
-import {EIP712} from "solady/utils/EIP712.sol";
 
 /**
  * @title ManagedWithdrawReportedStrategy
@@ -70,9 +68,7 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
         uint8 assetDecimals_,
         bytes memory initData
     ) public override {
-        // Prevent re-initialization
-        if (_initialized) revert AlreadyInitialized();
-        _initialized = true;
+        super.initialize(name_, symbol_, roleManager_, manager_, asset_, assetDecimals_, initData);
 
         // Initialize EIP-712 domain separator
         DOMAIN_SEPARATOR = keccak256(
@@ -84,33 +80,30 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
                 address(this)
             )
         );
+    }
 
-        // Check required parameters
-        if (manager_ == address(0)) revert InvalidAddress();
-        if (asset_ == address(0)) revert InvalidAddress();
-
-        // Set up strategy configuration
-        manager = manager_;
-        asset = asset_;
-        _initializeRoleManager(roleManager_);
-
-        // Deploy ManagedWithdrawRWA token
+    /**
+     * @notice Deploy a new ManagedWithdrawRWA token
+     * @param name_ Name of the token
+     * @param symbol_ Symbol of the token
+     * @param asset_ Address of the underlying asset
+     * @param assetDecimals_ Decimals of the asset
+     */
+    function _deployToken(
+        string calldata name_,
+        string calldata symbol_,
+        address asset_,
+        uint8 assetDecimals_
+    ) internal virtual override returns (address) {
         ManagedWithdrawRWA newToken = new ManagedWithdrawRWA(
             name_,
             symbol_,
-            asset,
+            asset_,
             assetDecimals_,
             address(this)
         );
 
-        sToken = address(newToken);
-
-        address reporter_ = abi.decode(initData, (address));
-        if (reporter_ == address(0)) revert InvalidReporter();
-        reporter = BaseReporter(reporter_);
-
-        emit SetReporter(reporter_);
-        emit StrategyInitialized(address(0), manager, asset, sToken);
+        return address(newToken);
     }
 
     /**
@@ -139,6 +132,11 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
         assets = ManagedWithdrawRWA(sToken).redeem(request.assets, request.to, request.owner);
     }
 
+    /**
+     * @notice Verify a signature using EIP-712
+     * @param request The withdrawal request
+     * @param signature The signature
+     */
     function _verifySignature(WithdrawalRequest calldata request, Signature calldata signature) internal view {
         // Verify signature
         bytes32 structHash = keccak256(
