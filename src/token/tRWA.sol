@@ -210,7 +210,7 @@ contract tRWA is ERC4626, ItRWA {
     //////////////////////////////////////////////////////////////*/
 
     modifier onlyStrategy() {
-        if (msg.sender != address(strategy)) revert NotStrategyAdmin();
+        if (msg.sender != strategy) revert NotStrategyAdmin();
         _;
     }
 
