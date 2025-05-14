@@ -34,7 +34,7 @@ contract ManagedWithdrawRWA is tRWA {
      * @dev Use redeem instead - all accounting is share-based
      * @return shares The amount of shares burned
      */
-    function withdraw(uint256, address, address) public view override onlyManager returns (uint256) {
+    function withdraw(uint256, address, address) public view override onlyStrategy returns (uint256) {
        revert UseRedeem();
     }
 
@@ -45,22 +45,30 @@ contract ManagedWithdrawRWA is tRWA {
      * @param owner The owner of the shares
      * @return assets The amount of assets received
      */
-    function redeem(uint256 shares, address to, address owner) public override onlyManager returns (uint256 assets) {
+    function redeem(uint256 shares, address to, address owner) public override onlyStrategy returns (uint256 assets) {
         if (shares > maxRedeem(owner)) revert RedeemMoreThanMax();
         assets = previewRedeem(shares);
 
-        // Collect shares from strategy
+        // Collect assets from strategy
         _collect(assets);
 
         // User must token-approve strategy for withdrawal
         _withdraw(strategy, to, owner, assets, shares);
     }
 
+    /**
+     * @notice Process a batch of user-requested withdrawals
+     * @dev Callable by
+     * @param shares The amount of shares to redeem
+     * @param to The address to send the assets to
+     * @param owner The owner of the shares
+     * @return assets The amount of assets received
+     */
     function batchRedeemShares(
         uint256[] calldata shares,
         address[] calldata to,
         address[] calldata owner
-    ) external onlyManager returns (uint256[] memory assets) {
+    ) external onlyStrategy returns (uint256[] memory assets) {
         // Validate array lengths match
         if (shares.length != to.length || to.length != owner.length) {
             revert InvalidArrayLengths();
@@ -77,6 +85,7 @@ contract ManagedWithdrawRWA is tRWA {
         // Collect assets from strategy
         _collect(totalAssets);
 
+        // Process each withdrawal, based on prorated assets
         for (uint256 i = 0; i < shares.length; i++) {
             uint256 recipientAssets = (shares[i] * totalAssets) / totalShares;
 
@@ -96,13 +105,5 @@ contract ManagedWithdrawRWA is tRWA {
      */
     function _collect(uint256 assets) internal {
         SafeTransferLib.safeTransferFrom(asset(), strategy, address(this), assets);
-    }
-
-    /**
-     * @notice Modifier to check if the caller is the strategy manager
-     */
-    modifier onlyManager() {
-        if (msg.sender != IStrategy(strategy).manager()) revert NotManager();
-        _;
     }
 }
