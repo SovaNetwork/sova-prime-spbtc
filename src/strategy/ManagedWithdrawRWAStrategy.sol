@@ -27,6 +27,24 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
         uint64 maxRound;
     }
 
+    struct Signature {
+        uint8 v;
+        bytes32 r;
+        bytes32 s;
+    }
+
+    // EIP-712 Type Hash Constants
+    bytes32 private constant EIP712_DOMAIN_TYPEHASH = keccak256(
+        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+    );
+
+    bytes32 private constant WITHDRAWAL_REQUEST_TYPEHASH = keccak256(
+        "WithdrawalRequest(address owner,address to,uint256 assets,uint256 nonce,uint96 expirationTime,uint96 maxRound)"
+    );
+
+    // Domain separator for signatures
+    bytes32 private DOMAIN_SEPARATOR;
+
     // Tracking of batch withdrawals
     uint64 public currentRound;
 
@@ -55,6 +73,17 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
         // Prevent re-initialization
         if (_initialized) revert AlreadyInitialized();
         _initialized = true;
+
+        // Initialize EIP-712 domain separator
+        DOMAIN_SEPARATOR = keccak256(
+            abi.encode(
+                EIP712_DOMAIN_TYPEHASH,
+                keccak256(bytes("ManagedWithdrawReportedStrategy")),
+                keccak256(bytes("V1")),
+                block.chainid,
+                address(this)
+            )
+        );
 
         // Check required parameters
         if (manager_ == address(0)) revert InvalidAddress();
@@ -87,20 +116,19 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
     /**
      * @notice Process a user-requested withdrawal
      * @param request The withdrawal request
-     * @param signature The signature of the request
+     * @param userSig The signature of the request
      * @return assets The amount of assets received
      */
     function redeem(
         WithdrawalRequest calldata request,
-        bytes calldata signature
+        Signature calldata userSig
     ) external onlyManager returns (uint256 assets) {
         if (request.expirationTime < block.timestamp) revert WithdrawalRequestExpired();
         if (request.maxRound < currentRound) revert WithdrawRequestLapsedRound();
         if (usedNonces[request.owner][request.nonce]) revert WithdrawNonceReuse();
 
-
         // Verify signature
-        // if (request.owner != ecrecover(keccak256(abi.encode(request)), signature)) revert WithdrawInvalidSignature();
+        _verifySignature(request, userSig);
 
         // Mark nonce as used
         usedNonces[request.owner][request.nonce] = true;
@@ -109,5 +137,39 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
         currentRound++;
 
         assets = ManagedWithdrawRWA(sToken).redeem(request.assets, request.to, request.owner);
+    }
+
+    function _verifySignature(WithdrawalRequest calldata request, Signature calldata signature) internal view {
+        // Verify signature
+        bytes32 structHash = keccak256(
+            abi.encode(
+                WITHDRAWAL_REQUEST_TYPEHASH,
+                request.owner,
+                request.to,
+                request.assets,
+                request.nonce,
+                request.expirationTime,
+                request.maxRound
+            )
+        );
+
+        bytes32 digest = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                DOMAIN_SEPARATOR,
+                structHash
+            )
+        );
+
+        // Recover signer address from signature
+        address signer = ecrecover(
+            digest,
+            signature.v,
+            signature.r,
+            signature.s
+        );
+
+        // Verify the signer is the owner of the assets
+        if (signer != request.owner) revert WithdrawInvalidSignature();
     }
 }
