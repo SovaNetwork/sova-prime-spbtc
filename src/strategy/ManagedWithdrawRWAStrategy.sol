@@ -12,7 +12,6 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
 
     // Custom errors
     error WithdrawalRequestExpired();
-    error WithdrawRequestLapsedRound();
     error WithdrawNonceReuse();
     error WithdrawInvalidSignature();
     error InvalidArrayLengths();
@@ -23,7 +22,6 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
         uint96 nonce;
         address to;
         uint96 expirationTime;
-        uint64 maxRound;
     }
 
     struct Signature {
@@ -38,14 +36,11 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
     );
 
     bytes32 private constant WITHDRAWAL_REQUEST_TYPEHASH = keccak256(
-        "WithdrawalRequest(address owner,address to,uint256 shares,uint256 minAssets,uint256 nonce,uint96 expirationTime,uint96 maxRound)"
+        "WithdrawalRequest(address owner,address to,uint256 shares,uint256 minAssets,uint256 nonce,uint96 expirationTime)"
     );
 
     // Domain separator for signatures
     bytes32 private DOMAIN_SEPARATOR;
-
-    // Tracking of batch withdrawals
-    uint64 public currentRound;
 
     // Tracking of used nonces
     mapping(address => mapping(uint96 => bool)) public usedNonces;
@@ -125,9 +120,6 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
         // Mark nonce as used
         usedNonces[request.owner][request.nonce] = true;
 
-        // Increment round
-        currentRound++;
-
         assets = ManagedWithdrawRWA(sToken).redeem(request.shares, request.to, request.owner, request.minAssets);
     }
 
@@ -159,15 +151,11 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
             minAssets[i] = requests[i].minAssets;
         }
 
-        // Increment round
-        currentRound++;
-
         assets = ManagedWithdrawRWA(sToken).batchRedeemShares(shares, recipients, owners, minAssets);
     }
 
     function _validateRedeem(WithdrawalRequest calldata request) internal view {
         if (request.expirationTime < block.timestamp) revert WithdrawalRequestExpired();
-        if (request.maxRound < currentRound) revert WithdrawRequestLapsedRound();
         if (usedNonces[request.owner][request.nonce]) revert WithdrawNonceReuse();
     }
 
@@ -186,8 +174,7 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
                 request.shares,
                 request.minAssets,
                 request.nonce,
-                request.expirationTime,
-                request.maxRound
+                request.expirationTime
             )
         );
 
