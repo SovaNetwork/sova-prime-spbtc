@@ -18,6 +18,7 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
     error InvalidArrayLengths();
     struct WithdrawalRequest {
         uint256 shares;
+        uint256 minAssets;
         address owner;
         uint96 nonce;
         address to;
@@ -37,7 +38,7 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
     );
 
     bytes32 private constant WITHDRAWAL_REQUEST_TYPEHASH = keccak256(
-        "WithdrawalRequest(address owner,address to,uint256 shares,uint256 nonce,uint96 expirationTime,uint96 maxRound)"
+        "WithdrawalRequest(address owner,address to,uint256 shares,uint256 minAssets,uint256 nonce,uint96 expirationTime,uint96 maxRound)"
     );
 
     // Domain separator for signatures
@@ -127,7 +128,7 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
         // Increment round
         currentRound++;
 
-        assets = ManagedWithdrawRWA(sToken).redeem(request.shares, request.to, request.owner);
+        assets = ManagedWithdrawRWA(sToken).redeem(request.shares, request.to, request.owner, request.minAssets);
     }
 
     /**
@@ -145,6 +146,7 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
         uint256[] memory shares = new uint256[](requests.length);
         address[] memory recipients = new address[](requests.length);
         address[] memory owners = new address[](requests.length);
+        uint256[] memory minAssets = new uint256[](requests.length);
 
         for (uint256 i = 0; i < requests.length; i++) {
             _validateRedeem(requests[i]);
@@ -154,12 +156,13 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
             shares[i] = requests[i].shares;
             recipients[i] = requests[i].to;
             owners[i] = requests[i].owner;
+            minAssets[i] = requests[i].minAssets;
         }
 
         // Increment round
         currentRound++;
 
-        assets = ManagedWithdrawRWA(sToken).batchRedeemShares(shares, recipients, owners);
+        assets = ManagedWithdrawRWA(sToken).batchRedeemShares(shares, recipients, owners, minAssets);
     }
 
     function _validateRedeem(WithdrawalRequest calldata request) internal view {
@@ -181,6 +184,7 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
                 request.owner,
                 request.to,
                 request.shares,
+                request.minAssets,
                 request.nonce,
                 request.expirationTime,
                 request.maxRound

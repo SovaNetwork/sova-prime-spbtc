@@ -13,6 +13,7 @@ contract ManagedWithdrawRWA is tRWA {
     error NotManager();
     error UseRedeem();
     error InvalidArrayLengths();
+    error InsufficientOutputAssets();
   /**
      * @notice Contract constructor
      * @param name_ Token name
@@ -57,20 +58,42 @@ contract ManagedWithdrawRWA is tRWA {
     }
 
     /**
-     * @notice Process a batch of user-requested withdrawals
-     * @dev Callable by
+     * @notice Redeem shares from the strategy with minimum assets check
      * @param shares The amount of shares to redeem
      * @param to The address to send the assets to
      * @param owner The owner of the shares
+     * @param minAssets The minimum amount of assets to receive
+     * @return assets The amount of assets received
+     */
+    function redeem(uint256 shares, address to, address owner, uint256 minAssets) public onlyStrategy returns (uint256 assets) {
+        if (shares > maxRedeem(owner)) revert RedeemMoreThanMax();
+        assets = previewRedeem(shares);
+
+        if (assets < minAssets) revert InsufficientOutputAssets();
+
+        // Collect assets from strategy
+        _collect(assets);
+
+        // User must token-approve strategy for withdrawal
+        _withdraw(strategy, to, owner, assets, shares);
+    }
+
+    /**
+     * @notice Process a batch of user-requested withdrawals with minimum assets check
+     * @param shares The amount of shares to redeem
+     * @param to The address to send the assets to
+     * @param owner The owner of the shares
+     * @param minAssets The minimum amount of assets for each withdrawal
      * @return assets The amount of assets received
      */
     function batchRedeemShares(
         uint256[] calldata shares,
         address[] calldata to,
-        address[] calldata owner
+        address[] calldata owner,
+        uint256[] calldata minAssets
     ) external onlyStrategy returns (uint256[] memory assets) {
         // Validate array lengths match
-        if (shares.length != to.length || to.length != owner.length) {
+        if (shares.length != to.length || to.length != owner.length || owner.length != minAssets.length) {
             revert InvalidArrayLengths();
         }
 
@@ -85,17 +108,24 @@ contract ManagedWithdrawRWA is tRWA {
         // Collect assets from strategy
         _collect(totalAssets);
 
+        assets = new uint256[](shares.length);
+
         // Process each withdrawal, based on prorated assets
         for (uint256 i = 0; i < shares.length; i++) {
-            uint256 recipientAssets = (shares[i] * totalAssets) / totalShares;
+            uint256 userShares = shares[i];
+            address userOwner = owner[i];
+            uint256 recipientAssets = (userShares * totalAssets) / totalShares;
+            assets[i] = recipientAssets;
 
-            if (strategy != owner[i]) _spendAllowance(owner[i], strategy, shares[i]);
-            _beforeWithdraw(assets[i], shares[i]);
-            _burn(owner[i], shares[i]);
+            if (recipientAssets < minAssets[i]) revert InsufficientOutputAssets();
+
+            if (strategy != userOwner) _spendAllowance(userOwner, strategy, userShares);
+            _beforeWithdraw(assets[i], userShares);
+            _burn(userOwner, userShares);
 
             SafeTransferLib.safeTransfer(asset(), to[i], recipientAssets);
 
-            emit Withdraw(strategy, to[i], owner[i], recipientAssets, shares[i]);
+            emit Withdraw(strategy, to[i], userOwner, recipientAssets, userShares);
         }
     }
 
