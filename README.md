@@ -39,6 +39,9 @@ The Fountfi protocol enables:
 
 ## Protocol Architecture
 
+![Fountfi Protocol Architecture](fount_protocol_arch.png)
+
+
 ### Core Components
 
 #### Registry

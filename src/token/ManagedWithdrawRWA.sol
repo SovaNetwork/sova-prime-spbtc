@@ -114,7 +114,7 @@ contract ManagedWithdrawRWA is tRWA {
         for (uint256 i = 0; i < shares.length; i++) {
             uint256 userShares = shares[i];
             address userOwner = owner[i];
-            uint256 recipientAssets = (userShares * totalAssets) / totalShares;
+            uint256 recipientAssets = (userShares * totalAssets) / totalShares; // totalAssets * (userShares / totalShares)
             assets[i] = recipientAssets;
 
             if (recipientAssets < minAssets[i]) revert InsufficientOutputAssets();
