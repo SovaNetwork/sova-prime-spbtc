@@ -7,6 +7,8 @@ import {MockERC20} from "../src/mocks/MockERC20.sol";
 import {PriceOracleReporter} from "../src/reporter/PriceOracleReporter.sol";
 import {ReportedStrategy} from "../src/strategy/ReportedStrategy.sol";
 import {GatedMintReportedStrategy} from "../src/strategy/GatedMintRWAStrategy.sol";
+import {ManagedWithdrawReportedStrategy} from "../src/strategy/ManagedWithdrawRWAStrategy.sol";
+
 
 contract DeployStrategyScript is Script {
     // Deployed contracts from previous scripts
@@ -35,6 +37,17 @@ contract DeployStrategyScript is Script {
         usdToken = MockERC20(usdTokenAddress);
         priceOracle = PriceOracleReporter(priceOracleAddress);
 
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        address deployer = vm.addr(deployerPrivateKey);
+
+        vm.startBroadcast(deployerPrivateKey);
+
+        // Deploy ManagedWithdrawRWAStrategy implementation
+        ManagedWithdrawReportedStrategy newImpl = new ManagedWithdrawReportedStrategy();
+        registry.setStrategy(address(newImpl), true);
+
+        console.log("ManagedWithdrawRWAStrategy implementation deployed:", address(newImpl));
+
         // Determine which strategy implementation to use based on environment variable
         string memory strategyType = vm.envOr("STRATEGY_TYPE", string("standard"));
 
@@ -43,12 +56,18 @@ contract DeployStrategyScript is Script {
             address gatedImpl = 0x98975467905E1e63cC78B35997de82488100e66e;
             strategyImplementation = gatedImpl;
             console.log("Using GatedMintReportedStrategy implementation");
+        } else if (keccak256(abi.encodePacked(strategyType)) == keccak256(abi.encodePacked("managed-withdraw"))) {
+            // Use ManagedWithdrawReportedStrategy
+            strategyImplementation = address(newImpl);
+            console.log("Using ManagedWithdrawReportedStrategy implementation");
         } else {
             // Default to standard ReportedStrategy
             address standardImpl = 0xa8f206F6bC165BbCE0B3346469c1cCEF3d7936f1;
             strategyImplementation = standardImpl;
             console.log("Using ReportedStrategy implementation");
         }
+
+        vm.stopBroadcast();
     }
 
     function run() public {

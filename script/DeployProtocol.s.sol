@@ -8,6 +8,7 @@ import {KycRulesHook} from "../src/hooks/KycRulesHook.sol";
 import {PriceOracleReporter} from "../src/reporter/PriceOracleReporter.sol";
 import {ReportedStrategy} from "../src/strategy/ReportedStrategy.sol";
 import {GatedMintReportedStrategy} from "../src/strategy/GatedMintRWAStrategy.sol";
+import {ManagedWithdrawReportedStrategy} from "../src/strategy/ManagedWithdrawRWAStrategy.sol";
 import {RoleManager} from "../src/auth/RoleManager.sol";
 
 contract DeployProtocolScript is Script {
@@ -23,6 +24,7 @@ contract DeployProtocolScript is Script {
     PriceOracleReporter public priceOracle;
     ReportedStrategy public reportedStrategyImplementation;
     GatedMintReportedStrategy public gatedMintStrategyImplementation;
+    ManagedWithdrawReportedStrategy public managedWithdrawStrategyImplementation;
 
     function setUp() public {}
 
@@ -97,9 +99,14 @@ contract DeployProtocolScript is Script {
         gatedMintStrategyImplementation = new GatedMintReportedStrategy();
         console.log("GatedMintReportedStrategy implementation deployed.");
 
+        // Deploy ManagedWithdrawReportedStrategy implementation to be used as a template
+        managedWithdrawStrategyImplementation = new ManagedWithdrawReportedStrategy();
+        console.log("ManagedWithdrawReportedStrategy implementation deployed.");
+
         // Register both strategy implementations in the registry
         registry.setStrategy(address(reportedStrategyImplementation), true);
         registry.setStrategy(address(gatedMintStrategyImplementation), true);
+        registry.setStrategy(address(managedWithdrawStrategyImplementation), true);
         console.log("Registry configured with strategy implementations.");
     }
 
@@ -131,5 +138,6 @@ contract DeployProtocolScript is Script {
         console.log("Price Oracle Reporter:", address(priceOracle));
         console.log("ReportedStrategy Implementation:", address(reportedStrategyImplementation));
         console.log("GatedMintReportedStrategy Implementation:", address(gatedMintStrategyImplementation));
+        console.log("ManagedWithdrawReportedStrategy Implementation:", address(managedWithdrawStrategyImplementation));
     }
 }

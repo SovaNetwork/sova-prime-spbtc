@@ -36,11 +36,18 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
     );
 
     bytes32 private constant WITHDRAWAL_REQUEST_TYPEHASH = keccak256(
-        "WithdrawalRequest(address owner,address to,uint256 shares,uint256 minAssets,uint256 nonce,uint96 expirationTime)"
+        "WithdrawalRequest(address owner,address to,uint256 shares,uint256 minAssets,uint96 nonce,uint96 expirationTime)"
     );
 
     // Domain separator for signatures
-    bytes32 private DOMAIN_SEPARATOR;
+    bytes32 private DOMAIN_SEPARATOR = keccak256(
+        abi.encode(
+            EIP712_DOMAIN_TYPEHASH,
+            keccak256(bytes("ManagedWithdrawReportedStrategy")),
+            keccak256(bytes("V1")),
+            block.chainid
+        )
+    );
 
     // Tracking of used nonces
     mapping(address => mapping(uint96 => bool)) public usedNonces;
