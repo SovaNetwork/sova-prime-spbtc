@@ -23,8 +23,6 @@ contract ReportedStrategy is BasicStrategy {
     // The reporter contract
     BaseReporter public reporter;
 
-    // Price adjustment for edge cases (can be positive or negative)
-    int256 public priceAdjustment;
 
     /*//////////////////////////////////////////////////////////////
                             EVENTS & ERRORS
@@ -35,7 +33,6 @@ contract ReportedStrategy is BasicStrategy {
 
     // Events
     event SetReporter(address indexed reporter);
-    event PriceAdjustmentSet(int256 adjustment);
 
     /*//////////////////////////////////////////////////////////////
                             INITIALIZATION
@@ -74,24 +71,11 @@ contract ReportedStrategy is BasicStrategy {
      * @return The balance of the strategy in the underlying asset
      */
     function balance() external view override returns (uint256) {
-        if (sToken == address(0)) {
-            // Fallback to reporter if sToken not set yet
-            return abi.decode(reporter.report(), (uint256));
-        }
-        
         uint256 _pricePerShare = abi.decode(reporter.report(), (uint256));
         uint256 totalSupply = ERC20(sToken).totalSupply();
-        
-        // Calculate base total assets: pricePerShare * totalSupply / 1e18
-        uint256 baseAssets = _pricePerShare.mulWad(totalSupply);
-        
-        // Apply any price adjustments
-        if (priceAdjustment >= 0) {
-            return baseAssets + uint256(priceAdjustment);
-        } else {
-            uint256 adjustment = uint256(-priceAdjustment);
-            return baseAssets > adjustment ? baseAssets - adjustment : 0;
-        }
+
+        // Calculate total assets: pricePerShare * totalSupply / 1e18
+        return _pricePerShare.mulWad(totalSupply);
     }
 
     /**
@@ -116,12 +100,4 @@ contract ReportedStrategy is BasicStrategy {
     }
 
 
-    /**
-     * @notice Set price adjustment for edge cases
-     * @param adjustment The adjustment amount (can be positive or negative)
-     */
-    function setPriceAdjustment(int256 adjustment) external onlyManager {
-        priceAdjustment = adjustment;
-        emit PriceAdjustmentSet(adjustment);
-    }
 }

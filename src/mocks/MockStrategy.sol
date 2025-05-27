@@ -103,4 +103,5 @@ contract MockStrategy is IStrategy {
 
         return sToken.call(data);
     }
+
 }

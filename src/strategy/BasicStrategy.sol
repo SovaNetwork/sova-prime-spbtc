@@ -219,4 +219,5 @@ abstract contract BasicStrategy is IStrategy, CloneableRoleManaged {
         if (msg.sender != manager) revert Unauthorized();
         _;
     }
+
 }

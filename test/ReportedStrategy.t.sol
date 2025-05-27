@@ -139,6 +139,7 @@ contract ReportedStrategyTest is BaseFountfiTest {
         token.deposit(1000e18, alice); // This will mint tokens
         vm.stopPrank();
 
+
         // Now balance should be pricePerShare * totalSupply = 1e18 * 1000e18 / 1e18 = 1000e18
         bal = strategy.balance();
         assertEq(bal, 1000e18, "Balance should be price per share * total supply");
@@ -172,6 +173,7 @@ contract ReportedStrategyTest is BaseFountfiTest {
         token.deposit(1000e18, alice);
         vm.stopPrank();
         vm.startPrank(manager);
+        
 
         // Check that the balance reflects the new reporter's price per share
         // 5e18 * 1000e18 / 1e18 = 5000e18
@@ -226,6 +228,7 @@ contract ReportedStrategyTest is BaseFountfiTest {
         token.deposit(500e18, alice);
         vm.stopPrank();
 
+
         // Calculate expected total assets: 1e18 * 500e18 / 1e18 = 500e18
         totalAssets = strategy.balance();
         assertEq(totalAssets, 500e18, "Total assets should equal price per share * total supply");
@@ -237,40 +240,6 @@ contract ReportedStrategyTest is BaseFountfiTest {
     }
 
 
-    function test_PriceAdjustment() public {
-        vm.startPrank(manager);
-
-        // Mint some tokens for testing by depositing
-        vm.stopPrank();
-        vm.prank(owner);
-        daiToken.mint(alice, 1000e18);
-        vm.startPrank(alice);
-        daiToken.approve(registry.conduit(), 1000e18);
-        token.deposit(1000e18, alice);
-        vm.stopPrank();
-        vm.startPrank(manager);
-
-        // Base calculation: 1e18 * 1000e18 / 1e18 = 1000e18
-        uint256 baseAssets = strategy.balance();
-        assertEq(baseAssets, 1000e18, "Base assets should be 1000e18");
-
-        // Set positive adjustment
-        strategy.setPriceAdjustment(100e18);
-        uint256 adjustedAssets = strategy.balance();
-        assertEq(adjustedAssets, 1100e18, "Assets should include positive adjustment");
-
-        // Set negative adjustment
-        strategy.setPriceAdjustment(-50e18);
-        adjustedAssets = strategy.balance();
-        assertEq(adjustedAssets, 950e18, "Assets should include negative adjustment");
-
-        // Large negative adjustment (should not underflow)
-        strategy.setPriceAdjustment(-2000e18);
-        adjustedAssets = strategy.balance();
-        assertEq(adjustedAssets, 0, "Assets should be 0 when adjustment exceeds base");
-
-        vm.stopPrank();
-    }
 
     function test_DepositWithdrawFlow() public {
         // Setup: Give Alice some DAI to deposit
@@ -290,6 +259,8 @@ contract ReportedStrategyTest is BaseFountfiTest {
         // With price per share = 1e18, she should get 1000 shares
         assertEq(shares1, 1000e18, "Should get 1000 shares for 1000 DAI at 1:1 ratio");
         assertEq(token.totalSupply(), 1000e18, "Total supply should be 1000");
+        
+        
         assertEq(token.totalAssets(), 1000e18, "Total assets should be 1000 (1e18 * 1000e18 / 1e18)");
 
         // Update price per share to 1.5 (fund performance)
@@ -309,6 +280,8 @@ contract ReportedStrategyTest is BaseFountfiTest {
         assertTrue(shares2 > 600e18, "Should get more than 600 shares");
 
         uint256 totalSupplyAfter = token.totalSupply();
+        
+        
         uint256 totalAssetsAfter = token.totalAssets();
         
         // Total assets should be approximately 2500 (1.5 * new total supply)
@@ -336,6 +309,7 @@ contract ReportedStrategyTest is BaseFountfiTest {
         token.deposit(1000e18, alice);
 
         // After deposit - should immediately reflect the new assets
+        // pricePerShare (1e18) * totalSupply (1000e18) = 1000e18
         uint256 assetsAfter = token.totalAssets();
         assertEq(assetsAfter, 1000e18, "Assets should immediately reflect deposit");
 
@@ -343,6 +317,8 @@ contract ReportedStrategyTest is BaseFountfiTest {
         token.deposit(500e18, alice);
 
         // Should immediately reflect the additional deposit
+        // The second deposit gets 500 more shares (1:1 since totalAssets = totalSupply)
+        // pricePerShare (1e18) * totalSupply (1500e18) = 1500e18
         uint256 assetsFinal = token.totalAssets();
         assertEq(assetsFinal, 1500e18, "Assets should immediately reflect second deposit");
 
