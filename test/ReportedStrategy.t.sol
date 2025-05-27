@@ -36,13 +36,20 @@ contract ReportedStrategyTest is BaseFountfiTest {
 
         vm.startPrank(owner);
 
-        // Deploy RoleManager. 'owner' will be the contract owner and PROTOCOL_ADMIN.
+        // Deploy RoleManager first
         roleManager = new RoleManager();
+        
+        // Deploy Registry with RoleManager address
+        registry = new Registry(address(roleManager));
+        
         // Initialize the registry for RoleManager.
         roleManager.initializeRegistry(address(registry));
 
         // Deploy test DAI token as the asset
         daiToken = new MockERC20("DAI Stablecoin", "DAI", 18);
+        
+        // Register the DAI token as allowed asset in the registry
+        registry.setAsset(address(daiToken), 18);
 
         // Deploy hook
         strategyHook = new MockHook(true, "");
@@ -50,23 +57,25 @@ contract ReportedStrategyTest is BaseFountfiTest {
         // Deploy reporter with initial price per share
         reporter = new MockReporter(INITIAL_PRICE_PER_SHARE);
 
-        // Deploy the strategy
-        strategy = new ReportedStrategy();
+        // Deploy the strategy implementation
+        ReportedStrategy strategyImpl = new ReportedStrategy();
+        
+        // Register the strategy implementation in the registry
+        registry.setStrategy(address(strategyImpl), true);
 
-        // Initialize the strategy
+        // Deploy strategy and token through the registry
         bytes memory initData = abi.encode(address(reporter));
-        strategy.initialize(
+        (address strategyAddr, address tokenAddr) = registry.deploy(
+            address(strategyImpl),
             TOKEN_NAME,
             TOKEN_SYMBOL,
-            address(roleManager),
-            manager,
             address(daiToken),
-            18,
+            manager,
             initData
         );
-
-        // Get the token that was deployed during initialization
-        token = tRWA(strategy.sToken());
+        
+        strategy = ReportedStrategy(strategyAddr);
+        token = tRWA(tokenAddr);
 
         // Switch to manager to set the tRWA token address
         vm.stopPrank();
@@ -83,7 +92,7 @@ contract ReportedStrategyTest is BaseFountfiTest {
 
     function test_Initialization() public view {
         // Check that the strategy was initialized correctly
-        assertEq(strategy.registry(), address(this), "Registry should be set to test contract address");
+        assertEq(strategy.registry(), address(registry), "Registry should be set correctly");
         assertEq(strategy.manager(), manager, "Manager should be set correctly");
         assertEq(strategy.asset(), address(daiToken), "Asset should be set correctly");
         assertEq(address(token), strategy.sToken(), "Token should be set correctly");
@@ -131,7 +140,7 @@ contract ReportedStrategyTest is BaseFountfiTest {
         vm.prank(owner);
         daiToken.mint(alice, 1000e18);
         vm.startPrank(alice);
-        daiToken.approve(address(token), 1000e18);
+        daiToken.approve(registry.conduit(), 1000e18);
         token.deposit(1000e18, alice); // This will mint tokens
         vm.stopPrank();
 
@@ -164,7 +173,7 @@ contract ReportedStrategyTest is BaseFountfiTest {
         vm.prank(owner);
         daiToken.mint(alice, 1000e18);
         vm.startPrank(alice);
-        daiToken.approve(address(token), 1000e18);
+        daiToken.approve(registry.conduit(), 1000e18);
         token.deposit(1000e18, alice);
         vm.stopPrank();
         vm.startPrank(manager);
@@ -217,7 +226,8 @@ contract ReportedStrategyTest is BaseFountfiTest {
         vm.prank(owner);
         daiToken.mint(alice, 500e18);
         vm.startPrank(alice);
-        daiToken.approve(address(token), 500e18);
+        // Alice needs to approve the Conduit, not the tRWA token
+        daiToken.approve(registry.conduit(), 500e18);
         token.deposit(500e18, alice);
         vm.stopPrank();
 
@@ -250,7 +260,7 @@ contract ReportedStrategyTest is BaseFountfiTest {
         vm.prank(owner);
         daiToken.mint(alice, 1000e18);
         vm.startPrank(alice);
-        daiToken.approve(address(token), 1000e18);
+        daiToken.approve(registry.conduit(), 1000e18);
         token.deposit(1000e18, alice);
         vm.stopPrank();
         vm.startPrank(manager);
@@ -283,7 +293,7 @@ contract ReportedStrategyTest is BaseFountfiTest {
         daiToken.mint(alice, 2000e18);
 
         vm.startPrank(alice);
-        daiToken.approve(address(token), 2000e18);
+        daiToken.approve(registry.conduit(), 2000e18);
 
         // Initial state: no tokens minted, price per share = 1e18
         assertEq(token.totalSupply(), 0, "Initial total supply should be 0");
@@ -328,10 +338,10 @@ contract ReportedStrategyTest is BaseFountfiTest {
         // even without oracle updates, which was the main problem we're solving
 
         vm.prank(owner);
-        daiToken.mint(alice, 1000e18);
+        daiToken.mint(alice, 1500e18); // Need enough for both deposits
 
         vm.startPrank(alice);
-        daiToken.approve(address(token), 1000e18);
+        daiToken.approve(registry.conduit(), 1500e18); // Approve enough for both deposits
 
         // Before deposit
         uint256 assetsBefore = token.totalAssets();
