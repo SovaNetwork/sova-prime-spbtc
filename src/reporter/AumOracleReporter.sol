@@ -5,25 +5,22 @@ import {BaseReporter} from "./BaseReporter.sol";
 import {Ownable} from "solady/auth/Ownable.sol";
 
 /**
- * @title PriceOracleReporter
- * @notice A reporter contract that allows a trusted party to update a price value
+ * @title AumOracleReporter
+ * @notice A reporter contract that allows a trusted party to report the total AUM of the strategy
  */
-contract PriceOracleReporter is BaseReporter, Ownable {
+contract AumOracleReporter is BaseReporter, Ownable {
     /*//////////////////////////////////////////////////////////////
                             STATE
     //////////////////////////////////////////////////////////////*/
 
-    // Maximum allowed percentage deviation (denominated in basis points, 10000 = 100%)
-    uint256 public maxDeviationBps = 500; // Default 5% max deviation
-
     // Current round number
     uint256 public currentRound;
 
-    // The current price
-    uint256 public price;
+    // The current fund aum
+    uint256 public totalAssets;
 
-    // The timestamp of the last price update
-    uint256 public lastPriceAt;
+    // The timestamp of the last update
+    uint256 public lastUpdateAt;
 
     // Mapping of authorized updaters
     mapping(address => bool) public authorizedUpdaters;
@@ -32,13 +29,11 @@ contract PriceOracleReporter is BaseReporter, Ownable {
                             EVENTS & ERRORS
     //////////////////////////////////////////////////////////////*/
 
-    event PriceUpdated(uint256 roundNumber, uint256 price, string source);
+    event AumUpdated(uint256 roundNumber, uint256 totalAssets, string source);
     event SetUpdater(address indexed updater, bool isAuthorized);
-    event SetMaxDeviation(uint256 newMaxDeviationBps);
 
     // Errors
     error InvalidSource();
-    error MaxDeviation();
 
     /*//////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -46,15 +41,15 @@ contract PriceOracleReporter is BaseReporter, Ownable {
 
     /**
      * @notice Contract constructor
-     * @param initialValue Initial value to report
+     * @param initalAum Initial value to report
      */
-    constructor(uint256 initialValue, address updater) {
+    constructor(uint256 initialAum, address updater) {
         _initializeOwner(msg.sender);
         authorizedUpdaters[updater] = true;
 
         currentRound = 1;
-        price = initialValue;
-        lastPriceAt = block.timestamp;
+        totalAssets = initialAum;
+        lastUpdateAt = block.timestamp;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -70,26 +65,12 @@ contract PriceOracleReporter is BaseReporter, Ownable {
         if (!authorizedUpdaters[msg.sender]) revert Unauthorized();
         if (bytes(source_).length == 0) revert InvalidSource();
 
-        // Check deviation from last price if this isn't the first update
-        if (lastPriceAt > 0) {
-            // Calculate percentage deviation in basis points (10000 = 100%)
-            uint256 deviationBps;
-            if (price_ > price) {
-                deviationBps = ((price_ - price) * 10000) / price;
-            } else {
-                deviationBps = ((price - price_) * 10000) / price;
-            }
-
-            // Check if deviation exceeds maximum allowed
-            if (deviationBps > maxDeviationBps) revert MaxDeviation();
-        }
-
         // Create new price update
         currentRound++;
-        price = price_;
-        lastPriceAt = block.timestamp;
+        totalAssets = totalAssets_;
+        lastUpdateAt = block.timestamp;
 
-        emit PriceUpdated(currentRound, price, source_);
+        emit AumUpdated(currentRound, totalAssets, source_);
     }
 
 
@@ -98,7 +79,7 @@ contract PriceOracleReporter is BaseReporter, Ownable {
      * @return The encoded current value
      */
     function report() external view override returns (bytes memory) {
-        return abi.encode(price);
+        return abi.encode(totalAssets);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -113,14 +94,5 @@ contract PriceOracleReporter is BaseReporter, Ownable {
     function setUpdater(address updater, bool isAuthorized) external onlyOwner {
         authorizedUpdaters[updater] = isAuthorized;
         emit SetUpdater(updater, isAuthorized);
-    }
-
-    /**
-     * @notice Set the maximum allowed deviation between price updates in basis points
-     * @param newMaxDeviationBps The new maximum deviation in basis points (10000 = 100%)
-     */
-    function setMaxDeviation(uint256 newMaxDeviationBps) external onlyOwner {
-        maxDeviationBps = newMaxDeviationBps;
-        emit SetMaxDeviation(newMaxDeviationBps);
     }
 }

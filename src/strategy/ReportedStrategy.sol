@@ -71,6 +71,18 @@ contract ReportedStrategy is BasicStrategy {
         return abi.decode(reporter.report(), (uint256));
     }
 
+    function pricePerShare() external view override returns (uint256) {
+        uint256 totalAssets = abi.decode(reporter.report(), (uint256));
+
+        // Divide total assets by the total supply of the sToken, accounting
+        // for decimal conversion
+        uint256 supply = tRWA(sToken).totalSupply();
+
+        // Scale totalAssets to match sToken decimals (18) from asset decimals (6)
+        uint256 scaledAssets = totalAssets * (10 ** (tRWA(sToken).decimals() - ERC20(asset).decimals()));
+        return (scaledAssets * 10 ** tRWA(sToken).decimals()) / supply;
+    }
+
     /**
      * @notice Set the reporter contract
      * @param _reporter The new reporter contract

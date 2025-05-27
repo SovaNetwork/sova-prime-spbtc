@@ -172,10 +172,6 @@ contract tRWA is ERC4626, ItRWA {
        for (uint256 i = 0; i < opHooks.length; i++) {
             IHook.HookOutput memory hookOutput = opHooks[i].onBeforeWithdraw(address(this), by, assets, to, owner);
             if (!hookOutput.approved) {
-                // Special case for withdrawal queue still needs to be handled based on the hook's reason
-                if (keccak256(bytes(hookOutput.reason)) == keccak256(bytes("Direct withdrawals not supported. Withdrawal request created in queue."))) {
-                    emit WithdrawalQueued(owner, assets, shares);
-                }
                 revert HookCheckFailed(hookOutput.reason);
             }
         }
