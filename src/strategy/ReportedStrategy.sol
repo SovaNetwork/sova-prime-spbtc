@@ -4,12 +4,14 @@ pragma solidity ^0.8.25;
 import {BasicStrategy} from "./BasicStrategy.sol";
 import {BaseReporter} from "../reporter/BaseReporter.sol";
 import {ERC20} from "solady/tokens/ERC20.sol";
+import {FixedPointMathLib} from "solady/utils/FixedPointMathLib.sol";
 
 /**
  * @title ReportedStrategy
- * @notice A strategy contract that reports its underlying asset balance through an external oracle
+ * @notice A strategy contract that reports its underlying asset balance through an external oracle using price per share
  */
 contract ReportedStrategy is BasicStrategy {
+    using FixedPointMathLib for uint256;
     /*//////////////////////////////////////////////////////////////
                             STATE
     //////////////////////////////////////////////////////////////*/
@@ -21,6 +23,12 @@ contract ReportedStrategy is BasicStrategy {
     // The reporter contract
     BaseReporter public reporter;
 
+    // Price adjustment for edge cases (can be positive or negative)
+    int256 public priceAdjustment;
+    
+    // Address of the tRWA token (needed for totalSupply)
+    address public tRWAToken;
+
     /*//////////////////////////////////////////////////////////////
                             EVENTS & ERRORS
     //////////////////////////////////////////////////////////////*/
@@ -30,6 +38,8 @@ contract ReportedStrategy is BasicStrategy {
 
     // Events
     event SetReporter(address indexed reporter);
+    event SetTRWAToken(address indexed tRWAToken);
+    event PriceAdjustmentSet(int256 adjustment);
 
     /*//////////////////////////////////////////////////////////////
                             INITIALIZATION
@@ -64,23 +74,44 @@ contract ReportedStrategy is BasicStrategy {
     }
 
     /**
-     * @notice Get the balance of the strategy
+     * @notice Get the balance of the strategy (deprecated - use calculateTotalAssets)
      * @return The balance of the strategy in the underlying asset
      */
     function balance() external view override returns (uint256) {
+        return calculateTotalAssets();
+    }
+
+    /**
+     * @notice Get the current price per share from the reporter
+     * @return The price per share in 18 decimal format
+     */
+    function pricePerShare() external view returns (uint256) {
         return abi.decode(reporter.report(), (uint256));
     }
 
-    function pricePerShare() external view override returns (uint256) {
-        uint256 totalAssets = abi.decode(reporter.report(), (uint256));
-
-        // Divide total assets by the total supply of the sToken, accounting
-        // for decimal conversion
-        uint256 supply = tRWA(sToken).totalSupply();
-
-        // Scale totalAssets to match sToken decimals (18) from asset decimals (6)
-        uint256 scaledAssets = totalAssets * (10 ** (tRWA(sToken).decimals() - ERC20(asset).decimals()));
-        return (scaledAssets * 10 ** tRWA(sToken).decimals()) / supply;
+    /**
+     * @notice Calculate total assets based on price per share and total supply
+     * @return The total assets in the underlying asset decimals
+     */
+    function calculateTotalAssets() public view returns (uint256) {
+        if (tRWAToken == address(0)) {
+            // Fallback to reporter if tRWA token not set yet
+            return abi.decode(reporter.report(), (uint256));
+        }
+        
+        uint256 _pricePerShare = abi.decode(reporter.report(), (uint256));
+        uint256 totalSupply = ERC20(tRWAToken).totalSupply();
+        
+        // Calculate base total assets: pricePerShare * totalSupply / 1e18
+        uint256 baseAssets = _pricePerShare.mulWad(totalSupply);
+        
+        // Apply any price adjustments
+        if (priceAdjustment >= 0) {
+            return baseAssets + uint256(priceAdjustment);
+        } else {
+            uint256 adjustment = uint256(-priceAdjustment);
+            return baseAssets > adjustment ? baseAssets - adjustment : 0;
+        }
     }
 
     /**
@@ -93,5 +124,23 @@ contract ReportedStrategy is BasicStrategy {
         reporter = BaseReporter(_reporter);
 
         emit SetReporter(_reporter);
+    }
+
+    /**
+     * @notice Set the tRWA token address
+     * @param _tRWAToken The tRWA token contract address
+     */
+    function setTRWAToken(address _tRWAToken) external onlyManager {
+        tRWAToken = _tRWAToken;
+        emit SetTRWAToken(_tRWAToken);
+    }
+
+    /**
+     * @notice Set price adjustment for edge cases
+     * @param adjustment The adjustment amount (can be positive or negative)
+     */
+    function setPriceAdjustment(int256 adjustment) external onlyManager {
+        priceAdjustment = adjustment;
+        emit PriceAdjustmentSet(adjustment);
     }
 }

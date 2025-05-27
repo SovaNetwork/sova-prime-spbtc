@@ -11,6 +11,7 @@ import {MockHook} from "../src/mocks/MockHook.sol";
 import {MockERC20} from "../src/mocks/MockERC20.sol";
 import {MockReporter} from "../src/mocks/MockReporter.sol";
 import {BaseReporter} from "../src/reporter/BaseReporter.sol";
+import {Registry} from "../src/registry/Registry.sol";
 
 /**
  * @title ReportedStrategyTest
@@ -28,7 +29,7 @@ contract ReportedStrategyTest is BaseFountfiTest {
     // Strategy parameters
     string constant TOKEN_NAME = "Test Reporter Token";
     string constant TOKEN_SYMBOL = "TREP";
-    uint256 constant INITIAL_NAV = 1000 * 10**18;
+    uint256 constant INITIAL_PRICE_PER_SHARE = 1e18; // 1 token per share (18 decimals)
 
     function setUp() public override {
         super.setUp();
@@ -38,7 +39,7 @@ contract ReportedStrategyTest is BaseFountfiTest {
         // Deploy RoleManager. 'owner' will be the contract owner and PROTOCOL_ADMIN.
         roleManager = new RoleManager();
         // Initialize the registry for RoleManager.
-        roleManager.initializeRegistry(address(this));
+        roleManager.initializeRegistry(address(registry));
 
         // Deploy test DAI token as the asset
         daiToken = new MockERC20("DAI Stablecoin", "DAI", 18);
@@ -46,8 +47,8 @@ contract ReportedStrategyTest is BaseFountfiTest {
         // Deploy hook
         strategyHook = new MockHook(true, "");
 
-        // Deploy reporter with initial NAV value
-        reporter = new MockReporter(INITIAL_NAV);
+        // Deploy reporter with initial price per share
+        reporter = new MockReporter(INITIAL_PRICE_PER_SHARE);
 
         // Deploy the strategy
         strategy = new ReportedStrategy();
@@ -67,6 +68,13 @@ contract ReportedStrategyTest is BaseFountfiTest {
         // Get the token that was deployed during initialization
         token = tRWA(strategy.sToken());
 
+        // Switch to manager to set the tRWA token address
+        vm.stopPrank();
+        vm.startPrank(manager);
+        strategy.setTRWAToken(address(token));
+        vm.stopPrank();
+
+        vm.startPrank(owner);
         // Fund the strategy with some DAI
         daiToken.mint(address(strategy), 1000 * 10**18);
 
@@ -115,23 +123,35 @@ contract ReportedStrategyTest is BaseFountfiTest {
     }
 
     function test_Balance() public {
-        // Check the balance equals what the reporter returns
+        // Check the balance calculation with initial setup (should be 0 since no tokens minted yet)
         uint256 bal = strategy.balance();
-        assertEq(bal, INITIAL_NAV, "Balance should match reporter's value");
+        assertEq(bal, 0, "Balance should be 0 when no tokens are minted");
 
-        // Update the reporter's value
-        reporter.setValue(2000 * 10**18);
+        // Mint some tokens to create total supply by depositing assets
+        vm.prank(owner);
+        daiToken.mint(alice, 1000e18);
+        vm.startPrank(alice);
+        daiToken.approve(address(token), 1000e18);
+        token.deposit(1000e18, alice); // This will mint tokens
+        vm.stopPrank();
 
-        // Check the updated balance
+        // Now balance should be pricePerShare * totalSupply = 1e18 * 1000e18 / 1e18 = 1000e18
         bal = strategy.balance();
-        assertEq(bal, 2000 * 10**18, "Balance should match the updated reporter value");
+        assertEq(bal, 1000e18, "Balance should be price per share * total supply");
+
+        // Update the reporter's price per share
+        reporter.setValue(2e18); // 2 tokens per share
+
+        // Check the updated balance: 2e18 * 1000e18 / 1e18 = 2000e18
+        bal = strategy.balance();
+        assertEq(bal, 2000e18, "Balance should reflect new price per share");
     }
 
     function test_SetReporter() public {
         vm.startPrank(manager);
 
-        // Deploy a new reporter with a different value
-        MockReporter newReporter = new MockReporter(5000 * 10**18);
+        // Deploy a new reporter with a different price per share
+        MockReporter newReporter = new MockReporter(5e18); // 5 tokens per share
 
         // Update the reporter
         strategy.setReporter(address(newReporter));
@@ -139,9 +159,20 @@ contract ReportedStrategyTest is BaseFountfiTest {
         // Check that the reporter was updated
         assertEq(address(strategy.reporter()), address(newReporter), "Reporter should be updated");
 
-        // Check that the balance reflects the new reporter's value
+        // Mint some tokens to test the calculation by depositing
+        vm.stopPrank();
+        vm.prank(owner);
+        daiToken.mint(alice, 1000e18);
+        vm.startPrank(alice);
+        daiToken.approve(address(token), 1000e18);
+        token.deposit(1000e18, alice);
+        vm.stopPrank();
+        vm.startPrank(manager);
+
+        // Check that the balance reflects the new reporter's price per share
+        // 5e18 * 1000e18 / 1e18 = 5000e18
         uint256 bal = strategy.balance();
-        assertEq(bal, 5000 * 10**18, "Balance should match the new reporter's value");
+        assertEq(bal, 5000e18, "Balance should match the new reporter's price per share calculation");
 
         vm.stopPrank();
     }
@@ -162,6 +193,163 @@ contract ReportedStrategyTest is BaseFountfiTest {
         // Alice is not the manager
         vm.expectRevert(IStrategy.Unauthorized.selector);
         strategy.setReporter(address(0));
+
+        vm.stopPrank();
+    }
+
+    function test_PricePerShare() public {
+        // Test getting price per share
+        uint256 pricePerShare = strategy.pricePerShare();
+        assertEq(pricePerShare, INITIAL_PRICE_PER_SHARE, "Price per share should match initial value");
+
+        // Update reporter and check again
+        reporter.setValue(2e18);
+        pricePerShare = strategy.pricePerShare();
+        assertEq(pricePerShare, 2e18, "Price per share should reflect updated value");
+    }
+
+    function test_CalculateTotalAssets() public {
+        // With no tokens minted, total assets should be 0
+        uint256 totalAssets = strategy.calculateTotalAssets();
+        assertEq(totalAssets, 0, "Total assets should be 0 with no tokens");
+
+        // Mint some tokens by depositing
+        vm.prank(owner);
+        daiToken.mint(alice, 500e18);
+        vm.startPrank(alice);
+        daiToken.approve(address(token), 500e18);
+        token.deposit(500e18, alice);
+        vm.stopPrank();
+
+        // Calculate expected total assets: 1e18 * 500e18 / 1e18 = 500e18
+        totalAssets = strategy.calculateTotalAssets();
+        assertEq(totalAssets, 500e18, "Total assets should equal price per share * total supply");
+
+        // Update price per share and check again
+        reporter.setValue(3e18);
+        totalAssets = strategy.calculateTotalAssets();
+        assertEq(totalAssets, 1500e18, "Total assets should reflect new price per share");
+    }
+
+    function test_SetTRWAToken() public {
+        vm.startPrank(manager);
+
+        address newToken = makeAddr("newToken");
+        strategy.setTRWAToken(newToken);
+
+        assertEq(strategy.tRWAToken(), newToken, "tRWA token address should be updated");
+
+        vm.stopPrank();
+    }
+
+    function test_PriceAdjustment() public {
+        vm.startPrank(manager);
+
+        // Mint some tokens for testing by depositing
+        vm.stopPrank();
+        vm.prank(owner);
+        daiToken.mint(alice, 1000e18);
+        vm.startPrank(alice);
+        daiToken.approve(address(token), 1000e18);
+        token.deposit(1000e18, alice);
+        vm.stopPrank();
+        vm.startPrank(manager);
+
+        // Base calculation: 1e18 * 1000e18 / 1e18 = 1000e18
+        uint256 baseAssets = strategy.calculateTotalAssets();
+        assertEq(baseAssets, 1000e18, "Base assets should be 1000e18");
+
+        // Set positive adjustment
+        strategy.setPriceAdjustment(100e18);
+        uint256 adjustedAssets = strategy.calculateTotalAssets();
+        assertEq(adjustedAssets, 1100e18, "Assets should include positive adjustment");
+
+        // Set negative adjustment
+        strategy.setPriceAdjustment(-50e18);
+        adjustedAssets = strategy.calculateTotalAssets();
+        assertEq(adjustedAssets, 950e18, "Assets should include negative adjustment");
+
+        // Large negative adjustment (should not underflow)
+        strategy.setPriceAdjustment(-2000e18);
+        adjustedAssets = strategy.calculateTotalAssets();
+        assertEq(adjustedAssets, 0, "Assets should be 0 when adjustment exceeds base");
+
+        vm.stopPrank();
+    }
+
+    function test_DepositWithdrawFlow() public {
+        // Setup: Give Alice some DAI to deposit
+        vm.prank(owner);
+        daiToken.mint(alice, 2000e18);
+
+        vm.startPrank(alice);
+        daiToken.approve(address(token), 2000e18);
+
+        // Initial state: no tokens minted, price per share = 1e18
+        assertEq(token.totalSupply(), 0, "Initial total supply should be 0");
+        assertEq(token.totalAssets(), 0, "Initial total assets should be 0");
+
+        // Alice deposits 1000 DAI
+        uint256 shares1 = token.deposit(1000e18, alice);
+
+        // With price per share = 1e18, she should get 1000 shares
+        assertEq(shares1, 1000e18, "Should get 1000 shares for 1000 DAI at 1:1 ratio");
+        assertEq(token.totalSupply(), 1000e18, "Total supply should be 1000");
+        assertEq(token.totalAssets(), 1000e18, "Total assets should be 1000 (1e18 * 1000e18 / 1e18)");
+
+        // Update price per share to 1.5 (fund performance)
+        vm.stopPrank();
+        reporter.setValue(1.5e18);
+
+        // Total assets should now reflect the new price
+        assertEq(token.totalAssets(), 1500e18, "Total assets should be 1500 (1.5e18 * 1000e18 / 1e18)");
+
+        // Alice deposits another 1000 DAI at the new price
+        vm.startPrank(alice);
+        uint256 shares2 = token.deposit(1000e18, alice);
+
+        // At price 1.5, she should get 1000/1.5 = 666.67 shares (approximately)
+        // The exact calculation depends on ERC4626 share pricing
+        assertTrue(shares2 < 1000e18, "Should get fewer shares at higher price");
+        assertTrue(shares2 > 600e18, "Should get more than 600 shares");
+
+        uint256 totalSupplyAfter = token.totalSupply();
+        uint256 totalAssetsAfter = token.totalAssets();
+        
+        // Total assets should be approximately 2500 (1.5 * new total supply)
+        uint256 expectedAssets = (1.5e18 * totalSupplyAfter) / 1e18;
+        assertApproxEqRel(totalAssetsAfter, expectedAssets, 0.01e18, "Total assets should match price per share calculation");
+
+        vm.stopPrank();
+    }
+
+    function test_ImmediateReflectionOfDeposits() public {
+        // This test verifies that deposits are immediately reflected in totalAssets
+        // even without oracle updates, which was the main problem we're solving
+
+        vm.prank(owner);
+        daiToken.mint(alice, 1000e18);
+
+        vm.startPrank(alice);
+        daiToken.approve(address(token), 1000e18);
+
+        // Before deposit
+        uint256 assetsBefore = token.totalAssets();
+        assertEq(assetsBefore, 0, "Assets should be 0 before deposit");
+
+        // Deposit
+        token.deposit(1000e18, alice);
+
+        // After deposit - should immediately reflect the new assets
+        uint256 assetsAfter = token.totalAssets();
+        assertEq(assetsAfter, 1000e18, "Assets should immediately reflect deposit");
+
+        // The key test: deposit again without oracle update
+        token.deposit(500e18, alice);
+
+        // Should immediately reflect the additional deposit
+        uint256 assetsFinal = token.totalAssets();
+        assertEq(assetsFinal, 1500e18, "Assets should immediately reflect second deposit");
 
         vm.stopPrank();
     }
