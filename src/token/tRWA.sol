@@ -116,8 +116,8 @@ contract tRWA is ERC4626, ItRWA {
      * @return Total assets in terms of _asset
      */
     function totalAssets() public view override returns (uint256) {
-        // Use the strategy's calculateTotalAssets which implements price-per-share calculation
-        return IStrategy(strategy).balance(); // This now delegates to calculateTotalAssets
+        // Use the strategy's balance which implements price-per-share calculation
+        return IStrategy(strategy).balance();
     }
 
     /*//////////////////////////////////////////////////////////////

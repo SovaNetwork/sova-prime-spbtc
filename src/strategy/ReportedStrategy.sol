@@ -25,9 +25,6 @@ contract ReportedStrategy is BasicStrategy {
 
     // Price adjustment for edge cases (can be positive or negative)
     int256 public priceAdjustment;
-    
-    // Address of the tRWA token (needed for totalSupply)
-    address public tRWAToken;
 
     /*//////////////////////////////////////////////////////////////
                             EVENTS & ERRORS
@@ -38,7 +35,6 @@ contract ReportedStrategy is BasicStrategy {
 
     // Events
     event SetReporter(address indexed reporter);
-    event SetTRWAToken(address indexed tRWAToken);
     event PriceAdjustmentSet(int256 adjustment);
 
     /*//////////////////////////////////////////////////////////////
@@ -74,33 +70,17 @@ contract ReportedStrategy is BasicStrategy {
     }
 
     /**
-     * @notice Get the balance of the strategy (deprecated - use calculateTotalAssets)
+     * @notice Get the balance of the strategy
      * @return The balance of the strategy in the underlying asset
      */
     function balance() external view override returns (uint256) {
-        return calculateTotalAssets();
-    }
-
-    /**
-     * @notice Get the current price per share from the reporter
-     * @return The price per share in 18 decimal format
-     */
-    function pricePerShare() external view returns (uint256) {
-        return abi.decode(reporter.report(), (uint256));
-    }
-
-    /**
-     * @notice Calculate total assets based on price per share and total supply
-     * @return The total assets in the underlying asset decimals
-     */
-    function calculateTotalAssets() public view returns (uint256) {
-        if (tRWAToken == address(0)) {
-            // Fallback to reporter if tRWA token not set yet
+        if (sToken == address(0)) {
+            // Fallback to reporter if sToken not set yet
             return abi.decode(reporter.report(), (uint256));
         }
         
         uint256 _pricePerShare = abi.decode(reporter.report(), (uint256));
-        uint256 totalSupply = ERC20(tRWAToken).totalSupply();
+        uint256 totalSupply = ERC20(sToken).totalSupply();
         
         // Calculate base total assets: pricePerShare * totalSupply / 1e18
         uint256 baseAssets = _pricePerShare.mulWad(totalSupply);
@@ -115,6 +95,15 @@ contract ReportedStrategy is BasicStrategy {
     }
 
     /**
+     * @notice Get the current price per share from the reporter
+     * @return The price per share in 18 decimal format
+     */
+    function pricePerShare() external view returns (uint256) {
+        return abi.decode(reporter.report(), (uint256));
+    }
+
+
+    /**
      * @notice Set the reporter contract
      * @param _reporter The new reporter contract
      */
@@ -126,14 +115,6 @@ contract ReportedStrategy is BasicStrategy {
         emit SetReporter(_reporter);
     }
 
-    /**
-     * @notice Set the tRWA token address
-     * @param _tRWAToken The tRWA token contract address
-     */
-    function setTRWAToken(address _tRWAToken) external onlyManager {
-        tRWAToken = _tRWAToken;
-        emit SetTRWAToken(_tRWAToken);
-    }
 
     /**
      * @notice Set price adjustment for edge cases

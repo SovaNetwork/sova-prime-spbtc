@@ -63,10 +63,6 @@ contract HookRemovalTest is Test {
         strategy = ReportedStrategy(strategyAddr);
         token = tRWA(tokenAddr);
 
-        // Set tRWA token address in strategy
-        vm.stopPrank();
-        vm.startPrank(manager);
-        strategy.setTRWAToken(address(token));
         vm.stopPrank();
         vm.startPrank(owner);
 

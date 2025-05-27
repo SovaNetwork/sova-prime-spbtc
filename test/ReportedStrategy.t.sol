@@ -77,12 +77,7 @@ contract ReportedStrategyTest is BaseFountfiTest {
         strategy = ReportedStrategy(strategyAddr);
         token = tRWA(tokenAddr);
 
-        // Switch to manager to set the tRWA token address
         vm.stopPrank();
-        vm.startPrank(manager);
-        strategy.setTRWAToken(address(token));
-        vm.stopPrank();
-
         vm.startPrank(owner);
         // Fund the strategy with some DAI
         daiToken.mint(address(strategy), 1000 * 10**18);
@@ -219,7 +214,7 @@ contract ReportedStrategyTest is BaseFountfiTest {
 
     function test_CalculateTotalAssets() public {
         // With no tokens minted, total assets should be 0
-        uint256 totalAssets = strategy.calculateTotalAssets();
+        uint256 totalAssets = strategy.balance();
         assertEq(totalAssets, 0, "Total assets should be 0 with no tokens");
 
         // Mint some tokens by depositing
@@ -232,25 +227,15 @@ contract ReportedStrategyTest is BaseFountfiTest {
         vm.stopPrank();
 
         // Calculate expected total assets: 1e18 * 500e18 / 1e18 = 500e18
-        totalAssets = strategy.calculateTotalAssets();
+        totalAssets = strategy.balance();
         assertEq(totalAssets, 500e18, "Total assets should equal price per share * total supply");
 
         // Update price per share and check again
         reporter.setValue(3e18);
-        totalAssets = strategy.calculateTotalAssets();
+        totalAssets = strategy.balance();
         assertEq(totalAssets, 1500e18, "Total assets should reflect new price per share");
     }
 
-    function test_SetTRWAToken() public {
-        vm.startPrank(manager);
-
-        address newToken = makeAddr("newToken");
-        strategy.setTRWAToken(newToken);
-
-        assertEq(strategy.tRWAToken(), newToken, "tRWA token address should be updated");
-
-        vm.stopPrank();
-    }
 
     function test_PriceAdjustment() public {
         vm.startPrank(manager);
@@ -266,22 +251,22 @@ contract ReportedStrategyTest is BaseFountfiTest {
         vm.startPrank(manager);
 
         // Base calculation: 1e18 * 1000e18 / 1e18 = 1000e18
-        uint256 baseAssets = strategy.calculateTotalAssets();
+        uint256 baseAssets = strategy.balance();
         assertEq(baseAssets, 1000e18, "Base assets should be 1000e18");
 
         // Set positive adjustment
         strategy.setPriceAdjustment(100e18);
-        uint256 adjustedAssets = strategy.calculateTotalAssets();
+        uint256 adjustedAssets = strategy.balance();
         assertEq(adjustedAssets, 1100e18, "Assets should include positive adjustment");
 
         // Set negative adjustment
         strategy.setPriceAdjustment(-50e18);
-        adjustedAssets = strategy.calculateTotalAssets();
+        adjustedAssets = strategy.balance();
         assertEq(adjustedAssets, 950e18, "Assets should include negative adjustment");
 
         // Large negative adjustment (should not underflow)
         strategy.setPriceAdjustment(-2000e18);
-        adjustedAssets = strategy.calculateTotalAssets();
+        adjustedAssets = strategy.balance();
         assertEq(adjustedAssets, 0, "Assets should be 0 when adjustment exceeds base");
 
         vm.stopPrank();
