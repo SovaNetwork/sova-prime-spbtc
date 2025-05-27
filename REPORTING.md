@@ -27,3 +27,15 @@ Instead of reporting the total AUM in `ReportedStrategy#balance`, we could inste
 The thinking behind this idea is that, when deposits/withdrawals happen in between NAV updates, those deposits and withdrawals have a smaller implicit effect on the "price per share" of a fund, as opposed to the fund's AUM. For instance, if there are 1000 shares outstanding and a fund's AUM is $1,000,000, then `totalAssets` is 1000000 and the price per share is 1000. If a new user comes along and deposits $500,000, then the fund's AUM is now $1,500,000 - a 50% delta. However, if we mint the user 500 new shares at the current price per share, then `pricePerShare` remains unchanged, meaning that `totalAssets` immediately reflects the new AUM of 1500000 (since `totalSupply` will have increased to 1500 shares outstanding).
 
 As mentioned in the beginning, please let me know the pros and cons of this approach as opposed to AUM-based accounting, and share your overall opinion.
+
+
+
+Hi Claude, I'm thinking about the way we report a strategy's balance in terms of `pricePerShare`. This seems to cause some repeat divisions/multiplications by `tRWA#totalSupply`, and in general seems a bit indirect. I'm thinking of changing the `totalAssets` calculation to be as straightforward as possible, and use the total AUM as a denominator. So, I would change the way we get `tRWA#totalAssets` to follow:
+
+1) A privileged address calls `AumOracleReporter#update` with the fund's total AUM
+2) The strategy delegates `ReportedStrategy#balance` to `AumOracleReporter#report`, which returns the AUM
+3) The tRWA token delegates `tRWA#totalAssets` to `ReportedStrategy#balance`, which returns that same value.
+
+This means that we wouldn't need things like decimal conversions, redundant division/multiplication, and the reporting would be more straightforward (just report the fund's AUM, a basic value that every fund understands).
+
+Can you consider this alternative approach with a critical lens, let me know the pros and cons, and give your overall opinion?

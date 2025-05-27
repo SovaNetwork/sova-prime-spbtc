@@ -15,6 +15,9 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
     error WithdrawNonceReuse();
     error WithdrawInvalidSignature();
     error InvalidArrayLengths();
+
+    event WithdrawalNonceUsed(address indexed owner, uint96 nonce);
+
     struct WithdrawalRequest {
         uint256 shares;
         uint256 minAssets;
@@ -40,14 +43,7 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
     );
 
     // Domain separator for signatures
-    bytes32 private DOMAIN_SEPARATOR = keccak256(
-        abi.encode(
-            EIP712_DOMAIN_TYPEHASH,
-            keccak256(bytes("ManagedWithdrawReportedStrategy")),
-            keccak256(bytes("V1")),
-            block.chainid
-        )
-    );
+    bytes32 private DOMAIN_SEPARATOR;
 
     // Tracking of used nonces
     mapping(address => mapping(uint96 => bool)) public usedNonces;
@@ -126,6 +122,7 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
 
         // Mark nonce as used
         usedNonces[request.owner][request.nonce] = true;
+        emit WithdrawalNonceUsed(request.owner, request.nonce);
 
         assets = ManagedWithdrawRWA(sToken).redeem(request.shares, request.to, request.owner, request.minAssets);
     }
