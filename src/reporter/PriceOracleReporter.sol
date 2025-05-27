@@ -1,0 +1,98 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.25;
+
+import {BaseReporter} from "./BaseReporter.sol";
+import {Ownable} from "solady/auth/Ownable.sol";
+
+/**
+ * @title PriceOracleReporter
+ * @notice A reporter contract that allows a trusted party to report the price per share of the strategy
+ */
+contract PriceOracleReporter is BaseReporter, Ownable {
+    /*//////////////////////////////////////////////////////////////
+                            STATE
+    //////////////////////////////////////////////////////////////*/
+
+    // Current round number
+    uint256 public currentRound;
+
+    // The current price per share (in wei, 18 decimals)
+    uint256 public pricePerShare;
+
+    // The timestamp of the last update
+    uint256 public lastUpdateAt;
+
+    // Mapping of authorized updaters
+    mapping(address => bool) public authorizedUpdaters;
+
+    /*//////////////////////////////////////////////////////////////
+                            EVENTS & ERRORS
+    //////////////////////////////////////////////////////////////*/
+
+    event PricePerShareUpdated(uint256 roundNumber, uint256 pricePerShare, string source);
+    event SetUpdater(address indexed updater, bool isAuthorized);
+
+    // Errors
+    error InvalidSource();
+
+    /*//////////////////////////////////////////////////////////////
+                            CONSTRUCTOR
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Contract constructor
+     * @param initialPricePerShare Initial price per share to report (18 decimals)
+     */
+    constructor(uint256 initialPricePerShare, address updater) {
+        _initializeOwner(msg.sender);
+        authorizedUpdaters[updater] = true;
+
+        currentRound = 1;
+        pricePerShare = initialPricePerShare;
+        lastUpdateAt = block.timestamp;
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                            PUBLIC FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Update the reported price per share
+     * @param newPricePerShare The new price per share to report (18 decimals)
+     * @param source_ The source of the price update
+     */
+    function update(uint256 newPricePerShare, string calldata source_) external {
+        if (!authorizedUpdaters[msg.sender]) revert Unauthorized();
+        if (bytes(source_).length == 0) revert InvalidSource();
+
+        // Create new price update
+        currentRound++;
+        pricePerShare = newPricePerShare;
+        lastUpdateAt = block.timestamp;
+
+        emit PricePerShareUpdated(currentRound, pricePerShare, source_);
+    }
+
+
+    /**
+     * @notice Report the current price per share
+     * @return The encoded current price per share
+     */
+    function report() external view override returns (bytes memory) {
+        return abi.encode(pricePerShare);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                            OWNER FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Set whether an address is authorized to update values
+     * @param updater Address to modify authorization for
+     * @param isAuthorized Whether the address should be authorized
+     */
+    function setUpdater(address updater, bool isAuthorized) external onlyOwner {
+        authorizedUpdaters[updater] = isAuthorized;
+        emit SetUpdater(updater, isAuthorized);
+    }
+}

@@ -86,12 +86,14 @@ contract GatedMintRWA is tRWA {
         uint256 // shares
     ) internal override {
         // Run hooks (same as in tRWA)
-        IHook[] storage opHooks = operationHooks[OP_DEPOSIT];
+        HookInfo[] storage opHooks = operationHooks[OP_DEPOSIT];
         for (uint i = 0; i < opHooks.length; i++) {
-            IHook.HookOutput memory hookOutput = opHooks[i].onBeforeDeposit(address(this), by, assets, to);
+            IHook.HookOutput memory hookOutput = opHooks[i].hook.onBeforeDeposit(address(this), by, assets, to);
             if (!hookOutput.approved) {
                 revert HookCheckFailed(hookOutput.reason);
             }
+            // Mark hook as having processed operations
+            opHooks[i].hasProcessedOperations = true;
         }
 
         // Generate deposit ID

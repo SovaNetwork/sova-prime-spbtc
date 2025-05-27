@@ -29,11 +29,20 @@ contract tRWA is ERC4626, ItRWA {
     error ReorderInvalidLength();
     error ReorderIndexOutOfBounds();
     error ReorderDuplicateIndex();
+    error HookHasProcessedOperations();
+    error HookIndexOutOfBounds();
 
     // Operation type identifiers
     bytes32 public constant OP_DEPOSIT = keccak256("DEPOSIT_OPERATION");
     bytes32 public constant OP_WITHDRAW = keccak256("WITHDRAW_OPERATION");
     bytes32 public constant OP_TRANSFER = keccak256("TRANSFER_OPERATION");
+
+    // Hook information structure
+    struct HookInfo {
+        IHook hook;
+        uint256 addedAtBlock;
+        bool hasProcessedOperations;
+    }
 
     // Internal storage for token metadata
     string private _symbol;
@@ -43,7 +52,7 @@ contract tRWA is ERC4626, ItRWA {
 
     // Logic contracts
     address public immutable strategy;
-    mapping(bytes32 => IHook[]) public operationHooks;
+    mapping(bytes32 => HookInfo[]) public operationHooks;
 
     // Events for withdrawal queueing
     event WithdrawalQueued(address indexed user, uint256 assets, uint256 shares);
@@ -143,12 +152,14 @@ contract tRWA is ERC4626, ItRWA {
      * @param shares Amount of shares to mint
      */
     function _deposit(address by, address to, uint256 assets, uint256 shares) internal virtual override {
-        IHook[] storage opHooks = operationHooks[OP_DEPOSIT];
+        HookInfo[] storage opHooks = operationHooks[OP_DEPOSIT];
         for (uint i = 0; i < opHooks.length; i++) {
-            IHook.HookOutput memory hookOutput = opHooks[i].onBeforeDeposit(address(this), by, assets, to);
+            IHook.HookOutput memory hookOutput = opHooks[i].hook.onBeforeDeposit(address(this), by, assets, to);
             if (!hookOutput.approved) {
                 revert HookCheckFailed(hookOutput.reason);
             }
+            // Mark hook as having processed operations
+            opHooks[i].hasProcessedOperations = true;
         }
 
         Conduit(
@@ -169,12 +180,14 @@ contract tRWA is ERC4626, ItRWA {
      * @param shares Amount of shares to withdraw
      */
     function _withdraw(address by, address to, address owner, uint256 assets, uint256 shares) internal override {
-       IHook[] storage opHooks = operationHooks[OP_WITHDRAW];
+       HookInfo[] storage opHooks = operationHooks[OP_WITHDRAW];
        for (uint256 i = 0; i < opHooks.length; i++) {
-            IHook.HookOutput memory hookOutput = opHooks[i].onBeforeWithdraw(address(this), by, assets, to, owner);
+            IHook.HookOutput memory hookOutput = opHooks[i].hook.onBeforeWithdraw(address(this), by, assets, to, owner);
             if (!hookOutput.approved) {
                 revert HookCheckFailed(hookOutput.reason);
             }
+            // Mark hook as having processed operations
+            opHooks[i].hasProcessedOperations = true;
         }
 
        if (by != owner) {
@@ -219,9 +232,36 @@ contract tRWA is ERC4626, ItRWA {
      */
     function addOperationHook(bytes32 operationType, address newHookAddress) external onlyStrategy {
         if (newHookAddress == address(0)) revert HookAddressZero();
-        // Consider adding a check to prevent duplicate hook additions if desired.
-        operationHooks[operationType].push(IHook(newHookAddress));
+        
+        HookInfo memory newHookInfo = HookInfo({
+            hook: IHook(newHookAddress),
+            addedAtBlock: block.number,
+            hasProcessedOperations: false
+        });
+        
+        operationHooks[operationType].push(newHookInfo);
         emit HookAdded(operationType, newHookAddress, operationHooks[operationType].length - 1);
+    }
+
+    /**
+     * @notice Removes an operation hook from a specific operation type.
+     * @dev Callable only by the strategy contract. Can only remove hooks that haven't processed operations.
+     * @param operationType The type of operation to remove the hook from.
+     * @param index The index of the hook to remove.
+     */
+    function removeOperationHook(bytes32 operationType, uint256 index) external onlyStrategy {
+        HookInfo[] storage opHooks = operationHooks[operationType];
+        
+        if (index >= opHooks.length) revert HookIndexOutOfBounds();
+        if (opHooks[index].hasProcessedOperations) revert HookHasProcessedOperations();
+        
+        address removedHookAddress = address(opHooks[index].hook);
+        
+        // Remove by swapping with last element and popping (more gas efficient)
+        opHooks[index] = opHooks[opHooks.length - 1];
+        opHooks.pop();
+        
+        emit HookRemoved(operationType, removedHookAddress);
     }
 
     /**
@@ -233,23 +273,28 @@ contract tRWA is ERC4626, ItRWA {
      *                        that should now be at NEW position i.
      */
     function reorderOperationHooks(bytes32 operationType, uint256[] calldata newOrderIndices) external onlyStrategy {
-        IHook[] storage opTypeHooks = operationHooks[operationType];
+        HookInfo[] storage opTypeHooks = operationHooks[operationType];
         uint256 numHooks = opTypeHooks.length;
         if (newOrderIndices.length != numHooks) revert ReorderInvalidLength();
 
-        IHook[] memory reorderedHooks = new IHook[](numHooks);
+        // Create a temporary copy of all hooks
+        HookInfo[] memory tempHooks = new HookInfo[](numHooks);
+        for (uint256 i = 0; i < numHooks; i++) {
+            tempHooks[i] = opTypeHooks[i];
+        }
+
         bool[] memory indexSeen = new bool[](numHooks);
 
+        // Reorder by copying from temp array back to storage
         for (uint256 i = 0; i < numHooks; i++) {
             uint256 oldIndex = newOrderIndices[i];
             if (oldIndex >= numHooks) revert ReorderIndexOutOfBounds();
             if (indexSeen[oldIndex]) revert ReorderDuplicateIndex();
 
-            reorderedHooks[i] = opTypeHooks[oldIndex];
+            opTypeHooks[i] = tempHooks[oldIndex];
             indexSeen[oldIndex] = true;
         }
 
-        operationHooks[operationType] = reorderedHooks;
         emit HooksReordered(operationType, newOrderIndices);
     }
 
@@ -259,12 +304,21 @@ contract tRWA is ERC4626, ItRWA {
      * @return An array of hook contract addresses.
      */
     function getHooksForOperation(bytes32 operationType) external view returns (address[] memory) {
-        IHook[] storage opTypeHooks = operationHooks[operationType];
+        HookInfo[] storage opTypeHooks = operationHooks[operationType];
         address[] memory hookAddresses = new address[](opTypeHooks.length);
         for (uint i = 0; i < opTypeHooks.length; i++) {
-            hookAddresses[i] = address(opTypeHooks[i]);
+            hookAddresses[i] = address(opTypeHooks[i].hook);
         }
         return hookAddresses;
+    }
+
+    /**
+     * @notice Gets detailed information about all hooks for a specific operation type.
+     * @param operationType The type of operation.
+     * @return hookInfos Array of HookInfo structs containing hook details.
+     */
+    function getHookInfoForOperation(bytes32 operationType) external view returns (HookInfo[] memory) {
+        return operationHooks[operationType];
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -282,13 +336,15 @@ contract tRWA is ERC4626, ItRWA {
     ) internal virtual override {
         super._beforeTokenTransfer(from, to, amount); // Call to parent ERC20/ERC4626 _beforeTokenTransfer if it exists
 
-        IHook[] storage opHooks = operationHooks[OP_TRANSFER];
+        HookInfo[] storage opHooks = operationHooks[OP_TRANSFER];
         if (opHooks.length > 0) { // Optimization to save gas if no hooks registered for OP_TRANSFER
             for (uint i = 0; i < opHooks.length; i++) {
-                IHook.HookOutput memory hookOutput = opHooks[i].onBeforeTransfer(address(this), from, to, amount);
+                IHook.HookOutput memory hookOutput = opHooks[i].hook.onBeforeTransfer(address(this), from, to, amount);
                 if (!hookOutput.approved) {
                     revert HookCheckFailed(hookOutput.reason);
                 }
+                // Mark hook as having processed operations
+                opHooks[i].hasProcessedOperations = true;
             }
         }
     }
