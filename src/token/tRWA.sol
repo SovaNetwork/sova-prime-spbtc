@@ -152,7 +152,7 @@ contract tRWA is ERC4626, ItRWA {
 
         Conduit(
             IRegistry(RoleManaged(strategy).registry()).conduit()
-        ).collectDeposit(asset(), by, address(this), assets);
+        ).collectDeposit(asset(), by, strategy, assets);
 
         _mint(to, shares);
 
