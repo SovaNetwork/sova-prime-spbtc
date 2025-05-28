@@ -35,8 +35,6 @@ contract Registry is IRegistry, RoleManaged {
      * @param _roleManager Address of the role manager - singleton contract for managing protocol roles
      */
     constructor(address _roleManager) RoleManaged(_roleManager) {
-        if (_roleManager == address(0)) revert ZeroAddress();
-
         // Initialize the conduit with the registry address
         conduit = address(new Conduit(address(this)));
     }
