@@ -16,11 +16,14 @@ contract RegistryTest is Test {
     address public owner;
 
     function setUp() public {
-        owner = makeAddr("owner");
+        owner = address(this); // Use the test contract as owner
 
         vm.startPrank(owner);
         roleManager = new RoleManager();
         registry = new Registry(address(roleManager));
+        
+        // Initialize the registry in RoleManager
+        roleManager.initializeRegistry(address(registry));
 
         // Grant necessary roles to owner
         roleManager.grantRole(owner, roleManager.PROTOCOL_ADMIN());
@@ -103,5 +106,154 @@ contract RegistryTest is Test {
         assertFalse(registry.allowedStrategies(localStrategy));
 
         vm.stopPrank();
+    }
+
+    function test_DeployStrategy() public {
+        vm.startPrank(owner);
+
+        // Setup prerequisites
+        MockERC20 usdc = new MockERC20("USD Coin", "USDC", 6);
+        address strategyImpl = makeAddr("strategyImpl");
+        address manager = makeAddr("manager");
+
+        // Register asset and strategy
+        registry.setAsset(address(usdc), 6);
+        registry.setStrategy(strategyImpl, true);
+
+        // Grant STRATEGY_OPERATOR role to owner
+        roleManager.grantRole(owner, roleManager.STRATEGY_OPERATOR());
+
+        // Deploy strategy (will fail because strategyImpl is not a real contract, but tests the flow)
+        vm.expectRevert();
+        registry.deploy(
+            strategyImpl,
+            "Test Strategy",
+            "TS",
+            address(usdc),
+            manager,
+            ""
+        );
+
+        vm.stopPrank();
+    }
+
+    function test_DeployStrategy_UnauthorizedAsset() public {
+        vm.startPrank(owner);
+
+        address strategyImpl = makeAddr("strategyImpl");
+        address unregisteredAsset = makeAddr("unregisteredAsset");
+        address manager = makeAddr("manager");
+
+        // Register strategy but not asset
+        registry.setStrategy(strategyImpl, true);
+
+        // Grant STRATEGY_OPERATOR role to owner
+        roleManager.grantRole(owner, roleManager.STRATEGY_OPERATOR());
+
+        // Try to deploy with unregistered asset
+        vm.expectRevert(IRegistry.UnauthorizedAsset.selector);
+        registry.deploy(
+            strategyImpl,
+            "Test Strategy",
+            "TS",
+            unregisteredAsset,
+            manager,
+            ""
+        );
+
+        vm.stopPrank();
+    }
+
+    function test_DeployStrategy_UnauthorizedStrategy() public {
+        vm.startPrank(owner);
+
+        MockERC20 usdc = new MockERC20("USD Coin", "USDC", 6);
+        address unregisteredStrategy = makeAddr("unregisteredStrategy");
+        address manager = makeAddr("manager");
+
+        // Register asset but not strategy
+        registry.setAsset(address(usdc), 6);
+
+        // Grant STRATEGY_OPERATOR role to owner
+        roleManager.grantRole(owner, roleManager.STRATEGY_OPERATOR());
+
+        // Try to deploy with unregistered strategy
+        vm.expectRevert(IRegistry.UnauthorizedStrategy.selector);
+        registry.deploy(
+            unregisteredStrategy,
+            "Test Strategy",
+            "TS",
+            address(usdc),
+            manager,
+            ""
+        );
+
+        vm.stopPrank();
+    }
+
+    function test_AllStrategyTokens() public {
+        // Deploy multiple strategies to populate the array
+        // Since we can't actually deploy without real implementations,
+        // we'll test the empty case
+        address[] memory tokens = registry.allStrategyTokens();
+        assertEq(tokens.length, 0);
+    }
+
+    function test_IsStrategyToken() public {
+        // Test with a non-strategy token
+        address randomToken = makeAddr("randomToken");
+        
+        // Mock the strategy() call to return an address
+        vm.mockCall(
+            randomToken,
+            abi.encodeWithSelector(bytes4(keccak256("strategy()"))),
+            abi.encode(makeAddr("notRegisteredStrategy"))
+        );
+        
+        assertFalse(registry.isStrategyToken(randomToken));
+    }
+
+    function test_ConduitAddress() public view {
+        // Conduit should be deployed in constructor
+        address conduitAddr = registry.conduit();
+        assertTrue(conduitAddr != address(0));
+    }
+
+    function test_RoleBasedAccess() public {
+        // Test that the owner has the correct roles
+        assertTrue(roleManager.hasAnyRole(owner, roleManager.PROTOCOL_ADMIN()));
+        assertTrue(roleManager.hasAnyRole(owner, roleManager.RULES_ADMIN()));
+        assertTrue(roleManager.hasAnyRole(owner, roleManager.STRATEGY_ADMIN()));
+
+        // Create a new user without any roles
+        address newUser = address(0x1234);
+        
+        // Verify newUser has no roles
+        assertFalse(roleManager.hasAnyRole(newUser, roleManager.PROTOCOL_ADMIN()));
+        assertFalse(roleManager.hasAnyRole(newUser, roleManager.RULES_ADMIN()));
+        assertFalse(roleManager.hasAnyRole(newUser, roleManager.STRATEGY_ADMIN()));
+
+        // Test that functions work correctly with proper roles (owner has all roles)
+        address testAsset = makeAddr("testAsset");
+        address testHook = makeAddr("testHook");
+        address testStrategy = makeAddr("testStrategy");
+
+        vm.prank(owner);
+        registry.setAsset(testAsset, 8);
+        assertEq(registry.allowedAssets(testAsset), 8);
+
+        vm.prank(owner);
+        registry.setHook(testHook, true);
+        assertTrue(registry.allowedHooks(testHook));
+
+        vm.prank(owner);
+        registry.setStrategy(testStrategy, true);
+        assertTrue(registry.allowedStrategies(testStrategy));
+    }
+
+    function test_ConstructorValidation() public {
+        // Test zero address role manager
+        vm.expectRevert();
+        new Registry(address(0));
     }
 }

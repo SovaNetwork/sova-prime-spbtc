@@ -3,6 +3,7 @@ pragma solidity ^0.8.25;
 
 import {IStrategy} from "../strategy/IStrategy.sol";
 import {tRWA} from "../token/tRWA.sol";
+import {IERC20} from "forge-std/interfaces/IERC20.sol";
 
 /**
  * @title MockStrategy
@@ -66,7 +67,8 @@ contract MockStrategy is IStrategy {
      * @return The balance of the strategy in the underlying asset
      */
     function balance() external view returns (uint256) {
-        return _balance;
+        // Return actual ERC20 balance instead of _balance for more realistic testing
+        return IERC20(asset).balanceOf(address(this));
     }
 
     /**

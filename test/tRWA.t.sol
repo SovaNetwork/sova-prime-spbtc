@@ -166,9 +166,12 @@ contract TRWATest is BaseFountfiTest {
         // Initially zero
         assertEq(token.totalAssets(), 0);
 
-        // Set strategy balance and verify it's reflected in totalAssets
-        vm.prank(owner);
-        strategy.setBalance(INITIAL_DEPOSIT);
+        // Mint USDC to owner first, then transfer to strategy
+        vm.startPrank(owner);
+        usdc.mint(owner, INITIAL_DEPOSIT);
+        usdc.transfer(address(strategy), INITIAL_DEPOSIT);
+        vm.stopPrank();
+        
         assertEq(token.totalAssets(), INITIAL_DEPOSIT);
     }
 

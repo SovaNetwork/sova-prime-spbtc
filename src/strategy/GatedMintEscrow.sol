@@ -171,12 +171,12 @@ contract GatedMintEscrow {
             bytes32 depositId = depositIds[i];
             PendingDeposit storage deposit = pendingDeposits[depositId];
 
-            // Mark as accepted
-            deposit.state = DepositState.ACCEPTED;
-
             // Validate deposit
             if (deposit.depositor == address(0)) revert DepositNotFound();
             if (deposit.state != DepositState.PENDING) revert DepositNotPending();
+
+            // Mark as accepted
+            deposit.state = DepositState.ACCEPTED;
 
             // Accumulate total assets and store recipient and asset amount
             totalBatchAssets += deposit.assetAmount;
