@@ -319,4 +319,169 @@ contract KycRulesTest is BaseFountfiTest {
         
         vm.stopPrank();
     }
+    
+    function test_BatchAllow_AlreadyAllowed() public {
+        vm.startPrank(owner);
+        
+        // Allow alice first
+        kycRules.allow(alice);
+        assertTrue(kycRules.isAllowed(alice));
+        
+        // Setup batch with alice (already allowed) and bob (not allowed)
+        address[] memory addresses = new address[](2);
+        addresses[0] = alice; // already allowed
+        addresses[1] = bob;   // not allowed
+        
+        // Batch allow should skip alice and allow bob
+        kycRules.batchAllow(addresses);
+        
+        // Verify both are allowed
+        assertTrue(kycRules.isAllowed(alice));
+        assertTrue(kycRules.isAllowed(bob));
+        
+        vm.stopPrank();
+    }
+    
+    function test_BatchDeny_AlreadyDenied() public {
+        vm.startPrank(owner);
+        
+        // Deny alice first
+        kycRules.deny(alice);
+        assertFalse(kycRules.isAllowed(alice));
+        assertTrue(kycRules.isAddressDenied(alice));
+        
+        // Allow bob
+        kycRules.allow(bob);
+        assertTrue(kycRules.isAllowed(bob));
+        
+        // Setup batch with alice (already denied) and bob (allowed)
+        address[] memory addresses = new address[](2);
+        addresses[0] = alice; // already denied
+        addresses[1] = bob;   // allowed
+        
+        // Batch deny should skip alice and deny bob
+        kycRules.batchDeny(addresses);
+        
+        // Verify both are denied
+        assertFalse(kycRules.isAllowed(alice));
+        assertTrue(kycRules.isAddressDenied(alice));
+        assertFalse(kycRules.isAllowed(bob));
+        assertTrue(kycRules.isAddressDenied(bob));
+        
+        vm.stopPrank();
+    }
+    
+    function test_BatchReset_AlreadyAllowed() public {
+        vm.startPrank(owner);
+        
+        // Allow alice
+        kycRules.allow(alice);
+        assertTrue(kycRules.isAllowed(alice));
+        
+        // Deny bob
+        kycRules.deny(bob);
+        assertFalse(kycRules.isAllowed(bob));
+        assertTrue(kycRules.isAddressDenied(bob));
+        
+        // Setup batch with alice (allowed) and bob (denied)
+        address[] memory addresses = new address[](2);
+        addresses[0] = alice; // allowed
+        addresses[1] = bob;   // denied
+        
+        // Batch reset should reset both
+        kycRules.batchReset(addresses);
+        
+        // Verify both are reset (not allowed and not denied)
+        assertFalse(kycRules.isAllowed(alice));
+        assertFalse(kycRules.isAddressDenied(alice));
+        assertFalse(kycRules.isAllowed(bob));
+        assertFalse(kycRules.isAddressDenied(bob));
+        
+        vm.stopPrank();
+    }
+    
+    function test_BatchAllow_WithZeroAddress() public {
+        vm.startPrank(owner);
+        
+        // Setup batch with zero address in the middle
+        address[] memory addresses = new address[](3);
+        addresses[0] = alice;
+        addresses[1] = address(0); // zero address
+        addresses[2] = bob;
+        
+        // Batch allow should revert on zero address
+        vm.expectRevert(KycRulesHook.ZeroAddress.selector);
+        kycRules.batchAllow(addresses);
+        
+        // Verify alice was not allowed (operation reverted)
+        assertFalse(kycRules.isAllowed(alice));
+        
+        vm.stopPrank();
+    }
+    
+    function test_BatchDeny_WithZeroAddress() public {
+        vm.startPrank(owner);
+        
+        // Allow alice first
+        kycRules.allow(alice);
+        
+        // Setup batch with zero address
+        address[] memory addresses = new address[](3);
+        addresses[0] = alice;
+        addresses[1] = address(0); // zero address
+        addresses[2] = bob;
+        
+        // Batch deny should revert on zero address
+        vm.expectRevert(KycRulesHook.ZeroAddress.selector);
+        kycRules.batchDeny(addresses);
+        
+        // Verify alice is still allowed (operation reverted)
+        assertTrue(kycRules.isAllowed(alice));
+        
+        vm.stopPrank();
+    }
+    
+    function test_BatchReset_WithZeroAddress() public {
+        vm.startPrank(owner);
+        
+        // Allow alice first
+        kycRules.allow(alice);
+        
+        // Setup batch with zero address
+        address[] memory addresses = new address[](3);
+        addresses[0] = alice;
+        addresses[1] = address(0); // zero address
+        addresses[2] = bob;
+        
+        // Batch reset should revert on zero address
+        vm.expectRevert(KycRulesHook.ZeroAddress.selector);
+        kycRules.batchReset(addresses);
+        
+        // Verify alice is still allowed (operation reverted)
+        assertTrue(kycRules.isAllowed(alice));
+        
+        vm.stopPrank();
+    }
+    
+    function test_BatchAllow_WithDeniedAddress() public {
+        vm.startPrank(owner);
+        
+        // Deny alice first
+        kycRules.deny(alice);
+        assertTrue(kycRules.isAddressDenied(alice));
+        
+        // Setup batch with denied address
+        address[] memory addresses = new address[](2);
+        addresses[0] = alice; // denied
+        addresses[1] = bob;   // not denied
+        
+        // Batch allow should revert on denied address
+        vm.expectRevert(KycRulesHook.AddressAlreadyDenied.selector);
+        kycRules.batchAllow(addresses);
+        
+        // Verify bob was not allowed (operation reverted)
+        assertFalse(kycRules.isAllowed(bob));
+        
+        vm.stopPrank();
+    }
 }
