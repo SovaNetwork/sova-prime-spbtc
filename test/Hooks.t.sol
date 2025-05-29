@@ -2,6 +2,7 @@
 pragma solidity ^0.8.25;
 
 import {BaseFountfiTest} from "./BaseFountfiTest.t.sol";
+import {Test} from "forge-std/Test.sol";
 import {RulesEngine} from "../src/hooks/RulesEngine.sol";
 import {KycRulesHook} from "../src/hooks/KycRulesHook.sol";
 import {MockSubscriptionHook} from "../src/mocks/MockSubscriptionHook.sol";
@@ -11,6 +12,10 @@ import {tRWA} from "../src/token/tRWA.sol";
 import {MockStrategy} from "../src/mocks/MockStrategy.sol";
 import {RoleManager} from "../src/auth/RoleManager.sol";
 import {MockHook} from "../src/mocks/MockHook.sol";
+import {ReportedStrategy} from "../src/strategy/ReportedStrategy.sol";
+import {MockERC20} from "../src/mocks/MockERC20.sol";
+import {MockReporter} from "../src/mocks/MockReporter.sol";
+import {Registry} from "../src/registry/Registry.sol";
 
 contract HooksTest is BaseFountfiTest {
     RulesEngine public rulesEngine;
@@ -19,6 +24,16 @@ contract HooksTest is BaseFountfiTest {
     MockCappedSubscriptionHook public cappedHook;
 
     RoleManager public roleManager;
+
+    // Additional state for hook removal tests
+    tRWA public removalTestToken;
+    ReportedStrategy public removalTestStrategy;
+    MockHook public hook1;
+    MockHook public hook2;
+    MockERC20 public removalTestAsset;
+    MockReporter public reporter;
+    Registry public removalTestRegistry;
+    RoleManager public removalTestRoleManager;
 
     function setUp() public override {
         super.setUp();
@@ -35,6 +50,38 @@ contract HooksTest is BaseFountfiTest {
 
         subHook = new MockSubscriptionHook(owner, true, true);
         cappedHook = new MockCappedSubscriptionHook(10_000 * 10**6, true, "Test rejection");
+
+        // Set up additional infrastructure for hook removal tests
+        removalTestRoleManager = new RoleManager();
+        removalTestRegistry = new Registry(address(removalTestRoleManager));
+        removalTestRoleManager.initializeRegistry(address(removalTestRegistry));
+
+        // Deploy asset and register it
+        removalTestAsset = new MockERC20("Test Asset", "TEST", 18);
+        removalTestRegistry.setAsset(address(removalTestAsset), 18);
+
+        // Deploy reporter and strategy
+        reporter = new MockReporter(1e18);
+        ReportedStrategy strategyImpl = new ReportedStrategy();
+        removalTestRegistry.setStrategy(address(strategyImpl), true);
+
+        // Deploy strategy and token through registry
+        bytes memory initData = abi.encode(address(reporter));
+        (address strategyAddr, address tokenAddr) = removalTestRegistry.deploy(
+            address(strategyImpl),
+            "Test Token",
+            "TEST",
+            address(removalTestAsset),
+            manager,
+            initData
+        );
+
+        removalTestStrategy = ReportedStrategy(strategyAddr);
+        removalTestToken = tRWA(tokenAddr);
+
+        // Deploy test hooks for removal tests
+        hook1 = new MockHook(true, "");
+        hook2 = new MockHook(true, "");
 
         vm.stopPrank();
     }
@@ -310,5 +357,167 @@ contract HooksTest is BaseFountfiTest {
         );
         assertFalse(result.approved, "Should fail when a hook rejects");
         assertTrue(bytes(result.reason).length > 0, "Reason should be provided");
+    }
+
+    // === Hook Removal Tests ===
+
+    function test_AddAndRemoveHookBeforeOperations() public {
+        vm.startPrank(address(removalTestStrategy));
+
+        // Add a hook
+        removalTestToken.addOperationHook(removalTestToken.OP_DEPOSIT(), address(hook1));
+        
+        // Verify hook was added
+        address[] memory hooks = removalTestToken.getHooksForOperation(removalTestToken.OP_DEPOSIT());
+        assertEq(hooks.length, 1);
+        assertEq(hooks[0], address(hook1));
+
+        // Should be able to remove hook since no operations have occurred
+        removalTestToken.removeOperationHook(removalTestToken.OP_DEPOSIT(), 0);
+
+        // Verify hook was removed
+        hooks = removalTestToken.getHooksForOperation(removalTestToken.OP_DEPOSIT());
+        assertEq(hooks.length, 0);
+
+        vm.stopPrank();
+    }
+
+    function test_CannotRemoveHookAfterOperations() public {
+        vm.startPrank(address(removalTestStrategy));
+        
+        // Add a hook
+        removalTestToken.addOperationHook(removalTestToken.OP_DEPOSIT(), address(hook1));
+        
+        vm.stopPrank();
+
+        // Perform a deposit operation
+        vm.prank(owner);
+        removalTestAsset.mint(alice, 1000e18);
+        vm.startPrank(alice);
+        removalTestAsset.approve(removalTestRegistry.conduit(), 1000e18);
+        removalTestToken.deposit(1000e18, alice);
+        vm.stopPrank();
+
+        // Now try to remove the hook - should fail
+        vm.startPrank(address(removalTestStrategy));
+        
+        bool success = false;
+        try removalTestToken.removeOperationHook(removalTestToken.OP_DEPOSIT(), 0) {
+            success = true;
+        } catch {
+            // Expected to revert
+        }
+        assertFalse(success, "Should not be able to remove hook after operations");
+        
+        vm.stopPrank();
+    }
+
+    function test_CanRemoveUnusedHookEvenIfOthersUsed() public {
+        vm.startPrank(address(removalTestStrategy));
+        
+        // Add two hooks
+        removalTestToken.addOperationHook(removalTestToken.OP_DEPOSIT(), address(hook1));
+        removalTestToken.addOperationHook(removalTestToken.OP_WITHDRAW(), address(hook2));
+        
+        vm.stopPrank();
+
+        // Perform only a deposit operation (uses hook1 but not hook2)
+        vm.prank(owner);
+        removalTestAsset.mint(alice, 1000e18);
+        vm.startPrank(alice);
+        removalTestAsset.approve(removalTestRegistry.conduit(), 1000e18);
+        removalTestToken.deposit(1000e18, alice);
+        vm.stopPrank();
+
+        vm.startPrank(address(removalTestStrategy));
+        
+        // Should not be able to remove the deposit hook (it was used)
+        bool success = false;
+        try removalTestToken.removeOperationHook(removalTestToken.OP_DEPOSIT(), 0) {
+            success = true;
+        } catch {
+            // Expected to revert
+        }
+        assertFalse(success, "Should not be able to remove used deposit hook");
+
+        // Should be able to remove the withdraw hook (it was not used)
+        removalTestToken.removeOperationHook(removalTestToken.OP_WITHDRAW(), 0);
+        
+        // Verify withdraw hook was removed
+        address[] memory withdrawHooks = removalTestToken.getHooksForOperation(removalTestToken.OP_WITHDRAW());
+        assertEq(withdrawHooks.length, 0);
+
+        vm.stopPrank();
+    }
+
+    function test_HookInfoTracking() public {
+        vm.startPrank(address(removalTestStrategy));
+        
+        // Add a hook
+        uint256 blockNumber = block.number;
+        removalTestToken.addOperationHook(removalTestToken.OP_DEPOSIT(), address(hook1));
+        
+        // Check hook info
+        tRWA.HookInfo[] memory hookInfos = removalTestToken.getHookInfoForOperation(removalTestToken.OP_DEPOSIT());
+        assertEq(hookInfos.length, 1);
+        assertEq(address(hookInfos[0].hook), address(hook1));
+        assertEq(hookInfos[0].addedAtBlock, blockNumber);
+        assertFalse(hookInfos[0].hasProcessedOperations);
+        
+        vm.stopPrank();
+
+        // Perform operation
+        vm.prank(owner);
+        removalTestAsset.mint(alice, 1000e18);
+        vm.startPrank(alice);
+        removalTestAsset.approve(removalTestRegistry.conduit(), 1000e18);
+        removalTestToken.deposit(1000e18, alice);
+        vm.stopPrank();
+
+        // Check that hook is now marked as having processed operations
+        hookInfos = removalTestToken.getHookInfoForOperation(removalTestToken.OP_DEPOSIT());
+        assertTrue(hookInfos[0].hasProcessedOperations);
+    }
+
+    function test_RemoveHookIndexValidation() public {
+        vm.startPrank(address(removalTestStrategy));
+        
+        // Test 1: Try to remove hook from empty list
+        bool success = false;
+        try removalTestToken.removeOperationHook(removalTestToken.OP_DEPOSIT(), 0) {
+            success = true;
+        } catch {
+            // Expected to revert
+        }
+        assertFalse(success, "Should not be able to remove from empty list");
+
+        // Add one hook
+        removalTestToken.addOperationHook(removalTestToken.OP_DEPOSIT(), address(hook1));
+
+        // Test 2: Try to remove with invalid index
+        success = false;
+        try removalTestToken.removeOperationHook(removalTestToken.OP_DEPOSIT(), 1) {
+            success = true;
+        } catch {
+            // Expected to revert
+        }
+        assertFalse(success, "Should not be able to remove with invalid index");
+
+        vm.stopPrank();
+    }
+
+    function test_AuthorizationCheck() public {
+        // Test that non-strategy caller gets rejected
+        vm.startPrank(alice);
+        
+        bool success = false;
+        try removalTestToken.removeOperationHook(removalTestToken.OP_DEPOSIT(), 0) {
+            success = true;
+        } catch {
+            // Expected to revert
+        }
+        assertFalse(success, "Non-strategy caller should be rejected");
+        
+        vm.stopPrank();
     }
 }

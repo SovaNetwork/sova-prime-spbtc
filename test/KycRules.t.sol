@@ -4,7 +4,8 @@ pragma solidity ^0.8.25;
 import {BaseFountfiTest} from "./BaseFountfiTest.t.sol";
 import {KycRulesHook} from "../src/hooks/KycRulesHook.sol";
 import {IHook} from "../src/hooks/IHook.sol";
-import {MockRoleManager} from "../src/mocks/MockRoleManager.sol";
+import {RoleManager} from "../src/auth/RoleManager.sol";
+import {RoleManaged} from "../src/auth/RoleManaged.sol";
 
 /**
  * @title KycRulesTest
@@ -12,28 +13,37 @@ import {MockRoleManager} from "../src/mocks/MockRoleManager.sol";
  */
 contract KycRulesTest is BaseFountfiTest {
     KycRulesHook public kycRules;
-    MockRoleManager public mockRoleManager;
+    RoleManager public roleManager;
+    
+    // Additional addresses for RBAC testing
+    address public kycAdmin = address(0x100);
+    address public kycOperator = address(0x101);
+    address public unauthorizedUser = address(0x102);
     
     function setUp() public override {
         super.setUp();
         
         vm.startPrank(owner);
         
-        // Deploy mock role manager
-        mockRoleManager = new MockRoleManager(owner);
+        // Deploy real role manager
+        roleManager = new RoleManager();
         
-        // Deploy KYC rules with mock role manager
-        kycRules = new KycRulesHook(address(mockRoleManager));
+        // Deploy KYC rules with role manager
+        kycRules = new KycRulesHook(address(roleManager));
         
         // Grant owner the KYC_OPERATOR role
-        mockRoleManager.grantRole(owner, mockRoleManager.KYC_OPERATOR());
+        roleManager.grantRole(owner, roleManager.KYC_OPERATOR());
+        
+        // Set up additional roles for RBAC testing
+        roleManager.grantRole(kycAdmin, roleManager.RULES_ADMIN());
+        roleManager.grantRole(kycOperator, roleManager.KYC_OPERATOR());
         
         vm.stopPrank();
     }
     
     function test_Constructor() public view {
         // Verify constructor arguments
-        assertEq(address(kycRules.roleManager()), address(mockRoleManager));
+        assertEq(address(kycRules.roleManager()), address(roleManager));
     }
     
     function test_Allow() public {
@@ -482,6 +492,98 @@ contract KycRulesTest is BaseFountfiTest {
         // Verify bob was not allowed (operation reverted)
         assertFalse(kycRules.isAllowed(bob));
         
+        vm.stopPrank();
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                        RBAC ROLE-BASED TESTS
+    //////////////////////////////////////////////////////////////*/
+
+    function test_KycAdminCanAllow() public {
+        vm.startPrank(kycAdmin);
+        kycRules.allow(alice);
+        assertTrue(kycRules.isAllowed(alice));
+        vm.stopPrank();
+    }
+
+    function test_KycAdminCanDeny() public {
+        vm.startPrank(kycAdmin);
+        kycRules.deny(alice);
+        assertFalse(kycRules.isAllowed(alice));
+        vm.stopPrank();
+    }
+
+    function test_KycAdminCanReset() public {
+        vm.startPrank(kycAdmin);
+        kycRules.allow(alice);
+        assertTrue(kycRules.isAllowed(alice));
+        kycRules.reset(alice);
+        assertFalse(kycRules.isAllowed(alice));
+        vm.stopPrank();
+    }
+
+    function test_KycOperatorCanAllow() public {
+        vm.startPrank(kycOperator);
+        kycRules.allow(alice);
+        assertTrue(kycRules.isAllowed(alice));
+        vm.stopPrank();
+    }
+
+    function test_KycOperatorCanDeny() public {
+        vm.startPrank(kycOperator);
+        kycRules.deny(alice);
+        assertFalse(kycRules.isAllowed(alice));
+        vm.stopPrank();
+    }
+
+    function test_UnauthorizedUserCannotReset() public {
+        // First setup: allow alice
+        vm.startPrank(kycAdmin);
+        kycRules.allow(alice);
+        assertTrue(kycRules.isAllowed(alice));
+        vm.stopPrank();
+
+        // Try with an unauthorized user (not KYC_ADMIN or KYC_OPERATOR)
+        vm.startPrank(unauthorizedUser);
+        vm.expectRevert();
+        kycRules.reset(alice);
+        vm.stopPrank();
+    }
+
+    function test_BatchOperations_RBAC() public {
+        address[] memory users = new address[](2);
+        users[0] = alice;
+        users[1] = bob;
+
+        // Test with KYC Admin
+        vm.startPrank(kycAdmin);
+        kycRules.batchAllow(users);
+        vm.stopPrank();
+
+        assertTrue(kycRules.isAllowed(alice));
+        assertTrue(kycRules.isAllowed(bob));
+
+        vm.startPrank(kycAdmin);
+        kycRules.batchDeny(users);
+        vm.stopPrank();
+
+        assertFalse(kycRules.isAllowed(alice));
+        assertFalse(kycRules.isAllowed(bob));
+
+        vm.startPrank(kycAdmin);
+        kycRules.batchReset(users);
+        vm.stopPrank();
+
+        assertFalse(kycRules.isAllowed(alice));
+        assertFalse(kycRules.isAllowed(bob));
+        assertFalse(kycRules.isAddressDenied(alice));
+        assertFalse(kycRules.isAddressDenied(bob));
+    }
+
+    function test_UnauthorizedAccess_RBAC() public {
+        vm.startPrank(unauthorizedUser);
+        vm.expectRevert(); // We don't know exactly which role would be reported in the error
+        kycRules.allow(alice);
         vm.stopPrank();
     }
 }
