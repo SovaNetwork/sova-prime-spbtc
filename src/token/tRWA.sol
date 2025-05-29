@@ -199,6 +199,9 @@ contract tRWA is ERC4626, ItRWA {
 
        _burn(owner, shares);
 
+       // Get assets from strategy first
+       IStrategy(strategy).transferAssets(address(this), assets);
+
        // Safe transfer the assets to the recipient
        SafeTransferLib.safeTransfer(asset(), to, assets);
 

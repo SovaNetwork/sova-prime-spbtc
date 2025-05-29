@@ -4,6 +4,7 @@ pragma solidity ^0.8.25;
 import {IStrategy} from "../strategy/IStrategy.sol";
 import {tRWA} from "../token/tRWA.sol";
 import {IERC20} from "forge-std/interfaces/IERC20.sol";
+import {RoleManager} from "../auth/RoleManager.sol";
 
 /**
  * @title MockStrategy
@@ -15,6 +16,7 @@ contract MockStrategy is IStrategy {
     address public sToken;
     address public deployer;
     address public controller;
+    RoleManager public roleManager;
     uint256 private _balance;
     bool private _initialized;
     bool private _controllerConfigured;
@@ -49,9 +51,18 @@ contract MockStrategy is IStrategy {
         deployer = msg.sender;
         manager = manager_;
         asset = asset_;
+        roleManager = RoleManager(roleManager_);
         _balance = 0;
 
         emit StrategyInitialized(address(0), manager_, asset_, sToken);
+    }
+
+    /**
+     * @notice Get the registry contract
+     * @return The address of the registry contract
+     */
+    function registry() external view virtual returns (address) {
+        return roleManager.registry();
     }
 
     /**
@@ -73,17 +84,15 @@ contract MockStrategy is IStrategy {
 
     /**
      * @notice Transfer assets to a user
+     * @param to Recipient address
      * @param amount Amount of assets to transfer
      */
-    function transferAssets(address, uint256 amount) external {
+    function transferAssets(address to, uint256 amount) external {
         // Only callable by token or manager
         if (msg.sender != sToken && msg.sender != manager) revert Unauthorized();
 
-        // Simulate asset transfer
-        _balance -= amount;
-
-        // Mock the actual transfer since this is a test contract
-        // In a real implementation, this would use SafeTransferLib to transfer the asset
+        // Actually transfer the assets
+        IERC20(asset).transfer(to, amount);
     }
 
     function setManager(address newManager) external {

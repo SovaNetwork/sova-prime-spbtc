@@ -376,7 +376,7 @@ contract RejectingHook is IHook {
 contract TestStrategy is MockStrategy {
     address public _registry;
     
-    function registry() external view returns (address) {
+    function registry() external view override returns (address) {
         return _registry;
     }
     
