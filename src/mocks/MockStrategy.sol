@@ -82,19 +82,6 @@ contract MockStrategy is IStrategy {
         return IERC20(asset).balanceOf(address(this));
     }
 
-    /**
-     * @notice Transfer assets to a user
-     * @param to Recipient address
-     * @param amount Amount of assets to transfer
-     */
-    function transferAssets(address to, uint256 amount) external {
-        // Only callable by token or manager
-        if (msg.sender != sToken && msg.sender != manager) revert Unauthorized();
-
-        // Actually transfer the assets
-        IERC20(asset).transfer(to, amount);
-    }
-
     function setManager(address newManager) external {
         // In a real implementation, this would be restricted to the appropriate role
         if (msg.sender != manager) revert Unauthorized();

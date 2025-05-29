@@ -198,16 +198,6 @@ abstract contract BasicStrategy is IStrategy, CloneableRoleManaged {
     }
 
     /**
-     * @notice Transfer assets from the strategy to a recipient
-     * @param to The recipient address
-     * @param amount The amount to transfer
-     */
-    function transferAssets(address to, uint256 amount) external virtual {
-        if (msg.sender != sToken) revert Unauthorized();
-        SafeTransferLib.safeTransfer(asset, to, amount);
-    }
-
-    /**
      * @notice Delegate call an arbitrary function
      * @param target Address of the contract to call
      * @param data Calldata to send

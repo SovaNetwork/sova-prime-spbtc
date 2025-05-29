@@ -4,6 +4,7 @@ pragma solidity ^0.8.25;
 import {tRWA} from "./tRWA.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {IStrategy} from "../strategy/IStrategy.sol";
+import {IHook} from "../hooks/IHook.sol";
 
 /**
  * @title ManagedWithdrawRWA
@@ -130,10 +131,37 @@ contract ManagedWithdrawRWA is tRWA {
     }
 
     /**
-     * @notice Collect assets from the strategy
-     * @param assets The amount of assets to collect
+     * @notice Override _withdraw to skip transferAssets since we already collected
+     * @param by Address initiating the withdrawal
+     * @param to Address receiving the assets
+     * @param owner Address that owns the shares
+     * @param assets Amount of assets to withdraw
+     * @param shares Amount of shares to burn
      */
-    function _collect(uint256 assets) internal {
-        SafeTransferLib.safeTransferFrom(asset(), strategy, address(this), assets);
+    function _withdraw(address by, address to, address owner, uint256 assets, uint256 shares) internal override {
+        HookInfo[] storage opHooks = operationHooks[OP_WITHDRAW];
+        for (uint256 i = 0; i < opHooks.length; i++) {
+            IHook.HookOutput memory hookOutput = opHooks[i].hook.onBeforeWithdraw(address(this), by, assets, to, owner);
+            if (!hookOutput.approved) {
+                revert HookCheckFailed(hookOutput.reason);
+            }
+            // Mark hook as having processed operations
+            opHooks[i].hasProcessedOperations = true;
+        }
+
+        if (by != owner) {
+            _spendAllowance(owner, by, shares);
+        }
+
+        if (shares > balanceOf(owner))
+            revert WithdrawMoreThanMax();
+
+        _burn(owner, shares);
+
+        // Skip the _collect call since we already collected assets
+        // Just transfer the assets to the recipient
+        SafeTransferLib.safeTransfer(asset(), to, assets);
+
+        emit Withdraw(by, to, owner, assets, shares);
     }
 }

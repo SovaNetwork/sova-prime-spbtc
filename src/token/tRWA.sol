@@ -179,7 +179,7 @@ contract tRWA is ERC4626, ItRWA {
      * @param assets Amount of assets to withdraw
      * @param shares Amount of shares to withdraw
      */
-    function _withdraw(address by, address to, address owner, uint256 assets, uint256 shares) internal override {
+    function _withdraw(address by, address to, address owner, uint256 assets, uint256 shares) internal virtual override {
        HookInfo[] storage opHooks = operationHooks[OP_WITHDRAW];
        for (uint256 i = 0; i < opHooks.length; i++) {
             IHook.HookOutput memory hookOutput = opHooks[i].hook.onBeforeWithdraw(address(this), by, assets, to, owner);
@@ -197,25 +197,23 @@ contract tRWA is ERC4626, ItRWA {
        if (shares > balanceOf(owner))
            revert WithdrawMoreThanMax();
 
+       // Get assets from strategy
+       _collect(assets);
+
        _burn(owner, shares);
 
-       // Get assets from strategy first
-       IStrategy(strategy).transferAssets(address(this), assets);
-
-       // Safe transfer the assets to the recipient
+       // Transfer the assets to the recipient
        SafeTransferLib.safeTransfer(asset(), to, assets);
 
        emit Withdraw(by, to, owner, assets, shares);
     }
 
     /**
-     * @notice Utility function to burn tokens
-     * @param from Address to burn from
-     * @param amount Amount to burn
+     * @notice Collect assets from the strategy
+     * @param assets The amount of assets to collect
      */
-    function burn(address from, uint256 amount) external {
-        // Hooks for burn (transfer to address(0)) are handled by _beforeTokenTransfer
-        _burn(from, amount);
+    function _collect(uint256 assets) internal {
+        SafeTransferLib.safeTransferFrom(asset(), strategy, address(this), assets);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -235,13 +233,13 @@ contract tRWA is ERC4626, ItRWA {
      */
     function addOperationHook(bytes32 operationType, address newHookAddress) external onlyStrategy {
         if (newHookAddress == address(0)) revert HookAddressZero();
-        
+
         HookInfo memory newHookInfo = HookInfo({
             hook: IHook(newHookAddress),
             addedAtBlock: block.number,
             hasProcessedOperations: false
         });
-        
+
         operationHooks[operationType].push(newHookInfo);
         emit HookAdded(operationType, newHookAddress, operationHooks[operationType].length - 1);
     }
@@ -254,16 +252,16 @@ contract tRWA is ERC4626, ItRWA {
      */
     function removeOperationHook(bytes32 operationType, uint256 index) external onlyStrategy {
         HookInfo[] storage opHooks = operationHooks[operationType];
-        
+
         if (index >= opHooks.length) revert HookIndexOutOfBounds();
         if (opHooks[index].hasProcessedOperations) revert HookHasProcessedOperations();
-        
+
         address removedHookAddress = address(opHooks[index].hook);
-        
+
         // Remove by swapping with last element and popping (more gas efficient)
         opHooks[index] = opHooks[opHooks.length - 1];
         opHooks.pop();
-        
+
         emit HookRemoved(operationType, removedHookAddress);
     }
 

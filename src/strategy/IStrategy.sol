@@ -44,5 +44,4 @@ interface IStrategy {
     function asset() external view returns (address);
     function sToken() external view returns (address);
     function balance() external view returns (uint256);
-    function transferAssets(address to, uint256 amount) external;
 }
