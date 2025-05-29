@@ -92,4 +92,15 @@ contract MockManagedStrategy is IStrategy {
     function registry() external view returns (address) {
         return roleManager.registry();
     }
+    
+    /**
+     * @notice Set the allowance for an ERC20 token
+     * @param tokenAddr The address of the ERC20 token to set the allowance for
+     * @param spender The address to set the allowance for
+     * @param amount The amount of allowance to set
+     */
+    function setAllowance(address tokenAddr, address spender, uint256 amount) external {
+        if (msg.sender != manager) revert Unauthorized();
+        IERC20(tokenAddr).approve(spender, amount);
+    }
 }

@@ -52,6 +52,10 @@ contract tRWABranchCoverageTest is Test {
         // Get the deployed token
         token = tRWA(strategy.sToken());
         
+        // Strategy needs to approve token to transfer assets for withdrawals
+        vm.prank(owner);
+        strategy.setAllowance(address(usdc), address(token), type(uint256).max);
+        
         // Fund users
         deal(address(usdc), alice, 1000000 * 10**6);
         deal(address(usdc), bob, 1000000 * 10**6);

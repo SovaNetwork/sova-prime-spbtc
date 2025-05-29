@@ -73,8 +73,9 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
         vm.stopPrank();
 
         // Strategy needs to approve the ManagedWithdrawRWA to transfer assets during redemptions
-        vm.prank(address(strategy));
-        usdc.approve(address(managedToken), type(uint256).max);
+        // This uses the BasicStrategy's setAllowance function
+        vm.prank(manager);
+        strategy.setAllowance(address(usdc), address(managedToken), type(uint256).max);
 
         // Don't setup initial deposits in setUp to avoid complications
         // Tests can set them up individually as needed

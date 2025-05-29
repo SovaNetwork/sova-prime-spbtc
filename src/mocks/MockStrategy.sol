@@ -3,6 +3,7 @@ pragma solidity ^0.8.25;
 
 import {IStrategy} from "../strategy/IStrategy.sol";
 import {tRWA} from "../token/tRWA.sol";
+import {MocktRWA} from "./MocktRWA.sol";
 import {IERC20} from "forge-std/interfaces/IERC20.sol";
 import {RoleManager} from "../auth/RoleManager.sol";
 
@@ -45,8 +46,8 @@ contract MockStrategy is IStrategy {
         if (manager_ == address(0)) revert InvalidAddress();
         if (asset_ == address(0)) revert InvalidAddress();
         if (roleManager_ == address(0)) revert InvalidAddress();
-        // Deploy token with no hooks initially
-        sToken = address(new tRWA(name_, symbol_, asset_, assetDecimals_, address(this)));
+        // Deploy mock token with no hooks initially (for testing)
+        sToken = address(new MocktRWA(name_, symbol_, asset_, assetDecimals_, address(this)));
 
         deployer = msg.sender;
         manager = manager_;
@@ -100,6 +101,17 @@ contract MockStrategy is IStrategy {
         if (msg.sender != manager && msg.sender != deployer) revert Unauthorized();
 
         return sToken.call(data);
+    }
+    
+    /**
+     * @notice Set the allowance for an ERC20 token
+     * @param tokenAddr The address of the ERC20 token to set the allowance for
+     * @param spender The address to set the allowance for
+     * @param amount The amount of allowance to set
+     */
+    function setAllowance(address tokenAddr, address spender, uint256 amount) external {
+        if (msg.sender != manager) revert Unauthorized();
+        IERC20(tokenAddr).approve(spender, amount);
     }
 
 }

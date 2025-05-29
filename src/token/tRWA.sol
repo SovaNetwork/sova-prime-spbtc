@@ -216,6 +216,7 @@ contract tRWA is ERC4626, ItRWA {
         SafeTransferLib.safeTransferFrom(asset(), strategy, address(this), assets);
     }
 
+
     /*//////////////////////////////////////////////////////////////
                         HOOK MANAGEMENT FUNCTIONS
     //////////////////////////////////////////////////////////////*/

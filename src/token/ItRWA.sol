@@ -24,11 +24,4 @@ interface ItRWA {
 
     // Note: Standard ERC4626 operations are defined in the ERC4626 interface
     // and are not redefined here to avoid conflicts
-
-    /**
-     * @notice Utility function to burn tokens
-     * @param from Address to burn from
-     * @param amount Amount to burn
-     */
-    function burn(address from, uint256 amount) external;
 }

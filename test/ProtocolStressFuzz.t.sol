@@ -99,6 +99,10 @@ contract ProtocolStressFuzzTest is BaseFountfiTest {
             vm.prank(activeUsers[i]);
             usdc.approve(address(mockConduit), type(uint256).max);
         }
+        
+        // Strategy needs to approve token to transfer USDC during withdrawals
+        vm.prank(manager);
+        strategy.setAllowance(address(usdc), address(token), type(uint256).max);
     }
 
     /**
@@ -160,6 +164,10 @@ contract ProtocolStressFuzzTest is BaseFountfiTest {
         usdc.approve(address(reportedToken), type(uint256).max);
         vm.prank(bob);
         usdc.approve(address(mockConduit), type(uint256).max);
+        
+        // ReportedStrategy needs to approve token to transfer USDC during withdrawals
+        vm.prank(manager);
+        reportedStrategy.setAllowance(address(usdc), address(reportedToken), type(uint256).max);
         
         // Initial deposits (convert to USDC decimals)
         vm.prank(alice);
