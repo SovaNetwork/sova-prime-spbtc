@@ -21,7 +21,9 @@ bin/
 out/
 
 lcov.info
+coverage.lcov
 coverage/
+coverage-report/
 **/.claude/settings.local.json
 
 .DS_Store

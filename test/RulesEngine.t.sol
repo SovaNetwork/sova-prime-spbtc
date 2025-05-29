@@ -538,4 +538,103 @@ contract RulesEngineTests is BaseFountfiTest {
         rulesEngine.removeHook(addedHookId); // Call with hookId
         vm.stopPrank();
     }
+    
+    /**
+     * @notice Test getAllActiveHookIdsSorted function (lines 165-166)
+     * @dev This function was previously not covered
+     */
+    function test_GetAllActiveHookIdsSorted() public {
+        // Create unique hooks for this test
+        UniqueHook1 hook1 = new UniqueHook1();
+        UniqueHook2 hook2 = new UniqueHook2();
+        UniqueHook3 hook3 = new UniqueHook3();
+        
+        // Add hooks with different priorities
+        vm.startPrank(owner);
+        rulesEngine.addHook(address(hook1), 100);
+        rulesEngine.addHook(address(hook2), 50);
+        rulesEngine.addHook(address(hook3), 150);
+        
+        // Disable one hook
+        rulesEngine.disableHook(keccak256("UniqueHook3ForRulesEngine"));
+        vm.stopPrank();
+        
+        // Get all active hooks sorted
+        bytes32[] memory sortedIds = rulesEngine.getAllActiveHookIdsSorted();
+        
+        // Should have 2 active hooks (hook3 is disabled)
+        assertEq(sortedIds.length, 2);
+        
+        // Verify they are sorted by priority (ascending)
+        // hook2 (50) < hook1 (100)
+        assertEq(sortedIds[0], keccak256("UniqueHook2ForRulesEngine"));
+        assertEq(sortedIds[1], keccak256("UniqueHook1ForRulesEngine"));
+    }
+}
+
+// Unique hooks for RulesEngine test to avoid ID collision
+contract UniqueHook1 is IHook {
+    function hookId() external pure returns (bytes32) {
+        return keccak256("UniqueHook1ForRulesEngine");
+    }
+    
+    function hookName() external pure returns (string memory) {
+        return "UniqueHook1";
+    }
+    
+    function onBeforeDeposit(address, address, uint256, address) external pure returns (IHook.HookOutput memory) {
+        return IHook.HookOutput(true, "");
+    }
+    
+    function onBeforeWithdraw(address, address, uint256, address, address) external pure returns (IHook.HookOutput memory) {
+        return IHook.HookOutput(true, "");
+    }
+    
+    function onBeforeTransfer(address, address, address, uint256) external pure returns (IHook.HookOutput memory) {
+        return IHook.HookOutput(true, "");
+    }
+}
+
+contract UniqueHook2 is IHook {
+    function hookId() external pure returns (bytes32) {
+        return keccak256("UniqueHook2ForRulesEngine");
+    }
+    
+    function hookName() external pure returns (string memory) {
+        return "UniqueHook2";
+    }
+    
+    function onBeforeDeposit(address, address, uint256, address) external pure returns (IHook.HookOutput memory) {
+        return IHook.HookOutput(true, "");
+    }
+    
+    function onBeforeWithdraw(address, address, uint256, address, address) external pure returns (IHook.HookOutput memory) {
+        return IHook.HookOutput(true, "");
+    }
+    
+    function onBeforeTransfer(address, address, address, uint256) external pure returns (IHook.HookOutput memory) {
+        return IHook.HookOutput(true, "");
+    }
+}
+
+contract UniqueHook3 is IHook {
+    function hookId() external pure returns (bytes32) {
+        return keccak256("UniqueHook3ForRulesEngine");
+    }
+    
+    function hookName() external pure returns (string memory) {
+        return "UniqueHook3";
+    }
+    
+    function onBeforeDeposit(address, address, uint256, address) external pure returns (IHook.HookOutput memory) {
+        return IHook.HookOutput(true, "");
+    }
+    
+    function onBeforeWithdraw(address, address, uint256, address, address) external pure returns (IHook.HookOutput memory) {
+        return IHook.HookOutput(true, "");
+    }
+    
+    function onBeforeTransfer(address, address, address, uint256) external pure returns (IHook.HookOutput memory) {
+        return IHook.HookOutput(true, "");
+    }
 }

@@ -453,6 +453,41 @@ contract BasicStrategyTest is BaseFountfiTest {
 
         vm.stopPrank();
     }
+    
+    /**
+     * @notice Test callStrategyToken when call fails (line 170)
+     * @dev Tests the revert case in callStrategyToken
+     */
+    function test_CallStrategyToken_Reverts() public {
+        // Create calldata that will cause the token to revert
+        // Trying to call a non-existent function
+        bytes memory invalidCalldata = abi.encodeWithSignature("nonExistentFunction()");
+        
+        // Attempt the call as admin
+        vm.prank(owner);
+        vm.expectRevert();
+        strategy.callStrategyToken(invalidCalldata);
+    }
+    
+    /**
+     * @notice Test callStrategyToken with a call that returns data but fails
+     * @dev Tests the CallRevert error with return data
+     */
+    function test_CallStrategyToken_RevertsWithData() public {
+        // Create calldata that will fail with a specific error
+        // Try to transfer from the strategy without approval
+        bytes memory invalidCalldata = abi.encodeWithSignature(
+            "transferFrom(address,address,uint256)",
+            address(strategy),
+            alice,
+            100e18
+        );
+        
+        // Attempt the call as admin
+        vm.prank(owner);
+        vm.expectRevert();
+        strategy.callStrategyToken(invalidCalldata);
+    }
 }
 
 // Helper contract for testing delegate calls

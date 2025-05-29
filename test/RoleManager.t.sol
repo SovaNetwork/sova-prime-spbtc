@@ -434,4 +434,26 @@ contract RoleManagerTest is Test {
         vm.expectRevert(abi.encodeWithSelector(RoleManaged.InvalidRoleManager.selector));
         new MockRoleManaged(address(0));
     }
+    
+    /**
+     * @notice Test revoking a role that user doesn't have (line 117)
+     * @dev Covers the uncovered line where the role is already not granted
+     */
+    function test_RevokeRole_AlreadyRevoked() public {
+        // Create new role manager where test contract is owner
+        RoleManager newRoleManager = new RoleManager();
+        address testUser = address(999);
+        
+        // Grant a role first (as owner)
+        newRoleManager.grantRole(testUser, newRoleManager.STRATEGY_OPERATOR());
+        assertTrue(newRoleManager.hasAnyRole(testUser, newRoleManager.STRATEGY_OPERATOR()));
+        
+        // Revoke it
+        newRoleManager.revokeRole(testUser, newRoleManager.STRATEGY_OPERATOR());
+        assertFalse(newRoleManager.hasAnyRole(testUser, newRoleManager.STRATEGY_OPERATOR()));
+        
+        // Revoke it again - should not revert, just skip (line 117)
+        newRoleManager.revokeRole(testUser, newRoleManager.STRATEGY_OPERATOR());
+        assertFalse(newRoleManager.hasAnyRole(testUser, newRoleManager.STRATEGY_OPERATOR()));
+    }
 }
