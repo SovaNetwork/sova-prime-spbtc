@@ -388,6 +388,20 @@ contract BasicStrategyTest is BaseFountfiTest {
         vm.stopPrank();
     }
 
+    function test_CallCannotCallToken() public {
+        vm.startPrank(manager);
+
+        // Get the strategy token address first
+        address strategyToken = strategy.sToken();
+        
+        // Try to call the strategy token directly through call() function
+        // This should revert with CannotCallToken error
+        vm.expectRevert(IStrategy.CannotCallToken.selector);
+        strategy.call(strategyToken, 0, "");
+
+        vm.stopPrank();
+    }
+
     function test_CallUnauthorized() public {
         vm.startPrank(alice);
 
