@@ -570,6 +570,71 @@ contract RulesEngineTests is BaseFountfiTest {
         assertEq(sortedIds[0], keccak256("UniqueHook2ForRulesEngine"));
         assertEq(sortedIds[1], keccak256("UniqueHook1ForRulesEngine"));
     }
+
+    /**
+     * @notice Test changeHookPriority with non-existent hook (line 113)
+     * @dev This covers the uncovered branch BRDA:113,4,0,-
+     */
+    function test_ChangeHookPriority_HookNotFound() public {
+        vm.startPrank(owner);
+        
+        bytes32 nonExistentHookId = keccak256("NonExistentHook");
+        
+        vm.expectRevert(abi.encodeWithSelector(RulesEngine.HookNotFound.selector, nonExistentHookId));
+        rulesEngine.changeHookPriority(nonExistentHookId, 50);
+        
+        vm.stopPrank();
+    }
+
+    /**
+     * @notice Test enableHook with non-existent hook (line 125)
+     * @dev This covers the uncovered branch BRDA:125,5,0,-
+     */
+    function test_EnableHook_HookNotFound() public {
+        vm.startPrank(owner);
+        
+        bytes32 nonExistentHookId = keccak256("NonExistentHook");
+        
+        vm.expectRevert(abi.encodeWithSelector(RulesEngine.HookNotFound.selector, nonExistentHookId));
+        rulesEngine.enableHook(nonExistentHookId);
+        
+        vm.stopPrank();
+    }
+
+    /**
+     * @notice Test disableHook with non-existent hook (line 137)
+     * @dev This covers the uncovered branch BRDA:137,6,0,-
+     */
+    function test_DisableHook_HookNotFound() public {
+        vm.startPrank(owner);
+        
+        bytes32 nonExistentHookId = keccak256("NonExistentHook");
+        
+        vm.expectRevert(abi.encodeWithSelector(RulesEngine.HookNotFound.selector, nonExistentHookId));
+        rulesEngine.disableHook(nonExistentHookId);
+        
+        vm.stopPrank();
+    }
+
+    /**
+     * @notice Test hook call failure in _evaluateSubHooks (line 251)
+     * @dev This covers the uncovered branch BRDA:251,7,0,-
+     */
+    function test_HookCallFailure() public {
+        // Create a hook that will revert when called
+        FailingHook failingHook = new FailingHook();
+        
+        vm.startPrank(owner);
+        
+        // Add the failing hook
+        bytes32 failingHookId = rulesEngine.addHook(address(failingHook), 100);
+        
+        vm.stopPrank();
+        
+        // Try to call onBeforeTransfer - should revert with HookEvaluationFailed
+        vm.expectRevert(abi.encodeWithSelector(RulesEngine.HookEvaluationFailed.selector, failingHookId, bytes4(0)));
+        rulesEngine.onBeforeTransfer(address(0), alice, bob, 100);
+    }
 }
 
 // Unique hooks for RulesEngine test to avoid ID collision
@@ -636,5 +701,31 @@ contract UniqueHook3 is IHook {
     
     function onBeforeTransfer(address, address, address, uint256) external pure returns (IHook.HookOutput memory) {
         return IHook.HookOutput(true, "");
+    }
+}
+
+/**
+ * @title FailingHook
+ * @notice A hook that always reverts to test hook call failure scenarios
+ */
+contract FailingHook is IHook {
+    function hookId() external pure returns (bytes32) {
+        return keccak256("FailingHookForRulesEngine");
+    }
+    
+    function hookName() external pure returns (string memory) {
+        return "FailingHook";
+    }
+    
+    function onBeforeDeposit(address, address, uint256, address) external pure returns (IHook.HookOutput memory) {
+        revert("Hook intentionally fails");
+    }
+    
+    function onBeforeWithdraw(address, address, uint256, address, address) external pure returns (IHook.HookOutput memory) {
+        revert("Hook intentionally fails");
+    }
+    
+    function onBeforeTransfer(address, address, address, uint256) external pure returns (IHook.HookOutput memory) {
+        revert("Hook intentionally fails");
     }
 }
