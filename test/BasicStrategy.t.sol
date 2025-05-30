@@ -7,6 +7,7 @@ import {IStrategy} from "../src/strategy/IStrategy.sol";
 import {tRWA} from "../src/token/tRWA.sol";
 import {RoleManaged} from "../src/auth/RoleManaged.sol";
 import {RoleManager} from "../src/auth/RoleManager.sol";
+import {CloneableRoleManaged} from "../src/auth/CloneableRoleManaged.sol";
 import {MockHook} from "../src/mocks/MockHook.sol";
 import {MockERC20} from "../src/mocks/MockERC20.sol";
 
@@ -155,6 +156,19 @@ contract BasicStrategyTest is BaseFountfiTest {
             address(roleManager),
             manager,
             address(0),
+            18,
+            ""
+        );
+
+        // Test zero address for roleManager (covers CloneableRoleManaged branch)
+        TestableBasicStrategy newStrategy2 = new TestableBasicStrategy();
+        vm.expectRevert(CloneableRoleManaged.InvalidRoleManager.selector);
+        newStrategy2.initialize(
+            TOKEN_NAME,
+            TOKEN_SYMBOL,
+            address(0),  // Zero address roleManager
+            manager,
+            address(daiToken),
             18,
             ""
         );
