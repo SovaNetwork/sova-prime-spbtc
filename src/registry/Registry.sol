@@ -116,8 +116,6 @@ contract Registry is IRegistry, RoleManaged {
         isStrategy[strategy] = true;
 
         emit Deploy(strategy, token, _asset);
-
-        return (strategy, token);
     }
 
     /**

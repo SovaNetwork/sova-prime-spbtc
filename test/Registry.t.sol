@@ -389,4 +389,32 @@ contract RegistryTest is Test {
         registry.setStrategy(testStrategy, true);
         assertTrue(registry.allowedStrategies(testStrategy));
     }
+
+    /**
+     * @notice Test to ensure the return statement in deploy function is covered
+     * @dev This test specifically targets line 120 in Registry.sol
+     */
+    function test_DeployReturnValues() public {
+        vm.startPrank(owner);
+        
+        // Deploy and explicitly test both return values
+        (address deployedStrategy, address deployedToken) = registry.deploy(
+            address(strategyImpl),
+            "Coverage Test Token",
+            "CTT",
+            address(usdc),
+            owner,
+            ""
+        );
+        
+        // Explicitly verify return values to ensure line 120 is hit
+        assertTrue(deployedStrategy != address(0), "Strategy address should not be zero");
+        assertTrue(deployedToken != address(0), "Token address should not be zero");
+        
+        // Additional checks to ensure the return values are correct
+        assertEq(IStrategy(deployedStrategy).sToken(), deployedToken, "Strategy token should match returned token");
+        assertTrue(registry.isStrategy(deployedStrategy), "Deployed address should be registered as strategy");
+        
+        vm.stopPrank();
+    }
 }

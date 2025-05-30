@@ -507,6 +507,48 @@ contract GatedMintEscrowTest is BaseFountfiTest {
         assertEq(escrow.userPendingAssets(alice), 0);
     }
 
+    // ============ Additional Coverage Tests ============
+
+    function test_BatchAcceptDeposits_DepositNotFound() public {
+        bytes32[] memory depositIds = new bytes32[](2);
+        depositIds[0] = _createTestDeposit(alice, bob, DEPOSIT_AMOUNT);
+        depositIds[1] = keccak256("invalid"); // Invalid deposit ID
+
+        vm.prank(address(strategy));
+        vm.expectRevert(GatedMintEscrow.DepositNotFound.selector);
+        escrow.batchAcceptDeposits(depositIds);
+    }
+
+    function test_BatchAcceptDeposits_DepositNotPending() public {
+        bytes32[] memory depositIds = new bytes32[](2);
+        depositIds[0] = _createTestDeposit(alice, bob, DEPOSIT_AMOUNT);
+        depositIds[1] = _createTestDeposit(charlie, charlie, DEPOSIT_AMOUNT);
+
+        // Accept second deposit individually first
+        vm.prank(address(strategy));
+        escrow.acceptDeposit(depositIds[1]);
+
+        // Now try to batch accept including the already accepted deposit
+        vm.prank(address(strategy));
+        vm.expectRevert(GatedMintEscrow.DepositNotPending.selector);
+        escrow.batchAcceptDeposits(depositIds);
+    }
+
+    function test_ReclaimDeposit_ExactExpirationTime() public {
+        uint256 expirationTime = block.timestamp + 100;
+        bytes32 depositId = _createTestDepositWithExpiration(alice, bob, DEPOSIT_AMOUNT, expirationTime);
+
+        // Warp to exact expiration time
+        vm.warp(expirationTime);
+
+        vm.prank(alice);
+        escrow.reclaimDeposit(depositId);
+
+        // Verify deposit state
+        GatedMintEscrow.PendingDeposit memory deposit = escrow.getPendingDeposit(depositId);
+        assertEq(uint8(deposit.state), 2); // REFUNDED
+    }
+
     // ============ Helper Functions ============
 
     function _createTestDeposit(address depositor, address recipient, uint256 amount) internal returns (bytes32) {
