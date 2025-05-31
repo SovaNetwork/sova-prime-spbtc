@@ -172,7 +172,7 @@ contract GatedMintRWA is tRWA {
             _mint(recipients[i], recipientShares);
         }
 
-        emit BatchSharesMinted(depositIds, totalAssets, totalShares);
+        emit BatchSharesMinted(ids, totalAssets, totalShares);
     }
 
     /**
