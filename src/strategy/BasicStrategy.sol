@@ -197,20 +197,6 @@ abstract contract BasicStrategy is IStrategy, CloneableRoleManaged {
         emit Call(target, value, data);
     }
 
-    /**
-     * @notice Delegate call an arbitrary function
-     * @param target Address of the contract to call
-     * @param data Calldata to send
-     * @return success Whether the call succeeded
-     * @return returnData The return data from the call
-     */
-    function delegateCall(
-        address target,
-        bytes calldata data
-    ) external onlyManager returns (bool success, bytes memory returnData) {
-        (success, returnData) = target.delegatecall(data);
-    }
-
     /*//////////////////////////////////////////////////////////////
                             MODIFIERS
     //////////////////////////////////////////////////////////////*/
