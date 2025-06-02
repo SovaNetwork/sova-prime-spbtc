@@ -167,6 +167,7 @@ contract tRWA is ERC4626, ItRWA {
         ).collectDeposit(asset(), by, strategy, assets);
 
         _mint(to, shares);
+        _afterDeposit(assets, shares);
 
         emit Deposit(by, to, assets, shares);
     }
@@ -180,8 +181,8 @@ contract tRWA is ERC4626, ItRWA {
      * @param shares Amount of shares to withdraw
      */
     function _withdraw(address by, address to, address owner, uint256 assets, uint256 shares) internal virtual override {
-       HookInfo[] storage opHooks = operationHooks[OP_WITHDRAW];
-       for (uint256 i = 0; i < opHooks.length; i++) {
+        HookInfo[] storage opHooks = operationHooks[OP_WITHDRAW];
+        for (uint256 i = 0; i < opHooks.length; i++) {
             IHook.HookOutput memory hookOutput = opHooks[i].hook.onBeforeWithdraw(address(this), by, assets, to, owner);
             if (!hookOutput.approved) {
                 revert HookCheckFailed(hookOutput.reason);
@@ -190,22 +191,18 @@ contract tRWA is ERC4626, ItRWA {
             opHooks[i].hasProcessedOperations = true;
         }
 
-       if (by != owner) {
-           _spendAllowance(owner, by, shares);
-       }
+        // Get assets from strategy
+        _collect(assets);
 
-       if (shares > balanceOf(owner))
-           revert WithdrawMoreThanMax();
+        // Standard ERC4626 withdraw flow
+        if (by != owner) _spendAllowance(owner, by, shares);
+        _beforeWithdraw(assets, shares);
+        _burn(owner, shares);
 
-       // Get assets from strategy
-       _collect(assets);
+        // Transfer the assets to the recipient
+        SafeTransferLib.safeTransfer(asset(), to, assets);
 
-       _burn(owner, shares);
-
-       // Transfer the assets to the recipient
-       SafeTransferLib.safeTransfer(asset(), to, assets);
-
-       emit Withdraw(by, to, owner, assets, shares);
+        emit Withdraw(by, to, owner, assets, shares);
     }
 
     /**
