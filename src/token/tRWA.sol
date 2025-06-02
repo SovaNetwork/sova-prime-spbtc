@@ -4,6 +4,7 @@ pragma solidity 0.8.25;
 import {ERC4626} from "solady/tokens/ERC4626.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solady/utils/FixedPointMathLib.sol";
+import {ReentrancyGuard} from "solady/utils/ReentrancyGuard.sol";
 import {IHook} from "../hooks/IHook.sol";
 import {IStrategy} from "../strategy/IStrategy.sol";
 import {ItRWA} from "./ItRWA.sol";
@@ -17,7 +18,7 @@ import {IRegistry} from "../registry/IRegistry.sol";
  * @notice Tokenized Real World Asset (tRWA) inheriting ERC4626 standard
  * @dev Each token represents a share in the underlying real-world fund
  */
-contract tRWA is ERC4626, ItRWA {
+contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
     using FixedPointMathLib for uint256;
     using SafeTransferLib for address;
 
@@ -150,7 +151,7 @@ contract tRWA is ERC4626, ItRWA {
      * @param assets Amount of assets to deposit
      * @param shares Amount of shares to mint
      */
-    function _deposit(address by, address to, uint256 assets, uint256 shares) internal virtual override {
+    function _deposit(address by, address to, uint256 assets, uint256 shares) internal virtual override nonReentrant {
         HookInfo[] storage opHooks = operationHooks[OP_DEPOSIT];
         for (uint i = 0; i < opHooks.length; i++) {
             IHook.HookOutput memory hookOutput = opHooks[i].hook.onBeforeDeposit(address(this), by, assets, to);
@@ -179,7 +180,15 @@ contract tRWA is ERC4626, ItRWA {
      * @param assets Amount of assets to withdraw
      * @param shares Amount of shares to withdraw
      */
-    function _withdraw(address by, address to, address owner, uint256 assets, uint256 shares) internal virtual override {
+    function _withdraw(address by, address to, address owner, uint256 assets, uint256 shares) internal virtual override nonReentrant {
+        if (by != owner) _spendAllowance(owner, by, shares);
+        _beforeWithdraw(assets, shares);
+        _burn(owner, shares);
+
+        // Get assets from strategy
+        _collect(assets);
+
+        // Call hooks after state changes but before final transfer
         HookInfo[] storage opHooks = operationHooks[OP_WITHDRAW];
         for (uint256 i = 0; i < opHooks.length; i++) {
             IHook.HookOutput memory hookOutput = opHooks[i].hook.onBeforeWithdraw(address(this), by, assets, to, owner);
@@ -189,14 +198,6 @@ contract tRWA is ERC4626, ItRWA {
             // Mark hook as having processed operations
             opHooks[i].hasProcessedOperations = true;
         }
-
-        // Get assets from strategy
-        _collect(assets);
-
-        // Standard ERC4626 withdraw flow
-        if (by != owner) _spendAllowance(owner, by, shares);
-        _beforeWithdraw(assets, shares);
-        _burn(owner, shares);
 
         // Transfer the assets to the recipient
         SafeTransferLib.safeTransfer(asset(), to, assets);

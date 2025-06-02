@@ -114,6 +114,7 @@ contract ManagedWithdrawRWA is tRWA {
         assets = new uint256[](shares.length);
 
         // Process each withdrawal, based on prorated assets
+        // First pass: burn all shares (EFFECTS)
         for (uint256 i = 0; i < shares.length; i++) {
             uint256 userShares = shares[i];
             address userOwner = owner[i];
@@ -127,10 +128,12 @@ contract ManagedWithdrawRWA is tRWA {
             if (strategy != userOwner) _spendAllowance(userOwner, strategy, userShares);
             _beforeWithdraw(assets[i], userShares);
             _burn(userOwner, userShares);
+        }
 
-            SafeTransferLib.safeTransfer(asset(), to[i], recipientAssets);
-
-            emit Withdraw(strategy, to[i], userOwner, recipientAssets, userShares);
+        // Second pass: transfer assets (INTERACTIONS)
+        for (uint256 i = 0; i < shares.length; i++) {
+            SafeTransferLib.safeTransfer(asset(), to[i], assets[i]);
+            emit Withdraw(strategy, to[i], owner[i], assets[i], shares[i]);
         }
     }
 
@@ -143,6 +146,11 @@ contract ManagedWithdrawRWA is tRWA {
      * @param shares Amount of shares to burn
      */
     function _withdraw(address by, address to, address owner, uint256 assets, uint256 shares) internal override {
+        if (by != owner) _spendAllowance(owner, by, shares);
+        _beforeWithdraw(assets, shares);
+        _burn(owner, shares);
+
+        // Call hooks after state changes but before final transfer
         HookInfo[] storage opHooks = operationHooks[OP_WITHDRAW];
         for (uint256 i = 0; i < opHooks.length; i++) {
             IHook.HookOutput memory hookOutput = opHooks[i].hook.onBeforeWithdraw(address(this), by, assets, to, owner);
@@ -152,11 +160,6 @@ contract ManagedWithdrawRWA is tRWA {
             // Mark hook as having processed operations
             opHooks[i].hasProcessedOperations = true;
         }
-
-        // Standard ERC4626 withdraw flow
-        if (by != owner) _spendAllowance(owner, by, shares);
-        _beforeWithdraw(assets, shares);
-        _burn(owner, shares);
 
         // Transfer the assets to the recipient
         SafeTransferLib.safeTransfer(asset(), to, assets);
