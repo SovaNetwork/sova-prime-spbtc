@@ -20,6 +20,8 @@ contract GatedMintRWA is tRWA {
     error EscrowNotSet();
     error InvalidExpirationPeriod();
     error InvalidArrayLengths();
+    
+    uint256 private constant ONE = 1e18;
 
     // Deposit tracking (IDs only - Escrow has full state)
     bytes32[] public depositIds;
@@ -165,8 +167,9 @@ contract GatedMintRWA is tRWA {
 
         // Distribute shares proportionally to each recipient based on their contribution
         for (uint256 i = 0; i < recipients.length; i++) {
-            // Calculate this recipient's share of the total
-            uint256 recipientShares = (assetAmounts[i] * totalShares) / totalAssets;
+            // Calculate this recipient's share of the total using higher precision
+            uint256 scaledShares = totalShares * ONE;
+            uint256 recipientShares = (assetAmounts[i] * scaledShares / totalAssets) / ONE;
 
             // Mint shares to the recipient
             _mint(recipients[i], recipientShares);
