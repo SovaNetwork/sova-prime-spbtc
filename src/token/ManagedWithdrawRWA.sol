@@ -15,6 +15,8 @@ contract ManagedWithdrawRWA is tRWA {
     error UseRedeem();
     error InvalidArrayLengths();
     error InsufficientOutputAssets();
+    
+    uint256 private constant ONE = 1e18;
   /**
      * @notice Contract constructor
      * @param name_ Token name
@@ -115,7 +117,9 @@ contract ManagedWithdrawRWA is tRWA {
         for (uint256 i = 0; i < shares.length; i++) {
             uint256 userShares = shares[i];
             address userOwner = owner[i];
-            uint256 recipientAssets = (userShares * totalAssets) / totalShares; // totalAssets * (userShares / totalShares)
+            // Use higher precision calculation to minimize rounding errors
+            uint256 scaledAssets = totalAssets * ONE;
+            uint256 recipientAssets = (userShares * scaledAssets / totalShares) / ONE;
             assets[i] = recipientAssets;
 
             if (recipientAssets < minAssets[i]) revert InsufficientOutputAssets();
