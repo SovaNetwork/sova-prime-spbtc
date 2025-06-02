@@ -277,16 +277,14 @@ contract RulesEngine is BaseHook, RoleManaged {
      */
     function _getSortedActiveHookIds() private view returns (bytes32[] memory) {
         uint256 activeHooksCount = 0;
-        for (uint256 i = 0; i < _hookIds.length; i++) {
-            if (_hooks[_hookIds[i]].active) {
-                activeHooksCount++;
-            }
-        }
-
+        uint256 numHooks = _hookIds.length;
         bytes32[] memory sortedActiveIds = new bytes32[](activeHooksCount);
         uint256 currentIndex = 0;
-        for (uint256 i = 0; i < _hookIds.length; i++) {
+
+        // Count active hooks
+        for (uint256 i = 0; i < numHooks; i++) {
             if (_hooks[_hookIds[i]].active) {
+                activeHooksCount++;
                 sortedActiveIds[currentIndex++] = _hookIds[i];
             }
         }
@@ -303,6 +301,7 @@ contract RulesEngine is BaseHook, RoleManaged {
             }
             sortedActiveIds[j] = key;
         }
+
         return sortedActiveIds;
     }
 }
