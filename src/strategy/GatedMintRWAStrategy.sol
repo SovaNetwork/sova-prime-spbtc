@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.25;
+pragma solidity 0.8.25;
 
 import {GatedMintRWA} from "../token/GatedMintRWA.sol";
 import {ReportedStrategy} from "./ReportedStrategy.sol";

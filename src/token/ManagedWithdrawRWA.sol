@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.25;
+pragma solidity 0.8.25;
 
 import {tRWA} from "./tRWA.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
@@ -15,7 +15,7 @@ contract ManagedWithdrawRWA is tRWA {
     error UseRedeem();
     error InvalidArrayLengths();
     error InsufficientOutputAssets();
-    
+
     uint256 private constant ONE = 1e18;
   /**
      * @notice Contract constructor

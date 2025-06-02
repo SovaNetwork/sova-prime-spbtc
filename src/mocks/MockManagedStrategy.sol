@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.25;
+pragma solidity 0.8.25;
 
 import {IStrategy} from "../strategy/IStrategy.sol";
 import {IERC20} from "forge-std/interfaces/IERC20.sol";
@@ -92,7 +92,7 @@ contract MockManagedStrategy is IStrategy {
     function registry() external view returns (address) {
         return roleManager.registry();
     }
-    
+
     /**
      * @notice Set the allowance for an ERC20 token
      * @param tokenAddr The address of the ERC20 token to set the allowance for

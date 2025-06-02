@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.25;
+pragma solidity 0.8.25;
 
 import {ECDSA} from "solady/utils/ECDSA.sol";
 import {ManagedWithdrawRWA} from "../token/ManagedWithdrawRWA.sol";

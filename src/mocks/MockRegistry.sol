@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.25;
+pragma solidity 0.8.25;
 
 /**
  * @title MockRegistry
@@ -8,7 +8,7 @@ pragma solidity ^0.8.25;
 contract MockRegistry {
     mapping(address => uint8) public allowedAssets;
     mapping(address => bool) public validStrategies;
-    mapping(address => bool) public isStrategyToken; 
+    mapping(address => bool) public isStrategyToken;
     address public conduit;
 
     /**
@@ -19,7 +19,7 @@ contract MockRegistry {
     function setAsset(address asset, uint8 decimals) external {
         allowedAssets[asset] = decimals;
     }
-    
+
     /**
      * @notice Set a token as strategy token
      * @param token The token address
@@ -37,7 +37,7 @@ contract MockRegistry {
     function setStrategy(address strategy, bool value) external {
         validStrategies[strategy] = value;
     }
-    
+
     /**
      * @notice Set the conduit address
      * @param _conduit The conduit address

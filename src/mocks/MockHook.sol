@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.25;
+pragma solidity 0.8.25;
 
 import {IHook} from "../hooks/IHook.sol";
 
@@ -22,7 +22,7 @@ contract MockHook is IHook {
         approveOperations = _approveOperations;
         rejectReason = _rejectReason;
     }
-    
+
     /**
      * @notice Set the name of the hook (useful for creating unique identifiers in tests)
      * @param _name New name for the hook
@@ -72,7 +72,7 @@ contract MockHook is IHook {
         address receiver
     ) external virtual returns (HookOutput memory) {
         emit HookCalled("deposit", token, user, assets, receiver);
-        
+
         return HookOutput({
             approved: approveOperations,
             reason: approveOperations ? "" : rejectReason
@@ -96,7 +96,7 @@ contract MockHook is IHook {
         address owner
     ) external virtual returns (HookOutput memory) {
         emit WithdrawHookCalled(token, by, assets, to, owner);
-        
+
         return HookOutput({
             approved: approveOperations,
             reason: approveOperations ? "" : rejectReason
@@ -118,7 +118,7 @@ contract MockHook is IHook {
         uint256 amount
     ) external virtual returns (HookOutput memory) {
         emit TransferHookCalled(token, from, to, amount);
-        
+
         return HookOutput({
             approved: approveOperations,
             reason: approveOperations ? "" : rejectReason

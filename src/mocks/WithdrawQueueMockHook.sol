@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.25;
+pragma solidity 0.8.25;
 
 import {MockHook} from "./MockHook.sol";
 import {IHook} from "../hooks/IHook.sol";
@@ -27,7 +27,7 @@ contract WithdrawQueueMockHook is MockHook {
         address owner
     ) public override returns (IHook.HookOutput memory) {
         emit WithdrawHookCalled(token, by, assets, to, owner);
-        
+
         if (withdrawalsQueued) {
             return IHook.HookOutput({
                 approved: false,

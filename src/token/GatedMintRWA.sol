@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.25;
+pragma solidity 0.8.25;
 
 import {tRWA} from "./tRWA.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
@@ -20,7 +20,7 @@ contract GatedMintRWA is tRWA {
     error EscrowNotSet();
     error InvalidExpirationPeriod();
     error InvalidArrayLengths();
-    
+
     uint256 private constant ONE = 1e18;
 
     // Deposit tracking (IDs only - Escrow has full state)

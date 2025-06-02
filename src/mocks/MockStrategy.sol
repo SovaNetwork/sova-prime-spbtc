@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.25;
+pragma solidity 0.8.25;
 
 import {IStrategy} from "../strategy/IStrategy.sol";
 import {tRWA} from "../token/tRWA.sol";
@@ -102,7 +102,7 @@ contract MockStrategy is IStrategy {
 
         return sToken.call(data);
     }
-    
+
     /**
      * @notice Set the allowance for an ERC20 token
      * @param tokenAddr The address of the ERC20 token to set the allowance for

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.25;
+pragma solidity 0.8.25;
 
 import {MockHook} from "./MockHook.sol";
 import {IHook} from "../hooks/IHook.sol";
@@ -30,7 +30,7 @@ contract MockCappedSubscriptionHook is MockHook {
         address receiver
     ) public override returns (IHook.HookOutput memory) {
         emit HookCalled("deposit", token, user, assets, receiver);
-        
+
         // Check if subscription would exceed max size
         if (totalSubscriptions + assets > maxSubscriptionSize) {
             return IHook.HookOutput({
@@ -42,7 +42,7 @@ contract MockCappedSubscriptionHook is MockHook {
         // If we get here, approve the operation
         subscriptions[receiver] += assets;
         totalSubscriptions += assets;
-        
+
         return IHook.HookOutput({
             approved: true,
             reason: ""
@@ -57,13 +57,13 @@ contract MockCappedSubscriptionHook is MockHook {
         address owner
     ) public override returns (IHook.HookOutput memory) {
         emit WithdrawHookCalled(token, by, assets, to, owner);
-        
+
         // Update subscription amounts
         if (subscriptions[owner] >= assets) {
             subscriptions[owner] -= assets;
             totalSubscriptions -= assets;
         }
-        
+
         // Return success instead of calling super which may not be properly implemented
         return IHook.HookOutput({
             approved: approveOperations,

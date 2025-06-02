@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.25;
+pragma solidity 0.8.25;
 
 import {BasicStrategy} from "./BasicStrategy.sol";
 import {BaseReporter} from "../reporter/BaseReporter.sol";
