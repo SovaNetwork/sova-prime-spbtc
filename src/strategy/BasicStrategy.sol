@@ -220,4 +220,9 @@ abstract contract BasicStrategy is IStrategy, CloneableRoleManaged {
         _;
     }
 
+    /*//////////////////////////////////////////////////////////////
+                            FALLBACK
+    //////////////////////////////////////////////////////////////*/
+
+    receive() external payable {}
 }
