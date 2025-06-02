@@ -243,24 +243,9 @@ contract TRWATest is BaseFountfiTest {
         token.deposit(100 * 10**6, alice);
     }
 
-    function test_Mint() public {
-        // Skip this test - it's problematic due to ERC4626 virtual shares protection
-        // and the way minting interacts with the share calculation
-
-        // The issue is with the implementation of ERC4626 in Solady and how it
-        // handles virtual share protection. The first mint in a pristine vault
-        // has special behavior that's difficult to test.
-    }
-
     /*//////////////////////////////////////////////////////////////
                     WITHDRAWAL TESTS (DIRECT)
     //////////////////////////////////////////////////////////////*/
-
-    function test_Withdraw() public {
-        // Skip this test - it's problematic due to ERC4626 virtual shares protection
-        // With virtual shares protection, the initial deposit returns 0 shares,
-        // making it impossible to withdraw (as 0 shares will never return assets)
-    }
 
     function test_Withdraw_HookRejects() public {
         // First deposit some funds
@@ -282,12 +267,7 @@ contract TRWATest is BaseFountfiTest {
         token.withdraw(50 * 10**6, alice, alice);
     }
 
-    function test_Withdraw_WithAllowance() public {
-        // Skip this test - it's problematic due to ERC4626 virtual shares protection
-        // and complex withdrawal flow requiring strategy approvals
-    }
-
-    function test_Withdraw_MoreThanMax() public {
+    function test_Redeem_MoreThanMax() public {
         // First deposit some funds
         vm.startPrank(alice);
         usdc.approve(address(mockConduit), 100 * 10**6);
@@ -302,9 +282,17 @@ contract TRWATest is BaseFountfiTest {
         token.redeem(aliceShares + 1, alice, alice);
     }
 
-    function test_Redeem() public {
-        // Skip this test - it's problematic due to ERC4626 virtual shares protection
-        // Initial deposit returns 0 shares in this environment
+    function test_Withdraw_MoreThanMax() public {
+        // First deposit some funds
+        vm.startPrank(alice);
+        usdc.approve(address(mockConduit), 100 * 10**6);
+        token.deposit(100 * 10**6, alice);
+        vm.stopPrank();
+
+        // Try to withdraw more assets than alice has
+        vm.prank(alice);
+        vm.expectRevert(ERC4626.WithdrawMoreThanMax.selector);
+        token.withdraw(101 * 10**6, alice, alice);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -361,34 +349,6 @@ contract TRWATest is BaseFountfiTest {
 
         // The test passes if we get to this point - the queue mechanism is tested
         // via other tests and direct inspection of the contract
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                            BURN TESTS
-    //////////////////////////////////////////////////////////////*/
-
-    function test_Burn() public {
-        // Skip this test - it's problematic due to ERC4626 virtual shares protection
-        // Initial deposit returns 0 shares in this environment
-    }
-
-    function test_Burn_FailsWhenHookReject() public {
-        // Skip this test - it's problematic due to ERC4626 virtual shares protection
-        // Initial deposit returns 0 shares in this environment
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                    WITHDRAW ALLOWANCE TESTS
-    //////////////////////////////////////////////////////////////*/
-
-    function test_WithdrawByApproval() public {
-        // Skip this test - it's problematic due to ERC4626 virtual shares protection
-        // Initial deposit returns 0 shares in this environment
-    }
-
-    function test_Withdraw_ExceedsBalance() public {
-        // Skip this test - it's problematic due to ERC4626 virtual shares protection
-        // Initial deposit returns 0 shares in this environment
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -786,7 +746,7 @@ contract TRWATest is BaseFountfiTest {
         // But we've covered the key path: the allowance check in _withdraw
     }
 
-    function test_WithdrawMoreThanMax_InternalCheck() public {
+    function test_RedeemMoreThanMax_InternalCheck() public {
         // Test the internal balance check in _withdraw line 197-198
         vm.startPrank(owner);
         usdc.mint(owner, 1000);
@@ -797,7 +757,7 @@ contract TRWATest is BaseFountfiTest {
 
         // Try to redeem more than the actual balance
         vm.prank(owner);
-        vm.expectRevert(abi.encodeWithSelector(ERC4626.WithdrawMoreThanMax.selector)); // Will trigger the balance check in _withdraw
+        vm.expectRevert(abi.encodeWithSelector(ERC4626.RedeemMoreThanMax.selector)); // Will trigger the balance check in _withdraw
         token.redeem(shares * 2, owner, owner);
     }
 
@@ -850,7 +810,7 @@ contract TRWATest is BaseFountfiTest {
         vm.stopPrank();
     }
 
-    function test_WithdrawExcessiveShares() public {
+    function test_RedeemExcessiveShares() public {
         // Setup: deposit to get shares
         vm.startPrank(owner);
         usdc.mint(owner, 1000);
@@ -861,7 +821,7 @@ contract TRWATest is BaseFountfiTest {
 
         // Try to redeem more shares than available
         vm.prank(owner);
-        vm.expectRevert(abi.encodeWithSelector(ERC4626.WithdrawMoreThanMax.selector, shares + 1)); // Should trigger WithdrawMoreThanMax
+        vm.expectRevert(abi.encodeWithSelector(ERC4626.RedeemMoreThanMax.selector));
         token.redeem(shares + 1, owner, owner);
     }
 
