@@ -9,6 +9,7 @@ import {MockERC20} from "../src/mocks/MockERC20.sol";
 import {RoleManager} from "../src/auth/RoleManager.sol";
 import {RoleManaged} from "../src/auth/RoleManaged.sol";
 import {IStrategy} from "../src/strategy/IStrategy.sol";
+import {LibRoleManaged} from "../src/auth/LibRoleManaged.sol";
 
 /**
  * @title RegistryTest
@@ -19,33 +20,33 @@ contract RegistryTest is Test {
     RoleManager public roleManager;
     MockERC20 public usdc;
     MockStrategy public strategyImpl;
-    
+
     address public owner = address(this);
     address public alice = makeAddr("alice");
     address public bob = makeAddr("bob");
 
     function setUp() public {
         vm.startPrank(owner);
-        
+
         // Deploy components
         roleManager = new RoleManager();
         registry = new Registry(address(roleManager));
         roleManager.initializeRegistry(address(registry));
-        
+
         // Setup roles
         roleManager.grantRole(owner, roleManager.PROTOCOL_ADMIN());
         roleManager.grantRole(owner, roleManager.STRATEGY_ADMIN());
         roleManager.grantRole(owner, roleManager.RULES_ADMIN());
         roleManager.grantRole(owner, roleManager.STRATEGY_OPERATOR());
-        
+
         // Deploy mock contracts
         usdc = new MockERC20("USD Coin", "USDC", 6);
         strategyImpl = new MockStrategy();
-        
+
         // Register asset and strategy
         registry.setAsset(address(usdc), 6);
         registry.setStrategy(address(strategyImpl), true);
-        
+
         vm.stopPrank();
     }
 
@@ -88,7 +89,7 @@ contract RegistryTest is Test {
 
     function test_Deploy_Success() public {
         vm.startPrank(owner);
-        
+
         // Deploy a strategy and capture return values
         (address returnedStrategy, address returnedToken) = registry.deploy(
             address(strategyImpl),
@@ -98,31 +99,31 @@ contract RegistryTest is Test {
             owner, // manager
             "" // initData
         );
-        
+
         // Verify deployment
         assertTrue(returnedStrategy != address(0));
         assertTrue(returnedToken != address(0));
         assertTrue(registry.isStrategy(returnedStrategy));
-        
+
         // Verify the strategy's token
         assertEq(IStrategy(returnedStrategy).sToken(), returnedToken);
-        
+
         // Use the return values to ensure line coverage
         address strategy = returnedStrategy;
         address token = returnedToken;
         assertEq(strategy, returnedStrategy);
         assertEq(token, returnedToken);
-        
+
         vm.stopPrank();
     }
 
     function test_AllStrategies() public {
         vm.startPrank(owner);
-        
+
         // Initially empty
         address[] memory strategies = registry.allStrategies();
         assertEq(strategies.length, 0);
-        
+
         // Deploy some strategies
         (address strategy1,) = registry.deploy(
             address(strategyImpl),
@@ -132,7 +133,7 @@ contract RegistryTest is Test {
             owner,
             ""
         );
-        
+
         (address strategy2,) = registry.deploy(
             address(strategyImpl),
             "Test RWA Token 2",
@@ -141,19 +142,19 @@ contract RegistryTest is Test {
             owner,
             ""
         );
-        
+
         // Check all strategies
         strategies = registry.allStrategies();
         assertEq(strategies.length, 2);
         assertEq(strategies[0], strategy1);
         assertEq(strategies[1], strategy2);
-        
+
         vm.stopPrank();
     }
 
     function test_AllStrategyTokens_WithDeployedStrategies() public {
         vm.startPrank(owner);
-        
+
         // Deploy some strategies and explicitly use return values
         (address strategy1, address token1) = registry.deploy(
             address(strategyImpl),
@@ -163,11 +164,11 @@ contract RegistryTest is Test {
             owner,
             ""
         );
-        
+
         // Ensure return values are used
         emit log_address(strategy1);
         emit log_address(token1);
-        
+
         (address strategy2, address token2) = registry.deploy(
             address(strategyImpl),
             "Test RWA Token 2",
@@ -176,17 +177,17 @@ contract RegistryTest is Test {
             owner,
             ""
         );
-        
+
         // Ensure return values are used
         emit log_address(strategy2);
         emit log_address(token2);
-        
+
         // Get all strategy tokens
         address[] memory tokens = registry.allStrategyTokens();
         assertEq(tokens.length, 2);
         assertEq(tokens[0], token1);
         assertEq(tokens[1], token2);
-        
+
         vm.stopPrank();
     }
 
@@ -198,7 +199,7 @@ contract RegistryTest is Test {
 
     function test_IsStrategyToken_WithDeployedStrategy() public {
         vm.startPrank(owner);
-        
+
         // Deploy a strategy
         (address strategy, address token) = registry.deploy(
             address(strategyImpl),
@@ -208,10 +209,10 @@ contract RegistryTest is Test {
             owner,
             ""
         );
-        
+
         // Check if it's a strategy token
         assertTrue(registry.isStrategyToken(token));
-        
+
         vm.stopPrank();
     }
 
@@ -219,14 +220,14 @@ contract RegistryTest is Test {
         // For a random token, we need to mock the strategy() call
         address randomToken = makeAddr("randomToken");
         address nonRegisteredStrategy = makeAddr("nonRegisteredStrategy");
-        
+
         // Mock the strategy() call to return a non-registered strategy
         vm.mockCall(
             randomToken,
             abi.encodeWithSelector(bytes4(keccak256("strategy()"))),
             abi.encode(nonRegisteredStrategy)
         );
-        
+
         // Check that it's not a strategy token
         assertFalse(registry.isStrategyToken(randomToken));
     }
@@ -248,10 +249,10 @@ contract RegistryTest is Test {
 
     function test_Deploy_UnauthorizedAsset() public {
         vm.startPrank(owner);
-        
+
         // Try to deploy with unregistered asset
         address unregisteredAsset = makeAddr("unregisteredAsset");
-        
+
         vm.expectRevert(IRegistry.UnauthorizedAsset.selector);
         registry.deploy(
             address(strategyImpl),
@@ -261,16 +262,16 @@ contract RegistryTest is Test {
             owner,
             ""
         );
-        
+
         vm.stopPrank();
     }
 
     function test_Deploy_UnauthorizedStrategy() public {
         vm.startPrank(owner);
-        
+
         // Try to deploy with unregistered strategy
         MockStrategy unregisteredStrategy = new MockStrategy();
-        
+
         vm.expectRevert(IRegistry.UnauthorizedStrategy.selector);
         registry.deploy(
             address(unregisteredStrategy),
@@ -280,14 +281,14 @@ contract RegistryTest is Test {
             owner,
             ""
         );
-        
+
         vm.stopPrank();
     }
 
     function test_Deploy_UnauthorizedCaller() public {
         vm.startPrank(alice); // alice doesn't have STRATEGY_OPERATOR role
-        
-        vm.expectRevert();
+
+        vm.expectRevert(abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, alice, roleManager.STRATEGY_OPERATOR()));
         registry.deploy(
             address(strategyImpl),
             "Test RWA Token",
@@ -296,34 +297,34 @@ contract RegistryTest is Test {
             alice,
             ""
         );
-        
+
         vm.stopPrank();
     }
 
     function test_SetStrategy_UnauthorizedCaller() public {
         vm.startPrank(alice); // alice doesn't have STRATEGY_ADMIN role
-        
-        vm.expectRevert();
+
+        vm.expectRevert(abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, alice, roleManager.STRATEGY_ADMIN()));
         registry.setStrategy(makeAddr("strategy"), true);
-        
+
         vm.stopPrank();
     }
 
     function test_SetHook_UnauthorizedCaller() public {
         vm.startPrank(alice); // alice doesn't have RULES_ADMIN role
-        
-        vm.expectRevert();
+
+        vm.expectRevert(abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, alice, roleManager.RULES_ADMIN()));
         registry.setHook(makeAddr("hook"), true);
-        
+
         vm.stopPrank();
     }
 
     function test_SetAsset_UnauthorizedCaller() public {
         vm.startPrank(alice); // alice doesn't have PROTOCOL_ADMIN role
-        
-        vm.expectRevert();
+
+        vm.expectRevert(abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, alice, roleManager.PROTOCOL_ADMIN()));
         registry.setAsset(makeAddr("asset"), 6);
-        
+
         vm.stopPrank();
     }
 
@@ -366,7 +367,7 @@ contract RegistryTest is Test {
 
         // Create a new user without any roles
         address newUser = address(0x1234);
-        
+
         // Verify newUser has no roles
         assertFalse(roleManager.hasAnyRole(newUser, roleManager.PROTOCOL_ADMIN()));
         assertFalse(roleManager.hasAnyRole(newUser, roleManager.RULES_ADMIN()));
@@ -396,7 +397,7 @@ contract RegistryTest is Test {
      */
     function test_DeployReturnValues() public {
         vm.startPrank(owner);
-        
+
         // Deploy and explicitly test both return values
         (address deployedStrategy, address deployedToken) = registry.deploy(
             address(strategyImpl),
@@ -406,15 +407,15 @@ contract RegistryTest is Test {
             owner,
             ""
         );
-        
+
         // Explicitly verify return values to ensure line 120 is hit
         assertTrue(deployedStrategy != address(0), "Strategy address should not be zero");
         assertTrue(deployedToken != address(0), "Token address should not be zero");
-        
+
         // Additional checks to ensure the return values are correct
         assertEq(IStrategy(deployedStrategy).sToken(), deployedToken, "Strategy token should match returned token");
         assertTrue(registry.isStrategy(deployedStrategy), "Deployed address should be registered as strategy");
-        
+
         vm.stopPrank();
     }
 }

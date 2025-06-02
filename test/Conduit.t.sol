@@ -10,6 +10,8 @@ import {Registry} from "../src/registry/Registry.sol";
 import {tRWA} from "../src/token/tRWA.sol";
 import {MockRegistry} from "../src/mocks/MockRegistry.sol";
 import {MockStrategy} from "../src/mocks/MockStrategy.sol";
+import {LibRoleManaged} from "../src/auth/LibRoleManaged.sol";
+import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 
 /**
  * @title ConduitTest
@@ -94,42 +96,42 @@ contract ConduitTest is BaseFountfiTest {
             abi.encodeWithSignature("asset()"),
             abi.encode(address(testToken))
         );
-        
+
         // Mint tokens to test accounts
         testToken.mint(alice, DEPOSIT_AMOUNT * 10);
         testToken.mint(bob, DEPOSIT_AMOUNT * 10);
         testToken.mint(address(conduit), DEPOSIT_AMOUNT); // Some tokens directly to the conduit for rescue tests
-        
+
         vm.stopPrank();
-        
+
         // Set approvals
         vm.prank(alice);
         testToken.approve(address(conduit), type(uint256).max);
-        
+
         vm.prank(bob);
         testToken.approve(address(conduit), type(uint256).max);
     }
-    
+
     /*//////////////////////////////////////////////////////////////
                           CONSTRUCTOR TESTS
     //////////////////////////////////////////////////////////////*/
-    
+
     function test_Constructor() public view {
         // Verify constructor set up the role manager correctly
         assertEq(address(conduit.roleManager()), address(conduitRoleManager));
     }
-    
+
     /*//////////////////////////////////////////////////////////////
                         COLLECT DEPOSIT TESTS
     //////////////////////////////////////////////////////////////*/
-    
+
     function test_CollectDeposit_Success() public {
         // Make sure we're pretending to be the strategy token to call collect deposit
         vm.startPrank(address(trwaToken));
-        
+
         uint256 initialTRWABalance = testToken.balanceOf(address(trwaToken));
         uint256 initialAliceBalance = testToken.balanceOf(alice);
-        
+
         // Call collect deposit
         bool success = conduit.collectDeposit(
             address(testToken),
@@ -137,7 +139,7 @@ contract ConduitTest is BaseFountfiTest {
             address(trwaToken),
             DEPOSIT_AMOUNT
         );
-        
+
         // Verify transfer happened
         assertTrue(success, "Collect deposit should return true");
         assertEq(
@@ -150,14 +152,14 @@ contract ConduitTest is BaseFountfiTest {
             initialAliceBalance - DEPOSIT_AMOUNT,
             "Alice's balance should decrease"
         );
-        
+
         vm.stopPrank();
     }
-    
+
     function test_CollectDeposit_InvalidAmount() public {
         // Try to collect 0 tokens
         vm.startPrank(address(trwaToken));
-        
+
         vm.expectRevert(Conduit.InvalidAmount.selector);
         conduit.collectDeposit(
             address(testToken),
@@ -165,16 +167,16 @@ contract ConduitTest is BaseFountfiTest {
             address(trwaToken),
             0
         );
-        
+
         vm.stopPrank();
     }
-    
+
     function test_CollectDeposit_InvalidToken() public {
         // Create a token that isn't registered in the registry
         MockERC20 invalidToken = new MockERC20("Invalid Token", "INVALID", 18);
-        
+
         vm.startPrank(address(trwaToken));
-        
+
         vm.expectRevert(Conduit.InvalidToken.selector);
         conduit.collectDeposit(
             address(invalidToken),
@@ -182,10 +184,10 @@ contract ConduitTest is BaseFountfiTest {
             address(trwaToken),
             DEPOSIT_AMOUNT
         );
-        
+
         vm.stopPrank();
     }
-    
+
     function test_CollectDeposit_InvalidDestination() public {
         // Call from an address that's not a registered strategy token
         vm.startPrank(alice);
@@ -207,16 +209,16 @@ contract ConduitTest is BaseFountfiTest {
 
         vm.stopPrank();
     }
-    
+
     function test_CollectDeposit_UnsupportedAsset() public {
         // Create another token that is registered in the registry but not the asset of the strategy
         MockERC20 differentToken = new MockERC20("Different Token", "DIFF", 6);
 
         vm.prank(owner);
         conduitRegistry.setAsset(address(differentToken), 6);
-        
+
         vm.startPrank(address(trwaToken));
-        
+
         vm.expectRevert(Conduit.UnsupportedAsset.selector);
         conduit.collectDeposit(
             address(differentToken),
@@ -224,40 +226,40 @@ contract ConduitTest is BaseFountfiTest {
             address(trwaToken),
             DEPOSIT_AMOUNT
         );
-        
+
         vm.stopPrank();
     }
-    
+
     function test_CollectDeposit_TransferFails() public {
         // Try to transfer more than the user has approved
-        
+
         // First, reset approval to a low amount
         vm.prank(alice);
         testToken.approve(address(conduit), DEPOSIT_AMOUNT / 2);
-        
+
         vm.startPrank(address(trwaToken));
-        
+
         // Should revert with the underlying SafeTransferLib error
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(SafeTransferLib.TransferFromFailed.selector));
         conduit.collectDeposit(
             address(testToken),
             alice,
             address(trwaToken),
             DEPOSIT_AMOUNT
         );
-        
+
         vm.stopPrank();
     }
-    
+
     /*//////////////////////////////////////////////////////////////
                           RESCUE TESTS
     //////////////////////////////////////////////////////////////*/
-    
+
     function test_RescueERC20_Success() public {
         // Tokens are already in the conduit from setUp
         uint256 initialConduitBalance = testToken.balanceOf(address(conduit));
         uint256 initialBobBalance = testToken.balanceOf(bob);
-        
+
         // Call rescue as protocol admin
         vm.prank(owner);
         conduit.rescueERC20(
@@ -265,7 +267,7 @@ contract ConduitTest is BaseFountfiTest {
             bob,
             initialConduitBalance
         );
-        
+
         // Verify the transfer
         assertEq(
             testToken.balanceOf(address(conduit)),
@@ -278,35 +280,35 @@ contract ConduitTest is BaseFountfiTest {
             "Bob should receive the rescued tokens"
         );
     }
-    
+
     function test_RescueERC20_Unauthorized() public {
         // Try to call rescue as non-admin
         vm.startPrank(alice);
-        
-        vm.expectRevert(); // Will revert with UnauthorizedRole
+
+        vm.expectRevert(abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, alice, conduitRoleManager.PROTOCOL_ADMIN())); // Will revert with UnauthorizedRole
         conduit.rescueERC20(
             address(testToken),
             bob,
             DEPOSIT_AMOUNT
         );
-        
+
         vm.stopPrank();
     }
-    
+
     function test_RescueERC20_TransferFails() public {
         // Test with an amount greater than what the conduit has
         uint256 excessiveAmount = testToken.balanceOf(address(conduit)) * 2;
-        
+
         vm.startPrank(owner);
-        
+
         // Should revert with the underlying SafeTransferLib error
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(SafeTransferLib.TransferFailed.selector));
         conduit.rescueERC20(
             address(testToken),
             bob,
             excessiveAmount
         );
-        
+
         vm.stopPrank();
     }
 }

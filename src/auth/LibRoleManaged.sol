@@ -31,6 +31,7 @@ abstract contract LibRoleManaged {
         if (!roleManager.hasAnyRole(msg.sender, role)) {
             revert UnauthorizedRole(msg.sender, role);
         }
+
         emit RoleCheckPassed(msg.sender, role);
         _;
     }

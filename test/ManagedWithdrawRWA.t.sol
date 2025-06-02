@@ -9,6 +9,8 @@ import {MockManagedStrategy} from "../src/mocks/MockManagedStrategy.sol";
 import {MockRegistry} from "../src/mocks/MockRegistry.sol";
 import {MockConduit} from "../src/mocks/MockConduit.sol";
 import {RoleManager} from "../src/auth/RoleManager.sol";
+import {ERC4626} from "solady/tokens/ERC4626.sol";
+import {tRWA} from "../src/token/tRWA.sol";
 
 /**
  * @title ManagedWithdrawRWATest
@@ -35,7 +37,7 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
         mockConduit = new MockConduit();
         mockRegistry.setConduit(address(mockConduit));
         mockRegistry.setAsset(address(usdc), 6);
-        
+
         // Deploy RoleManager
         roleManager = new RoleManager();
         roleManager.initializeRegistry(address(mockRegistry));
@@ -60,7 +62,7 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
             6,
             address(strategy)
         );
-        
+
         // Set the token in the strategy
         strategy.setSToken(address(managedToken));
 
@@ -95,7 +97,7 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
             6,
             ""
         );
-        
+
         ManagedWithdrawRWA newToken = new ManagedWithdrawRWA(
             "Test Token",
             "TEST",
@@ -103,7 +105,7 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
             6,
             address(newStrategy)
         );
-        
+
         // Set the token in the strategy
         newStrategy.setSToken(address(newToken));
 
@@ -137,7 +139,7 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
     function test_Redeem_Success() public {
         // Setup initial deposit
         _depositAsUser(alice, INITIAL_SUPPLY / 2);
-        
+
         uint256 userShares = managedToken.balanceOf(alice);
         uint256 sharesToRedeem = userShares / 2;
         uint256 expectedAssets = managedToken.previewRedeem(sharesToRedeem);
@@ -159,7 +161,7 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
     function test_Redeem_ExceedsMaxRedeem() public {
         // Setup initial deposit
         _depositAsUser(alice, INITIAL_SUPPLY / 2);
-        
+
         uint256 userShares = managedToken.balanceOf(alice);
         uint256 maxRedeemable = managedToken.maxRedeem(alice);
         uint256 excessiveShares = maxRedeemable + 1;
@@ -168,7 +170,7 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
         managedToken.approve(address(strategy), excessiveShares);
 
         vm.prank(address(strategy));
-        vm.expectRevert(); // Should revert with RedeemMoreThanMax
+        vm.expectRevert(abi.encodeWithSelector(ERC4626.RedeemMoreThanMax.selector));
         managedToken.redeem(excessiveShares, alice, alice);
     }
 
@@ -176,14 +178,14 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
         uint256 sharesToRedeem = 1000;
 
         vm.prank(alice); // Not strategy
-        vm.expectRevert(); // Should revert - only strategy can call
+        vm.expectRevert(abi.encodeWithSelector(tRWA.NotStrategyAdmin.selector)); // Should revert - only strategy can call
         managedToken.redeem(sharesToRedeem, alice, alice);
     }
 
     function test_Redeem_WithMinAssets_Success() public {
         // Setup initial deposit
         _depositAsUser(alice, INITIAL_SUPPLY / 2);
-        
+
         uint256 userShares = managedToken.balanceOf(alice);
         uint256 sharesToRedeem = userShares / 3;
         uint256 expectedAssets = managedToken.previewRedeem(sharesToRedeem);
@@ -205,7 +207,7 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
     function test_Redeem_WithMinAssets_InsufficientAssets() public {
         // Setup initial deposit
         _depositAsUser(alice, INITIAL_SUPPLY / 2);
-        
+
         uint256 userShares = managedToken.balanceOf(alice);
         uint256 sharesToRedeem = userShares / 3;
         uint256 expectedAssets = managedToken.previewRedeem(sharesToRedeem);
@@ -222,7 +224,7 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
     function test_Redeem_WithMinAssets_ExceedsMaxRedeem() public {
         // Setup initial deposit
         _depositAsUser(alice, INITIAL_SUPPLY / 2);
-        
+
         uint256 userShares = managedToken.balanceOf(alice);
         uint256 maxRedeemable = managedToken.maxRedeem(alice);
         uint256 excessiveShares = maxRedeemable + 1;
@@ -232,7 +234,7 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
         managedToken.approve(address(strategy), excessiveShares);
 
         vm.prank(address(strategy));
-        vm.expectRevert(); // Should revert with RedeemMoreThanMax
+        vm.expectRevert(abi.encodeWithSelector(ERC4626.RedeemMoreThanMax.selector)); // Should revert with RedeemMoreThanMax
         managedToken.redeem(excessiveShares, alice, alice, minAssets);
     }
 
@@ -243,7 +245,7 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
         _depositAsUser(alice, INITIAL_SUPPLY / 2);
         _depositAsUser(bob, INITIAL_SUPPLY / 3);
         _depositAsUser(charlie, INITIAL_SUPPLY / 4);
-        
+
         // Setup batch redemption for multiple users
         uint256[] memory shares = new uint256[](3);
         address[] memory recipients = new address[](3);
@@ -338,7 +340,7 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
     function test_BatchRedeemShares_InsufficientAssets() public {
         // Setup initial deposit
         _depositAsUser(alice, INITIAL_SUPPLY / 2);
-        
+
         uint256[] memory shares = new uint256[](1);
         address[] memory recipients = new address[](1);
         address[] memory owners = new address[](1);
@@ -364,7 +366,7 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
         uint256[] memory minAssets = new uint256[](1);
 
         vm.prank(alice); // Not strategy
-        vm.expectRevert(); // Should revert - only strategy can call
+        vm.expectRevert(abi.encodeWithSelector(tRWA.NotStrategyAdmin.selector)); // Should revert - only strategy can call
         managedToken.batchRedeemShares(shares, recipients, owners, minAssets);
     }
 
@@ -376,7 +378,7 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
 
         vm.prank(address(strategy));
         uint256[] memory assetsRedeemed = managedToken.batchRedeemShares(shares, recipients, owners, minAssets);
-        
+
         assertEq(assetsRedeemed.length, 0);
     }
 
@@ -385,7 +387,7 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
     function test_Collect_Internal() public {
         // Setup initial deposit
         _depositAsUser(alice, INITIAL_SUPPLY / 2);
-        
+
         // This tests the internal _collect function indirectly through redeem
         uint256 userShares = managedToken.balanceOf(alice);
         uint256 sharesToRedeem = userShares / 4;
@@ -395,7 +397,7 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
 
         uint256 strategyBalanceBefore = usdc.balanceOf(address(strategy));
         uint256 aliceBalanceBefore = usdc.balanceOf(alice);
-        
+
         // Calculate expected assets before redeem
         uint256 expectedAssets = managedToken.previewRedeem(sharesToRedeem);
 
@@ -415,7 +417,7 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
     function test_CompleteRedemptionFlow() public {
         // Setup initial deposit
         _depositAsUser(alice, INITIAL_SUPPLY / 2);
-        
+
         uint256 initialAliceShares = managedToken.balanceOf(alice);
         uint256 initialAliceAssets = usdc.balanceOf(alice);
 
@@ -428,10 +430,10 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
 
         // Alice should have no shares left
         assertEq(managedToken.balanceOf(alice), 0);
-        
+
         // Alice should have received assets
         assertEq(usdc.balanceOf(alice), initialAliceAssets + assetsRedeemed);
-        
+
         // Verify assets redeemed is reasonable (should be close to what she originally deposited)
         assertGt(assetsRedeemed, 0);
     }
@@ -440,7 +442,7 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
         // Setup initial deposits
         _depositAsUser(alice, INITIAL_SUPPLY / 2);
         _depositAsUser(bob, INITIAL_SUPPLY / 3);
-        
+
         // Test that redemption amounts are proportional to shares
         uint256 aliceShares = managedToken.balanceOf(alice);
         uint256 bobShares = managedToken.balanceOf(bob);
@@ -463,7 +465,7 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
         // (allowing for rounding differences due to decimal conversions)
         uint256 expectedRatio = (aliceRedeem * 1e18) / bobRedeem;
         uint256 actualRatio = (aliceAssets * 1e18) / bobAssets;
-        
+
         // Allow 10% difference for rounding (due to USDC 6 decimals to shares 18 decimals conversion)
         uint256 diff = expectedRatio > actualRatio ? expectedRatio - actualRatio : actualRatio - expectedRatio;
         assertLt(diff, expectedRatio / 10); // Less than 10% difference

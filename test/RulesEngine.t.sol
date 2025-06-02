@@ -203,7 +203,7 @@ contract RulesEngineTests is BaseFountfiTest {
         vm.startPrank(owner);
 
         // Try to add a hook with address zero
-        vm.expectRevert(); // Should revert with InvalidHookAddress
+        vm.expectRevert(abi.encodeWithSelector(RulesEngine.InvalidHookAddress.selector)); // Should revert with InvalidHookAddress
         rulesEngine.addHook(address(0), 100);
 
         vm.stopPrank();
@@ -216,7 +216,7 @@ contract RulesEngineTests is BaseFountfiTest {
         allowHookId = rulesEngine.addHook(address(allowHook), 100);
 
         // Try to add same hook again
-        vm.expectRevert(); // Should revert with HookAlreadyExists
+        vm.expectRevert(abi.encodeWithSelector(RulesEngine.HookAlreadyExists.selector, allowHookId)); // Should revert with HookAlreadyExists
         rulesEngine.addHook(address(allowHook), 100);
 
         vm.stopPrank();
@@ -249,7 +249,7 @@ contract RulesEngineTests is BaseFountfiTest {
 
         // Try to remove a non-existent hook
         bytes32 invalidHookId = bytes32(uint256(1));
-        vm.expectRevert(); // Should revert with HookNotFound
+        vm.expectRevert(abi.encodeWithSelector(RulesEngine.HookNotFound.selector, invalidHookId)); // Should revert with HookNotFound
         rulesEngine.removeHook(invalidHookId);
 
         vm.stopPrank();
@@ -445,7 +445,7 @@ contract RulesEngineTests is BaseFountfiTest {
         vm.startPrank(alice);
 
         // Attempt to add a hook
-        vm.expectRevert(); // Should fail with authorization error
+        vm.expectRevert(abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, alice, roleManager.RULES_ADMIN()));
         rulesEngine.addHook(address(allowHook), 100);
 
         vm.stopPrank();
@@ -457,7 +457,7 @@ contract RulesEngineTests is BaseFountfiTest {
 
         // Attempt to disable a hook as non-owner
         vm.startPrank(alice);
-        vm.expectRevert(); // Should fail with authorization error
+        vm.expectRevert(abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, alice, roleManager.RULES_ADMIN()));
         rulesEngine.disableHook(allowHookId);
         vm.stopPrank();
     }
@@ -538,7 +538,7 @@ contract RulesEngineTests is BaseFountfiTest {
         rulesEngine.removeHook(addedHookId); // Call with hookId
         vm.stopPrank();
     }
-    
+
     /**
      * @notice Test getAllActiveHookIdsSorted function (lines 165-166)
      * @dev This function was previously not covered
@@ -548,23 +548,23 @@ contract RulesEngineTests is BaseFountfiTest {
         UniqueHook1 hook1 = new UniqueHook1();
         UniqueHook2 hook2 = new UniqueHook2();
         UniqueHook3 hook3 = new UniqueHook3();
-        
+
         // Add hooks with different priorities
         vm.startPrank(owner);
         rulesEngine.addHook(address(hook1), 100);
         rulesEngine.addHook(address(hook2), 50);
         rulesEngine.addHook(address(hook3), 150);
-        
+
         // Disable one hook
         rulesEngine.disableHook(keccak256("UniqueHook3ForRulesEngine"));
         vm.stopPrank();
-        
+
         // Get all active hooks sorted
         bytes32[] memory sortedIds = rulesEngine.getAllActiveHookIdsSorted();
-        
+
         // Should have 2 active hooks (hook3 is disabled)
         assertEq(sortedIds.length, 2);
-        
+
         // Verify they are sorted by priority (ascending)
         // hook2 (50) < hook1 (100)
         assertEq(sortedIds[0], keccak256("UniqueHook2ForRulesEngine"));
@@ -577,12 +577,12 @@ contract RulesEngineTests is BaseFountfiTest {
      */
     function test_ChangeHookPriority_HookNotFound() public {
         vm.startPrank(owner);
-        
+
         bytes32 nonExistentHookId = keccak256("NonExistentHook");
-        
+
         vm.expectRevert(abi.encodeWithSelector(RulesEngine.HookNotFound.selector, nonExistentHookId));
         rulesEngine.changeHookPriority(nonExistentHookId, 50);
-        
+
         vm.stopPrank();
     }
 
@@ -592,12 +592,12 @@ contract RulesEngineTests is BaseFountfiTest {
      */
     function test_EnableHook_HookNotFound() public {
         vm.startPrank(owner);
-        
+
         bytes32 nonExistentHookId = keccak256("NonExistentHook");
-        
+
         vm.expectRevert(abi.encodeWithSelector(RulesEngine.HookNotFound.selector, nonExistentHookId));
         rulesEngine.enableHook(nonExistentHookId);
-        
+
         vm.stopPrank();
     }
 
@@ -607,12 +607,12 @@ contract RulesEngineTests is BaseFountfiTest {
      */
     function test_DisableHook_HookNotFound() public {
         vm.startPrank(owner);
-        
+
         bytes32 nonExistentHookId = keccak256("NonExistentHook");
-        
+
         vm.expectRevert(abi.encodeWithSelector(RulesEngine.HookNotFound.selector, nonExistentHookId));
         rulesEngine.disableHook(nonExistentHookId);
-        
+
         vm.stopPrank();
     }
 
@@ -623,14 +623,14 @@ contract RulesEngineTests is BaseFountfiTest {
     function test_HookCallFailure() public {
         // Create a hook that will revert when called
         FailingHook failingHook = new FailingHook();
-        
+
         vm.startPrank(owner);
-        
+
         // Add the failing hook
         bytes32 failingHookId = rulesEngine.addHook(address(failingHook), 100);
-        
+
         vm.stopPrank();
-        
+
         // Try to call onBeforeTransfer - should revert with HookEvaluationFailed
         vm.expectRevert(abi.encodeWithSelector(RulesEngine.HookEvaluationFailed.selector, failingHookId, bytes4(0)));
         rulesEngine.onBeforeTransfer(address(0), alice, bob, 100);
@@ -642,19 +642,19 @@ contract UniqueHook1 is IHook {
     function hookId() external pure returns (bytes32) {
         return keccak256("UniqueHook1ForRulesEngine");
     }
-    
+
     function hookName() external pure returns (string memory) {
         return "UniqueHook1";
     }
-    
+
     function onBeforeDeposit(address, address, uint256, address) external pure returns (IHook.HookOutput memory) {
         return IHook.HookOutput(true, "");
     }
-    
+
     function onBeforeWithdraw(address, address, uint256, address, address) external pure returns (IHook.HookOutput memory) {
         return IHook.HookOutput(true, "");
     }
-    
+
     function onBeforeTransfer(address, address, address, uint256) external pure returns (IHook.HookOutput memory) {
         return IHook.HookOutput(true, "");
     }
@@ -664,19 +664,19 @@ contract UniqueHook2 is IHook {
     function hookId() external pure returns (bytes32) {
         return keccak256("UniqueHook2ForRulesEngine");
     }
-    
+
     function hookName() external pure returns (string memory) {
         return "UniqueHook2";
     }
-    
+
     function onBeforeDeposit(address, address, uint256, address) external pure returns (IHook.HookOutput memory) {
         return IHook.HookOutput(true, "");
     }
-    
+
     function onBeforeWithdraw(address, address, uint256, address, address) external pure returns (IHook.HookOutput memory) {
         return IHook.HookOutput(true, "");
     }
-    
+
     function onBeforeTransfer(address, address, address, uint256) external pure returns (IHook.HookOutput memory) {
         return IHook.HookOutput(true, "");
     }
@@ -686,19 +686,19 @@ contract UniqueHook3 is IHook {
     function hookId() external pure returns (bytes32) {
         return keccak256("UniqueHook3ForRulesEngine");
     }
-    
+
     function hookName() external pure returns (string memory) {
         return "UniqueHook3";
     }
-    
+
     function onBeforeDeposit(address, address, uint256, address) external pure returns (IHook.HookOutput memory) {
         return IHook.HookOutput(true, "");
     }
-    
+
     function onBeforeWithdraw(address, address, uint256, address, address) external pure returns (IHook.HookOutput memory) {
         return IHook.HookOutput(true, "");
     }
-    
+
     function onBeforeTransfer(address, address, address, uint256) external pure returns (IHook.HookOutput memory) {
         return IHook.HookOutput(true, "");
     }
@@ -712,19 +712,19 @@ contract FailingHook is IHook {
     function hookId() external pure returns (bytes32) {
         return keccak256("FailingHookForRulesEngine");
     }
-    
+
     function hookName() external pure returns (string memory) {
         return "FailingHook";
     }
-    
+
     function onBeforeDeposit(address, address, uint256, address) external pure returns (IHook.HookOutput memory) {
         revert("Hook intentionally fails");
     }
-    
+
     function onBeforeWithdraw(address, address, uint256, address, address) external pure returns (IHook.HookOutput memory) {
         revert("Hook intentionally fails");
     }
-    
+
     function onBeforeTransfer(address, address, address, uint256) external pure returns (IHook.HookOutput memory) {
         revert("Hook intentionally fails");
     }

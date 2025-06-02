@@ -10,6 +10,7 @@ import {MockStrategy} from "../src/mocks/MockStrategy.sol";
 import {MockHook} from "../src/mocks/MockHook.sol";
 import {MockRegistry} from "../src/mocks/MockRegistry.sol";
 import {MockConduit} from "../src/mocks/MockConduit.sol";
+import {tRWA} from "../src/token/tRWA.sol";
 
 /**
  * @title GatedMintRWATest
@@ -91,11 +92,11 @@ contract GatedMintRWATest is BaseFountfiTest {
         assertEq(newToken.symbol(), "TEST");
         assertEq(newToken.asset(), address(usdc));
         assertEq(newToken.strategy(), address(strategy));
-        
+
         // Verify escrow was deployed
         address escrowAddr = newToken.escrow();
         assertTrue(escrowAddr != address(0));
-        
+
         // Verify default expiration period
         assertEq(newToken.depositExpirationPeriod(), 7 days);
     }
@@ -108,7 +109,7 @@ contract GatedMintRWATest is BaseFountfiTest {
         vm.prank(address(strategy));
         vm.expectEmit(true, true, true, true);
         emit GatedMintRWA.DepositExpirationPeriodUpdated(7 days, newPeriod);
-        
+
         gatedToken.setDepositExpirationPeriod(newPeriod);
 
         assertEq(gatedToken.depositExpirationPeriod(), newPeriod);
@@ -139,7 +140,7 @@ contract GatedMintRWATest is BaseFountfiTest {
 
     function test_SetDepositExpirationPeriod_UnauthorizedCaller() public {
         vm.prank(alice);
-        vm.expectRevert(); // Should revert - only strategy can call
+        vm.expectRevert(abi.encodeWithSelector(tRWA.NotStrategyAdmin.selector));
         gatedToken.setDepositExpirationPeriod(14 days);
     }
 
@@ -158,9 +159,9 @@ contract GatedMintRWATest is BaseFountfiTest {
         assertEq(pendingDeposits.length, 1);
 
         // Verify deposit details
-        (address depositor, address recipient, uint256 amount, uint256 expTime, uint8 state) = 
+        (address depositor, address recipient, uint256 amount, uint256 expTime, uint8 state) =
             gatedToken.getDepositDetails(pendingDeposits[0]);
-        
+
         assertEq(depositor, alice);
         assertEq(recipient, alice);
         assertEq(amount, DEPOSIT_AMOUNT);
@@ -178,9 +179,9 @@ contract GatedMintRWATest is BaseFountfiTest {
         bytes32[] memory pendingDeposits = gatedToken.getUserPendingDeposits(alice);
         assertEq(pendingDeposits.length, 1);
 
-        (address depositor, address recipient,,, ) = 
+        (address depositor, address recipient,,, ) =
             gatedToken.getDepositDetails(pendingDeposits[0]);
-        
+
         assertEq(depositor, alice);
         assertEq(recipient, bob);
     }
@@ -256,7 +257,7 @@ contract GatedMintRWATest is BaseFountfiTest {
         address actualEscrow = gatedToken.escrow();
 
         vm.prank(actualEscrow);
-        
+
         // Call batchMintShares - this should emit the event
         gatedToken.batchMintShares(depositIds, recipients, assetAmounts, totalAssets);
 
@@ -324,7 +325,7 @@ contract GatedMintRWATest is BaseFountfiTest {
     function test_GetDepositDetails() public {
         bytes32 depositId = _createPendingDeposit(alice, bob, DEPOSIT_AMOUNT);
 
-        (address depositor, address recipient, uint256 amount, uint256 expTime, uint8 state) = 
+        (address depositor, address recipient, uint256 amount, uint256 expTime, uint8 state) =
             gatedToken.getDepositDetails(depositId);
 
         assertEq(depositor, alice);
@@ -337,7 +338,7 @@ contract GatedMintRWATest is BaseFountfiTest {
     function test_GetDepositDetails_NonExistent() public {
         bytes32 invalidDepositId = keccak256("invalid");
 
-        (address depositor, address recipient, uint256 amount, uint256 expTime, uint8 state) = 
+        (address depositor, address recipient, uint256 amount, uint256 expTime, uint8 state) =
             gatedToken.getDepositDetails(invalidDepositId);
 
         assertEq(depositor, address(0));
@@ -401,7 +402,7 @@ contract GatedMintRWATest is BaseFountfiTest {
         assertGt(gatedToken.balanceOf(alice), 0);
         assertGt(gatedToken.balanceOf(bob), 0);
         assertGt(gatedToken.balanceOf(charlie), 0);
-        
+
         // Bob should have 2x alice's shares, charlie should have 0.5x alice's shares
         assertApproxEqRel(gatedToken.balanceOf(bob), gatedToken.balanceOf(alice) * 2, 0.01e18);
         assertApproxEqRel(gatedToken.balanceOf(charlie), gatedToken.balanceOf(alice) / 2, 0.01e18);
@@ -422,13 +423,13 @@ contract GatedMintRWATest is BaseFountfiTest {
 
         vm.prank(address(escrow));
         gatedToken.batchMintShares(depositIds, recipients, assetAmounts, totalAssets);
-        
+
         // Should not revert on empty arrays
     }
 
     function test_BatchMintShares_EmitsEvent() public {
         bytes32 deposit1 = _createPendingDeposit(alice, alice, DEPOSIT_AMOUNT);
-        
+
         bytes32[] memory depositIds = new bytes32[](1);
         depositIds[0] = deposit1;
 
@@ -444,7 +445,7 @@ contract GatedMintRWATest is BaseFountfiTest {
         vm.prank(address(escrow));
         vm.expectEmit(true, true, true, true);
         emit GatedMintRWA.BatchSharesMinted(depositIds, totalAssets, expectedShares);
-        
+
         gatedToken.batchMintShares(depositIds, recipients, assetAmounts, totalAssets);
     }
 
@@ -471,14 +472,14 @@ contract GatedMintRWATest is BaseFountfiTest {
     function test_DepositIds_TrackingArray() public {
         // Create first deposit
         _createPendingDeposit(alice, alice, DEPOSIT_AMOUNT);
-        
+
         // Verify depositIds array is populated
         bytes32 firstDepositId = gatedToken.depositIds(0);
         assertTrue(firstDepositId != bytes32(0));
 
         // Create second deposit
         _createPendingDeposit(bob, bob, DEPOSIT_AMOUNT);
-        
+
         // Verify second deposit is tracked
         bytes32 secondDepositId = gatedToken.depositIds(1);
         assertTrue(secondDepositId != bytes32(0));
@@ -489,7 +490,7 @@ contract GatedMintRWATest is BaseFountfiTest {
         // Create multiple deposits for alice
         _createPendingDeposit(alice, alice, DEPOSIT_AMOUNT);
         _createPendingDeposit(alice, bob, DEPOSIT_AMOUNT * 2);
-        
+
         // Create one deposit for bob
         _createPendingDeposit(bob, bob, DEPOSIT_AMOUNT);
 
@@ -512,7 +513,7 @@ contract GatedMintRWATest is BaseFountfiTest {
     function test_BatchMintShares_ProportionalDistribution() public {
         // Test with different asset amounts to ensure proper proportional distribution
         uint256 amount1 = 1000 * 10**6; // 1000 USDC
-        uint256 amount2 = 3000 * 10**6; // 3000 USDC  
+        uint256 amount2 = 3000 * 10**6; // 3000 USDC
         uint256 amount3 = 1000 * 10**6; // 1000 USDC
         uint256 totalAssets = amount1 + amount2 + amount3; // 5000 total
 
@@ -528,7 +529,7 @@ contract GatedMintRWATest is BaseFountfiTest {
 
         uint256[] memory assetAmounts = new uint256[](3);
         assetAmounts[0] = amount1;
-        assetAmounts[1] = amount2; 
+        assetAmounts[1] = amount2;
         assetAmounts[2] = amount3;
 
         uint256 totalShares = gatedToken.previewDeposit(totalAssets);
@@ -559,7 +560,7 @@ contract GatedMintRWATest is BaseFountfiTest {
         vm.prank(alice);
         vm.expectEmit(false, true, true, true); // Don't check depositId (first param)
         emit GatedMintRWA.DepositPending(bytes32(0), alice, bob, DEPOSIT_AMOUNT);
-        
+
         gatedToken.deposit(DEPOSIT_AMOUNT, bob);
     }
 
@@ -577,15 +578,15 @@ contract GatedMintRWATest is BaseFountfiTest {
 
         vm.prank(address(escrow));
         // This should revert due to division by zero in the proportional calculation
-        vm.expectRevert();
+        vm.expectRevert(); // solidity divide-by-zero error
         gatedToken.batchMintShares(depositIds, recipients, assetAmounts, totalAssets);
     }
 
     // ============ Helper Functions ============
 
-    function _createPendingDeposit(address depositor, address recipient, uint256 amount) 
-        internal 
-        returns (bytes32) 
+    function _createPendingDeposit(address depositor, address recipient, uint256 amount)
+        internal
+        returns (bytes32)
     {
         vm.prank(depositor);
         usdc.approve(address(mockConduit), amount);

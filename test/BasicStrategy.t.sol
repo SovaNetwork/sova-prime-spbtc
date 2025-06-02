@@ -7,6 +7,7 @@ import {IStrategy} from "../src/strategy/IStrategy.sol";
 import {tRWA} from "../src/token/tRWA.sol";
 import {RoleManaged} from "../src/auth/RoleManaged.sol";
 import {RoleManager} from "../src/auth/RoleManager.sol";
+import {LibRoleManaged} from "../src/auth/LibRoleManaged.sol";
 import {CloneableRoleManaged} from "../src/auth/CloneableRoleManaged.sol";
 import {MockHook} from "../src/mocks/MockHook.sol";
 import {MockERC20} from "../src/mocks/MockERC20.sol";
@@ -199,7 +200,7 @@ contract BasicStrategyTest is BaseFountfiTest {
         vm.startPrank(alice);
 
         // Alice is not authorized to change the manager
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, alice, roleManager.STRATEGY_ADMIN()));
         strategy.setManager(bob);
 
         vm.stopPrank();
@@ -372,7 +373,7 @@ contract BasicStrategyTest is BaseFountfiTest {
         // Try to call a non-existent function that will revert
         bytes memory callData = abi.encodeWithSignature("nonExistentFunction()");
 
-        vm.expectRevert();
+        vm.expectRevert(); // low-level solidity error
         strategy.call(address(daiToken), 0, callData);
 
         vm.stopPrank();
@@ -393,7 +394,7 @@ contract BasicStrategyTest is BaseFountfiTest {
 
         // Get the strategy token address first
         address strategyToken = strategy.sToken();
-        
+
         // Try to call the strategy token directly through call() function
         // This should revert with CannotCallToken error
         vm.expectRevert(IStrategy.CannotCallToken.selector);
@@ -481,7 +482,7 @@ contract BasicStrategyTest is BaseFountfiTest {
 
         vm.stopPrank();
     }
-    
+
     /**
      * @notice Test callStrategyToken when call fails (line 170)
      * @dev Tests the revert case in callStrategyToken
@@ -490,13 +491,13 @@ contract BasicStrategyTest is BaseFountfiTest {
         // Create calldata that will cause the token to revert
         // Trying to call a non-existent function
         bytes memory invalidCalldata = abi.encodeWithSignature("nonExistentFunction()");
-        
+
         // Attempt the call as admin
         vm.prank(owner);
-        vm.expectRevert();
+        vm.expectRevert(); // low-level solidity error
         strategy.callStrategyToken(invalidCalldata);
     }
-    
+
     /**
      * @notice Test callStrategyToken with a call that returns data but fails
      * @dev Tests the CallRevert error with return data
@@ -510,10 +511,10 @@ contract BasicStrategyTest is BaseFountfiTest {
             alice,
             100e18
         );
-        
+
         // Attempt the call as admin
         vm.prank(owner);
-        vm.expectRevert();
+        vm.expectRevert(); // low-level solidity error
         strategy.callStrategyToken(invalidCalldata);
     }
 }

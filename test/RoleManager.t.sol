@@ -247,7 +247,7 @@ contract RoleManagerTest is Test {
         vm.stopPrank();
 
         vm.startPrank(strategyAdmin);
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(Ownable.Unauthorized.selector));
         roleManager.grantRole(user, testRole);
         vm.stopPrank();
 
@@ -299,7 +299,7 @@ contract RoleManagerTest is Test {
         // The random user should not be able to grant the custom role
         vm.startPrank(randomUser);
         // This will fail because randomUser doesn't have admin rights
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(Ownable.Unauthorized.selector));
         roleManager.grantRole(address(51), customRole);
         vm.stopPrank();
     }
@@ -435,7 +435,7 @@ contract RoleManagerTest is Test {
         vm.expectRevert(abi.encodeWithSelector(RoleManaged.InvalidRoleManager.selector));
         new MockRoleManaged(address(0));
     }
-    
+
     /**
      * @notice Test revoking a role that user doesn't have (line 117)
      * @dev Covers the uncovered line where the role is already not granted
@@ -444,15 +444,15 @@ contract RoleManagerTest is Test {
         // Create new role manager where test contract is owner
         RoleManager newRoleManager = new RoleManager();
         address testUser = address(999);
-        
+
         // Grant a role first (as owner)
         newRoleManager.grantRole(testUser, newRoleManager.STRATEGY_OPERATOR());
         assertTrue(newRoleManager.hasAnyRole(testUser, newRoleManager.STRATEGY_OPERATOR()));
-        
+
         // Revoke it
         newRoleManager.revokeRole(testUser, newRoleManager.STRATEGY_OPERATOR());
         assertFalse(newRoleManager.hasAnyRole(testUser, newRoleManager.STRATEGY_OPERATOR()));
-        
+
         // Revoke it again - should not revert, just skip (line 117)
         newRoleManager.revokeRole(testUser, newRoleManager.STRATEGY_OPERATOR());
         assertFalse(newRoleManager.hasAnyRole(testUser, newRoleManager.STRATEGY_OPERATOR()));
@@ -477,7 +477,7 @@ contract RoleManagerTest is Test {
     function test_InitializeRegistry_Success() public {
         RoleManager newRoleManager = new RoleManager();
         address mockRegistry = address(0x123);
-        
+
         // Initialize registry should succeed
         newRoleManager.initializeRegistry(mockRegistry);
         assertEq(newRoleManager.registry(), mockRegistry);
@@ -486,10 +486,10 @@ contract RoleManagerTest is Test {
     function test_InitializeRegistry_UnauthorizedCaller() public {
         RoleManager newRoleManager = new RoleManager();
         address mockRegistry = address(0x123);
-        
+
         // Non-owner should not be able to initialize
         vm.startPrank(user);
-        vm.expectRevert(); // Unauthorized from OwnableRoles
+        vm.expectRevert(abi.encodeWithSelector(Ownable.Unauthorized.selector));
         newRoleManager.initializeRegistry(mockRegistry);
         vm.stopPrank();
     }
@@ -498,12 +498,12 @@ contract RoleManagerTest is Test {
         RoleManager newRoleManager = new RoleManager();
         address mockRegistry1 = address(0x123);
         address mockRegistry2 = address(0x456);
-        
+
         // First initialization should succeed
         newRoleManager.initializeRegistry(mockRegistry1);
-        
+
         // Second initialization should fail
-        vm.expectRevert(); // AlreadyInitialized
+        vm.expectRevert(abi.encodeWithSelector(Ownable.AlreadyInitialized.selector));
         newRoleManager.initializeRegistry(mockRegistry2);
     }
 
@@ -515,7 +515,7 @@ contract RoleManagerTest is Test {
         // Test role values are as expected
         assertEq(roleManager.STRATEGY_OPERATOR(), 1 << 8);
         assertEq(roleManager.KYC_OPERATOR(), 1 << 9);
-        
+
         // Test composite roles include their bits
         assertTrue(roleManager.STRATEGY_ADMIN() & roleManager.STRATEGY_OPERATOR() != 0);
         assertTrue(roleManager.RULES_ADMIN() & roleManager.KYC_OPERATOR() != 0);
@@ -529,13 +529,13 @@ contract RoleManagerTest is Test {
      */
     function test_RoleHierarchy() public {
         vm.startPrank(admin);
-        
+
         // PROTOCOL_ADMIN should include all role bits
         assertTrue(roleManager.hasAllRoles(admin, roleManager.STRATEGY_ADMIN()));
         assertTrue(roleManager.hasAllRoles(admin, roleManager.RULES_ADMIN()));
         assertTrue(roleManager.hasAllRoles(admin, roleManager.STRATEGY_OPERATOR()));
         assertTrue(roleManager.hasAllRoles(admin, roleManager.KYC_OPERATOR()));
-        
+
         vm.stopPrank();
     }
 
@@ -546,19 +546,19 @@ contract RoleManagerTest is Test {
     function test_EventEmission() public {
         address testUser = address(0x123);
         uint256 testRole = roleManager.KYC_OPERATOR();
-        
+
         vm.startPrank(admin);
-        
+
         // Test grant event
         vm.expectEmit(true, true, true, true);
         emit RoleGranted(testUser, testRole, admin);
         roleManager.grantRole(testUser, testRole);
-        
-        // Test revoke event  
+
+        // Test revoke event
         vm.expectEmit(true, true, true, true);
         emit RoleRevoked(testUser, testRole, admin);
         roleManager.revokeRole(testUser, testRole);
-        
+
         vm.stopPrank();
     }
 
@@ -568,13 +568,13 @@ contract RoleManagerTest is Test {
      */
     function test_UnmappedRole_OnlyOwnerOrProtocolAdmin() public {
         uint256 unmappedRole = 1 << 20; // A role not in the mapping
-        
+
         // Strategy admin should not be able to manage unmapped role
         vm.startPrank(strategyAdmin);
         vm.expectRevert(abi.encodeWithSelector(Ownable.Unauthorized.selector));
         roleManager.grantRole(user, unmappedRole);
         vm.stopPrank();
-        
+
         // But owner should be able to
         vm.startPrank(admin); // admin is owner in our setup
         roleManager.grantRole(user, unmappedRole);
@@ -591,11 +591,11 @@ contract RoleManagerTest is Test {
         vm.startPrank(admin);
         roleManager.grantRole(user, roleManager.KYC_OPERATOR());
         assertTrue(roleManager.hasAnyRole(user, roleManager.KYC_OPERATOR()));
-        
+
         // Grant same role again - should still work
         roleManager.grantRole(user, roleManager.KYC_OPERATOR());
         assertTrue(roleManager.hasAnyRole(user, roleManager.KYC_OPERATOR()));
-        
+
         vm.stopPrank();
     }
 
@@ -609,9 +609,9 @@ contract RoleManagerTest is Test {
         vm.startPrank(admin);
         roleManager.grantRole(user, roleManager.PROTOCOL_ADMIN());
         vm.stopPrank();
-        
+
         uint256 testRole = 1 << 15;
-        
+
         // PROTOCOL_ADMIN should be able to set role admin
         vm.startPrank(user);
         roleManager.setRoleAdmin(testRole, roleManager.STRATEGY_ADMIN());
@@ -625,16 +625,16 @@ contract RoleManagerTest is Test {
      */
     function test_SetRoleAdmin_ValidTargetRoles() public {
         vm.startPrank(admin);
-        
+
         // Test with a valid custom role (not 0 and not PROTOCOL_ADMIN)
         uint256 customRole = 1 << 16;
         roleManager.setRoleAdmin(customRole, roleManager.RULES_ADMIN());
         assertEq(roleManager.roleAdminRole(customRole), roleManager.RULES_ADMIN());
-        
+
         // Test with existing roles like STRATEGY_OPERATOR
         roleManager.setRoleAdmin(roleManager.STRATEGY_OPERATOR(), roleManager.RULES_ADMIN());
         assertEq(roleManager.roleAdminRole(roleManager.STRATEGY_OPERATOR()), roleManager.RULES_ADMIN());
-        
+
         vm.stopPrank();
     }
 
@@ -648,7 +648,7 @@ contract RoleManagerTest is Test {
         vm.startPrank(admin);
         roleManager.grantRole(user, roleManager.KYC_OPERATOR());
         vm.stopPrank();
-        
+
         // Try to revoke from someone with no permissions
         address nobody = address(0x9999);
         vm.startPrank(nobody);
@@ -659,7 +659,7 @@ contract RoleManagerTest is Test {
             // Expected to revert - this covers the branch
         }
         vm.stopPrank();
-        
+
         // Test 2: Owner check in setRoleAdmin - try with non-owner who doesn't have PROTOCOL_ADMIN
         vm.startPrank(nobody);
         try roleManager.setRoleAdmin(1 << 20, roleManager.STRATEGY_ADMIN()) {
@@ -668,7 +668,7 @@ contract RoleManagerTest is Test {
             // Expected to revert - covers the authorization branch
         }
         vm.stopPrank();
-        
+
         // Test 3: Role validation in setRoleAdmin
         vm.startPrank(admin);
         try roleManager.setRoleAdmin(0, roleManager.STRATEGY_ADMIN()) {
@@ -676,7 +676,7 @@ contract RoleManagerTest is Test {
         } catch {
             // Expected to revert - covers targetRole validation
         }
-        
+
         try roleManager.setRoleAdmin(roleManager.PROTOCOL_ADMIN(), roleManager.STRATEGY_ADMIN()) {
             assertTrue(false, "Should have reverted");
         } catch {
@@ -695,14 +695,14 @@ contract RoleManagerTest is Test {
         address strategyAdminUser = address(0x8888);
         roleManager.grantRole(strategyAdminUser, roleManager.STRATEGY_ADMIN());
         vm.stopPrank();
-        
+
         // Now try to grant a role that's explicitly mapped but the user doesn't have the exact required role
         // First, set up a custom role with RULES_ADMIN as its admin
         vm.startPrank(admin);
         uint256 customRole = 1 << 25;
         roleManager.setRoleAdmin(customRole, roleManager.RULES_ADMIN());
         vm.stopPrank();
-        
+
         // STRATEGY_ADMIN user should not be able to grant this role since it requires RULES_ADMIN
         vm.startPrank(strategyAdminUser);
         try roleManager.grantRole(user, customRole) {
@@ -723,7 +723,7 @@ contract RoleManagerTest is Test {
         address protocolAdminUser = address(0x9999);
         roleManager.grantRole(protocolAdminUser, roleManager.PROTOCOL_ADMIN());
         vm.stopPrank();
-        
+
         // This PROTOCOL_ADMIN user should be able to grant any role except PROTOCOL_ADMIN itself
         vm.startPrank(protocolAdminUser);
         roleManager.grantRole(user, roleManager.STRATEGY_ADMIN());
