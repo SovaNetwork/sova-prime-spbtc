@@ -22,7 +22,6 @@ contract tRWA is ERC4626, ItRWA {
     using SafeTransferLib for address;
 
     // Custom errors
-    error AssetDecimalsTooHigh();
     error HookCheckFailed(string reason);
     error NotStrategyAdmin();
     error HookAddressZero();
