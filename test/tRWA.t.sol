@@ -295,6 +295,45 @@ contract TRWATest is BaseFountfiTest {
         token.withdraw(101 * 10**6, alice, alice);
     }
 
+    function test_Withdraw_ThirdParty() public {
+        // First deposit some funds
+        vm.startPrank(alice);
+        usdc.approve(address(mockConduit), 100 * 10**6);
+        token.deposit(100 * 10**6, alice);
+
+        uint256 aliceShares = token.balanceOf(alice);
+        token.approve(bob, aliceShares);
+        vm.stopPrank();
+
+        // Set up withdrawal in strategy
+        vm.prank(address(strategy));
+        usdc.approve(address(token), 50 * 10**6);
+
+        // Try to withdraw with a third party
+        vm.prank(bob);
+        token.withdraw(50 * 10**6, bob, alice);
+    }
+
+    function test_Redeem_ThirdParty() public {
+        // First deposit some funds
+        vm.startPrank(alice);
+        usdc.approve(address(mockConduit), 100 * 10**6);
+        token.deposit(100 * 10**6, alice);
+
+        uint256 aliceShares = token.balanceOf(alice);
+        token.approve(bob, aliceShares);
+        vm.stopPrank();
+
+        // Set up withdrawal in strategy
+        vm.prank(address(strategy));
+        usdc.approve(address(token), 100 * 10**6);
+
+        // Try to withdraw with a third party
+        vm.prank(bob);
+        token.redeem(aliceShares, bob, alice);
+    }
+
+
     /*//////////////////////////////////////////////////////////////
                     WITHDRAWAL TESTS (QUEUED)
     //////////////////////////////////////////////////////////////*/
