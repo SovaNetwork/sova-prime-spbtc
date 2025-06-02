@@ -26,6 +26,9 @@ contract GatedMintRWATest is BaseFountfiTest {
     // Test constants
     uint256 internal constant DEPOSIT_AMOUNT = 1000 * 10**6; // 1000 USDC
     uint256 internal constant INITIAL_BALANCE = 10000 * 10**6; // 10,000 USDC
+    
+    // Hook operation types
+    bytes32 public constant OP_DEPOSIT = keccak256("DEPOSIT_OPERATION");
 
     function setUp() public override {
         super.setUp();
@@ -186,12 +189,49 @@ contract GatedMintRWATest is BaseFountfiTest {
         assertEq(recipient, bob);
     }
 
-    function test_Deposit_HookRejection() public {
-        // Since hooks are managed by the strategy and our setup doesn't easily support this,
-        // we'll mock the hook call. In a real scenario, this would be set up through strategy.
-        // For now, testing the basic hook integration pattern is sufficient as the hook
-        // infrastructure is tested elsewhere.
-        vm.skip(true);
+    function test_Deposit_WithPassingHook() public {
+        // Create a hook that passes deposit operations
+        MockHook passingHook = new MockHook(true, "");
+        
+        // Add hook to deposit operations
+        vm.prank(address(strategy));
+        gatedToken.addOperationHook(OP_DEPOSIT, address(passingHook));
+
+        vm.prank(alice);
+        usdc.approve(address(mockConduit), DEPOSIT_AMOUNT);
+
+        vm.prank(alice);
+        gatedToken.deposit(DEPOSIT_AMOUNT, alice);
+
+        // Verify deposit was tracked
+        bytes32[] memory pendingDeposits = gatedToken.getUserPendingDeposits(alice);
+        assertEq(pendingDeposits.length, 1);
+
+        // Verify deposit details
+        (address depositor, address recipient, uint256 amount, uint256 expTime, uint8 state) =
+            gatedToken.getDepositDetails(pendingDeposits[0]);
+
+        assertEq(depositor, alice);
+        assertEq(recipient, alice);
+        assertEq(amount, DEPOSIT_AMOUNT);
+        assertGt(expTime, block.timestamp);
+        assertEq(state, 0); // PENDING
+    }
+
+    function test_Deposit_WithFailingHook() public {
+        // Create a hook that rejects deposit operations
+        MockHook rejectingHook = new MockHook(false, "Deposit blocked by hook");
+        
+        // Add hook to deposit operations
+        vm.prank(address(strategy));
+        gatedToken.addOperationHook(OP_DEPOSIT, address(rejectingHook));
+
+        vm.prank(alice);
+        usdc.approve(address(mockConduit), DEPOSIT_AMOUNT);
+
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(tRWA.HookCheckFailed.selector, "Deposit blocked by hook"));
+        gatedToken.deposit(DEPOSIT_AMOUNT, alice);
     }
 
     function test_Deposit_MultipleDeposits() public {
