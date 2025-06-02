@@ -45,6 +45,8 @@ payable(strategyAddress).transfer(1 ether); // This will succeed but funds are l
 
 **Recommendation:** Add a `receive()` function with proper access controls or explicitly reject ETH transfers if not intended.
 
+**Resolution:** Fixed in `d3377b8a6929ea019a22a4b57c48c927f62d2416`.
+
 #### C-02: Signature Malleability in ManagedWithdrawRWAStrategy
 
 **Location:** `src/strategy/ManagedWithdrawRWAStrategy.sol:194-203`
@@ -58,6 +60,8 @@ payable(strategyAddress).transfer(1 ether); // This will succeed but funds are l
 require(uint256(s) <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0, "Invalid signature 's' value");
 require(v == 27 || v == 28, "Invalid signature 'v' value");
 ```
+
+**Resolution:** Fixed in `5274c4a67d9c67bbb27fd49d5a57c42814e9b48c`.
 
 #### C-03: Missing Slippage Protection in Batch Operations
 
@@ -77,6 +81,8 @@ require(v == 27 || v == 28, "Invalid signature 'v' value");
 ```
 
 **Recommendation:** Track remaining assets and distribute any dust to the last recipient, or implement a more sophisticated rounding mechanism.
+
+**Resolution:** Fixed in `f4f863ddd128aa781114e7df734eac0b292d17f7`.
 
 ### High Severity
 
@@ -104,6 +110,8 @@ function _withdraw(...) internal override {
 }
 ```
 
+**Resolution:** Fixed in `94f871d19a895c2f0b2fbe32b12cb824e1fbd6d9`.
+
 #### H-02: Centralization Risk in PriceOracleReporter
 
 **Location:** `src/reporter/PriceOracleReporter.sol:64-74`
@@ -126,6 +134,9 @@ function update(uint256 newPricePerShare, string calldata source_) external {
 }
 ```
 
+**Resolution:** Acknowledged, initial versions of `PriceOracleReporter` will be highly trusted.
+
+
 #### H-03: Unchecked External Call in BasicStrategy
 
 **Location:** `src/strategy/BasicStrategy.sol:188-198`
@@ -135,6 +146,9 @@ function update(uint256 newPricePerShare, string calldata source_) external {
 **Impact:** Complete compromise of strategy funds if manager key is compromised.
 
 **Recommendation:** Implement a whitelist of allowed target contracts and function selectors, or remove this functionality entirely.
+
+**Resolution:** Acknowledged, this is protocol design such that the strategy contract can act like a smart wallet.
+
 
 #### H-04: Denial of Service in Hook Removal
 
@@ -146,6 +160,8 @@ function update(uint256 newPricePerShare, string calldata source_) external {
 
 **Recommendation:** Add an emergency removal function with a timelock, or allow removal after a certain period.
 
+**Resolution:** Acknowledged, the removal feature is meant more for immediate misconfiguration resolution than ongoing hook management.
+
 #### H-05: Integer Division Precision Loss
 
 **Location:** `src/token/GatedMintRWA.sol:169`
@@ -155,6 +171,8 @@ function update(uint256 newPricePerShare, string calldata source_) external {
 **Impact:** Users may receive fewer shares than entitled, especially for small deposits.
 
 **Recommendation:** Use a higher precision intermediate calculation or a different rounding approach.
+
+**Resolution:** Fixed in `6710838e6fa243c2d049b895c4b784f060e78105`.
 
 ### Medium Severity
 
@@ -175,6 +193,8 @@ if (block.timestamp > deposit.expirationTime + GRACE_PERIOD) {
 }
 ```
 
+**Resolution:** Acknowledged, if a deposit is still valid it should acceptable.
+
 #### M-02: Missing Event Emissions
 
 **Location:** Multiple locations in BasicStrategy.sol
@@ -184,6 +204,8 @@ if (block.timestamp > deposit.expirationTime + GRACE_PERIOD) {
 **Impact:** Reduced transparency and difficulty in tracking strategy actions off-chain.
 
 **Recommendation:** Add events for all state-changing operations.
+
+**Resolution:** Acknowledged, we think event emission is sufficient since the underlying ERC20 token events will be emitted.
 
 #### M-03: Initialization Race Condition
 
@@ -195,6 +217,8 @@ if (block.timestamp > deposit.expirationTime + GRACE_PERIOD) {
 
 **Recommendation:** Combine deployment and initialization in a single transaction, or use a constructor parameter.
 
+**Resolution:** Disputed, since `intializeRegistry` can only be callable by the owner.
+
 #### M-04: Unbounded Loop in Withdrawal Queue
 
 **Location:** `src/token/GatedMintRWA.sol:167-173`
@@ -204,6 +228,9 @@ if (block.timestamp > deposit.expirationTime + GRACE_PERIOD) {
 **Impact:** Denial of service if arrays are too large.
 
 **Recommendation:** Implement a maximum batch size limit.
+
+**Resolution:** Acknowledged, transactions that are bound to fail can be detected and modified before on-chain submission.
+
 
 ### Low Severity
 
@@ -217,6 +244,8 @@ if (block.timestamp > deposit.expirationTime + GRACE_PERIOD) {
 
 **Recommendation:** Use a fixed pragma version: `pragma solidity 0.8.25;`
 
+**Resolution:** Fixed in `a3d42a7ad899defc604e4e65bd9faa687b44b283`.
+
 #### L-02: Missing Zero Address Validation
 
 **Location:** `src/strategy/BasicStrategy.sol:105-111`
@@ -227,6 +256,8 @@ if (block.timestamp > deposit.expirationTime + GRACE_PERIOD) {
 
 **Recommendation:** Add zero address check or document this as intended behavior.
 
+**Resolution**: Acknowledged, setting the manager address to zero is a way of pausing strategy operations in case of emergencies.
+
 #### L-03: Inefficient Storage Access
 
 **Location:** `src/hooks/RulesEngine.sol:278-306`
@@ -236,6 +267,8 @@ if (block.timestamp > deposit.expirationTime + GRACE_PERIOD) {
 **Impact:** Higher gas costs.
 
 **Recommendation:** Cache frequently accessed storage variables in memory.
+
+**Resolution:** Fixed in `42091d38810bbf1b1788cfdd540214e3fac333b5`.
 
 ### Informational
 
@@ -249,6 +282,8 @@ if (block.timestamp > deposit.expirationTime + GRACE_PERIOD) {
 
 **Recommendation:** Remove unused error definitions.
 
+**Resolution:** Fixed in `a4403d86133e18089eb1df19b9f9a8594d5e4955`.
+
 #### I-02: Naming Inconsistency
 
 **Location:** Throughout codebase
@@ -258,6 +293,8 @@ if (block.timestamp > deposit.expirationTime + GRACE_PERIOD) {
 **Impact:** Reduced code readability.
 
 **Recommendation:** Standardize terminology across the codebase.
+
+**Resolution:** Acknowleged.
 
 ## Security Considerations
 
