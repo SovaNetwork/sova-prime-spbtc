@@ -11,6 +11,8 @@ import {MockConduit} from "../src/mocks/MockConduit.sol";
 import {RoleManager} from "../src/auth/RoleManager.sol";
 import {ERC4626} from "solady/tokens/ERC4626.sol";
 import {tRWA} from "../src/token/tRWA.sol";
+import {MockHook} from "../src/mocks/MockHook.sol";
+import {IHook} from "../src/hooks/IHook.sol";
 
 /**
  * @title ManagedWithdrawRWATest
@@ -26,6 +28,9 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
     // Test constants
     uint256 internal constant INITIAL_SUPPLY = 10000 * 10**6; // 10,000 USDC
     uint256 internal constant REDEEM_AMOUNT = 1000 * 10**6; // 1,000 USDC
+    
+    // Hook operation types
+    bytes32 public constant OP_WITHDRAW = keccak256("WITHDRAW_OPERATION");
 
     function setUp() public override {
         super.setUp();
@@ -81,6 +86,60 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
 
         // Don't setup initial deposits in setUp to avoid complications
         // Tests can set them up individually as needed
+    }
+
+    // ============ Hook Redeem Tests ============
+
+    function test_Redeem_WithPassingHook() public {
+        // Setup initial deposit
+        _depositAsUser(alice, INITIAL_SUPPLY / 2);
+        
+        // Create a hook that passes withdraw operations
+        MockHook passingHook = new MockHook(true, "");
+        
+        // Add hook to withdraw operations (redeem uses withdraw operations)
+        vm.prank(address(strategy));
+        managedToken.addOperationHook(OP_WITHDRAW, address(passingHook));
+
+        uint256 userShares = managedToken.balanceOf(alice);
+        uint256 sharesToRedeem = userShares / 2;
+        uint256 expectedAssets = managedToken.previewRedeem(sharesToRedeem);
+
+        // Alice must approve strategy to spend her shares
+        vm.prank(alice);
+        managedToken.approve(address(strategy), sharesToRedeem);
+
+        uint256 aliceBalanceBefore = usdc.balanceOf(alice);
+
+        vm.prank(address(strategy));
+        uint256 assetsRedeemed = managedToken.redeem(sharesToRedeem, alice, alice);
+
+        assertEq(assetsRedeemed, expectedAssets);
+        assertEq(usdc.balanceOf(alice), aliceBalanceBefore + assetsRedeemed);
+        assertEq(managedToken.balanceOf(alice), userShares - sharesToRedeem);
+    }
+
+    function test_Redeem_WithFailingHook() public {
+        // Setup initial deposit
+        _depositAsUser(alice, INITIAL_SUPPLY / 2);
+        
+        // Create a hook that rejects withdraw operations
+        MockHook rejectingHook = new MockHook(false, "Redeem blocked by hook");
+        
+        // Add hook to withdraw operations (redeem uses withdraw operations)
+        vm.prank(address(strategy));
+        managedToken.addOperationHook(OP_WITHDRAW, address(rejectingHook));
+
+        uint256 userShares = managedToken.balanceOf(alice);
+        uint256 sharesToRedeem = userShares / 2;
+
+        // Alice must approve strategy to spend her shares
+        vm.prank(alice);
+        managedToken.approve(address(strategy), sharesToRedeem);
+
+        vm.prank(address(strategy));
+        vm.expectRevert(abi.encodeWithSelector(tRWA.HookCheckFailed.selector, "Redeem blocked by hook"));
+        managedToken.redeem(sharesToRedeem, alice, alice);
     }
 
     // ============ Constructor Tests ============
