@@ -149,17 +149,12 @@ contract ManagedWithdrawRWA is tRWA {
             opHooks[i].hasProcessedOperations = true;
         }
 
-        if (by != owner) {
-            _spendAllowance(owner, by, shares);
-        }
-
-        if (shares > balanceOf(owner))
-            revert WithdrawMoreThanMax();
-
+        // Standard ERC4626 withdraw flow
+        if (by != owner) _spendAllowance(owner, by, shares);
+        _beforeWithdraw(assets, shares);
         _burn(owner, shares);
 
-        // Skip the _collect call since we already collected assets
-        // Just transfer the assets to the recipient
+        // Transfer the assets to the recipient
         SafeTransferLib.safeTransfer(asset(), to, assets);
 
         emit Withdraw(by, to, owner, assets, shares);
