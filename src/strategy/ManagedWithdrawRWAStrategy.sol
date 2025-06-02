@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
+import {ECDSA} from "solady/utils/ECDSA.sol";
 import {ManagedWithdrawRWA} from "../token/ManagedWithdrawRWA.sol";
 import {ReportedStrategy} from "./ReportedStrategy.sol";
 
@@ -191,12 +192,7 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
         );
 
         // Recover signer address from signature
-        address signer = ecrecover(
-            digest,
-            signature.v,
-            signature.r,
-            signature.s
-        );
+        address signer = ECDSA.recover(digest, signature.v, signature.r, signature.s);
 
         // Verify the signer is the owner of the shares
         if (signer != request.owner) revert WithdrawInvalidSignature();
