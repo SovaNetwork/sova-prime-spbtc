@@ -1,8 +1,8 @@
 # Fountfi Protocol Security Audit Report
 
-**Date:** February 6, 2025  
-**Auditor:** Claude (Opus)  
-**Scope:** Complete Fountfi Protocol codebase  
+**Date:** February 6, 2025
+**Auditor:** Claude (Opus)
+**Scope:** Complete Fountfi Protocol codebase
 **Commit:** 3a35824
 
 ## Executive Summary
@@ -11,7 +11,7 @@ This report presents the findings from a comprehensive security audit of the Fou
 
 ### Key Findings Summary:
 - **Critical:** 3 issues
-- **High:** 5 issues  
+- **High:** 5 issues
 - **Medium:** 4 issues
 - **Low:** 3 issues
 - **Informational:** 2 issues
@@ -71,7 +71,7 @@ require(v == 27 || v == 28, "Invalid signature 'v' value");
 ```solidity
 // If totalAssets = 100, totalShares = 3
 // User1: 1 share = 33 assets
-// User2: 1 share = 33 assets  
+// User2: 1 share = 33 assets
 // User3: 1 share = 33 assets
 // Total distributed: 99 assets (1 asset lost)
 ```
@@ -94,11 +94,11 @@ function _withdraw(...) internal override {
     if (by != owner) _spendAllowance(owner, by, shares);
     _beforeWithdraw(assets, shares);
     _burn(owner, shares); // Burn first
-    
+
     // Then call hooks
     HookInfo[] storage opHooks = operationHooks[OP_WITHDRAW];
     // ... hook calls ...
-    
+
     SafeTransferLib.safeTransfer(asset(), to, assets);
     emit Withdraw(by, to, owner, assets, shares);
 }
@@ -119,7 +119,7 @@ uint256 public constant MAX_PRICE_AGE = 1 days;
 
 function update(uint256 newPricePerShare, string calldata source_) external {
     require(block.timestamp - lastUpdateAt <= MAX_PRICE_AGE, "Price too stale");
-    
+
     uint256 deviation = abs(int256(newPricePerShare) - int256(pricePerShare)) * 1e18 / pricePerShare;
     require(deviation <= MAX_PRICE_DEVIATION, "Price deviation too high");
     // ...

@@ -1,6 +1,7 @@
 # FountFi Solidity Codebase – Security Audit Report
 
 *Date: 2025-06-02*
+*Commit Hash: 3a3582434591a8bada79a3bb3f13b28b2b5502d5*
 
 ## 1. Executive Summary
 FountFi engaged o3-Audit to perform a comprehensive security review of the smart–contract suite located under `src/`.  The review was conducted over **all Solidity contracts** published in the repository and focused on correctness, security, upgrade-safety and best-practice compliance.
