@@ -64,6 +64,9 @@ The same pattern exists in custom `_withdraw`, where an external transfer to the
 • Follow Checks-Effects-Interactions: move `_mint/_burn` _before_ external calls where feasible.
 • Where external token must be transferred first (to collect assets) store a local `uint256 initialTotalSupply` and enforce invariants after the call.
 
+**Resolution**
+Fixed in `0de35041e802f5b7ab878905162fcd12f38d2e85`.
+
 ---
 ### H-02  Incorrect accounting with fee-on-transfer / deflationary tokens
 Severity: **High**   Likelihood: Medium   Impact: High
@@ -81,6 +84,9 @@ Similarly `_collect()` and Escrow flows use `safeTransferFrom/ safeTransfer` wit
 • Forbid non-standard ERC-20 by checking `balanceOf(strategy)` before & after transfers, or whitelist known good tokens.
 • Alternatively, calculate actual received amount and base share-mint on that value.
 
+**Resolution**
+Acknowledged, the protocol won't support fee-on-transfer tokens for deposit assets.
+
 ---
 ### M-01  Signature malleability in `ManagedWithdrawReportedStrategy`
 Severity: **Medium**   Likelihood: Medium   Impact: Medium
@@ -94,6 +100,9 @@ address signer = ecrecover(digest, signature.v, signature.r, signature.s);
 **Recommendation**
 • Reject signatures where `s > secp256k1n ÷ 2` and `v` ∉ {27,28}.  (`ECDSA.recover()` from OZ already enforces this.)
 
+**Resolution**
+Fixed in `5274c4a67d9c67bbb27fd49d5a57c42814e9b48c`.
+
 ---
 ### M-02  Missing validation of asset decimals
 Severity: **Medium**   Likelihood: Medium   Impact: Medium
@@ -105,6 +114,9 @@ The constructor accepts `_assetDecimals` but never validates it versus the real 
 Supplying an incorrect value (malicious deployer or mis-configured registry) skews conversion maths and **inflates or deflates share price**.
 
 **Recommendation**  Query `ERC20(asset_).decimals()` during initialization (via `try/catch`) and revert on mismatch.
+
+**Resolution**
+Acknowledged, will be handled by double-checking `Registry#setAsset` configurations.
 
 ---
 ### M-03  Deposit ID collision in `GatedMintRWA`
@@ -129,11 +141,17 @@ While perhaps intended, this introduces a trust requirement.  A compromised upda
 
 **Recommendation**  Consider multi-sig guarded updates, on-chain TWAP/PT oracle, or consensus of multiple reporters.
 
+**Resolution**
+Acknowledged, the `updater` function will be controlled by a multisig with off-chain protections against malicious updates.
+
 ---
 ### L-02  Hook governance race conditions
 Severity: **Low**
 
 Functions `removeOperationHook` and `reorderOperationHooks` lack checks for hooks **currently executing**.  An admin could reorder during a re-entrant call chain causing storage inconsistencies.
+
+**Resolution**
+Fixed in `c900cdfbdfda10713eabd31e4504ff0ed3166405`, by adding reentrancy guards to hook management operations.
 
 ---
 ### L-03  `Conduit.rescueERC20()` may withdraw user funds
@@ -142,6 +160,9 @@ Severity: **Low**
 Protocol admin can arbitrarily move *any* token from the Conduit, potentially draining still-in-flight deposits if performed maliciously or by compromised admin.
 
 Recommendation: only allow rescue of tokens **not equal to allowed assets** or route through governance.
+
+**Resolution**
+Acknowledged, the design of the conduit is such that it should never hold funds between transctions, so any stuck funds will result from nonstandard operation, and will need "rescue".
 
 ---
 ### L-04  Minor / Gas / Style
