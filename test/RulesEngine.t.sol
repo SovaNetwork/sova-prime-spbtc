@@ -563,12 +563,15 @@ contract RulesEngineTests is BaseFountfiTest {
         bytes32[] memory sortedIds = rulesEngine.getAllActiveHookIdsSorted();
 
         // Should have 2 active hooks (hook3 is disabled)
-        assertEq(sortedIds.length, 2);
+        assertEq(sortedIds.length, 3);
 
         // Verify they are sorted by priority (ascending)
         // hook2 (50) < hook1 (100)
         assertEq(sortedIds[0], keccak256("UniqueHook2ForRulesEngine"));
         assertEq(sortedIds[1], keccak256("UniqueHook1ForRulesEngine"));
+
+        // Third element should be empty, since hook3 is disabled
+        assertEq(sortedIds[2], bytes32(0));
     }
 
     /**

@@ -258,8 +258,10 @@ contract TRWATest is BaseFountfiTest {
         RejectingHook rejectHook = new RejectingHook();
 
         // Add hook
-        vm.prank(address(strategy));
+        vm.startPrank(address(strategy));
         token.addOperationHook(OP_WITHDRAW, address(rejectHook));
+        usdc.approve(address(token), 50 * 10**6);
+        vm.stopPrank();
 
         // Try to withdraw
         vm.prank(alice);

@@ -242,7 +242,12 @@ contract RulesEngine is BaseHook, RoleManaged {
 
         for (uint256 i = 0; i < sortedHookIds.length; i++) {
             bytes32 hookId = sortedHookIds[i];
-            HookInfo memory hook = _hooks[hookId]; // No need to check active here, _getSortedActiveHookIds does that
+            HookInfo memory hook = _hooks[hookId];
+
+            // Check hook is active, if not, break loop - we've processed all active hooks
+            if (!hook.active) {
+                break;
+            }
 
             // Call the sub-hook with the appropriate evaluation function - use call instead of staticcall
             // to allow hooks to modify state (emit events, track interactions, etc.)
@@ -278,7 +283,7 @@ contract RulesEngine is BaseHook, RoleManaged {
     function _getSortedActiveHookIds() private view returns (bytes32[] memory) {
         uint256 activeHooksCount = 0;
         uint256 numHooks = _hookIds.length;
-        bytes32[] memory sortedActiveIds = new bytes32[](activeHooksCount);
+        bytes32[] memory sortedActiveIds = new bytes32[](numHooks);
         uint256 currentIndex = 0;
 
         // Count active hooks

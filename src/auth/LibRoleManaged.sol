@@ -28,7 +28,7 @@ abstract contract LibRoleManaged {
      * @param role The role required to access the function
      */
     modifier onlyRoles(uint256 role) {
-        if (!roleManager.hasAllRoles(msg.sender, role)) {
+        if (!roleManager.hasAnyRole(msg.sender, role)) {
             revert UnauthorizedRole(msg.sender, role);
         }
 
