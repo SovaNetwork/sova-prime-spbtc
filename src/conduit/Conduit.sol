@@ -8,9 +8,6 @@ import {IRegistry} from "../registry/IRegistry.sol";
 contract Conduit is RoleManaged {
     using SafeTransferLib for address;
 
-    // Event for managing approved tRWA contracts
-    event TRWAContractApprovalChanged(address indexed trwaContract, bool isApproved);
-
     // Custom errors
     error InvalidAmount();
     error InvalidToken();

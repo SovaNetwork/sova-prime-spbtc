@@ -158,6 +158,7 @@ Severity levels are assigned based on potential impact and likelihood:
     *   If essential for upgradability, it must be restricted to specific, audited target contracts (e.g., via a whitelist controlled by a higher authority like `PROTOCOL_ADMIN` or a DAO with a timelock) and should not be generally available to the strategy `manager`.
     *   For strategies intended as base contracts, providing open `delegatecall` is extremely dangerous.
 *   **How to Trigger:** A malicious or compromised `manager` calls `delegateCall(malicious_contract_address, malicious_calldata)`.
+* **Resolution:** Fixed in `9094f99562e20528315fe482570c3d7ba0809909`.
 
 #### RS-1: Manager can unilaterally change the reporter in `ReportedStrategy`
 *   **Contract:** `src/strategy/ReportedStrategy.sol`
@@ -173,6 +174,7 @@ Severity levels are assigned based on potential impact and likelihood:
     *   This function should be protected by a higher authority (e.g., `PROTOCOL_ADMIN` from `RoleManager`) or be subject to a timelock and governance approval process.
     *   Ideally, the reporter for a deployed strategy should be immutable or governed by a robust, decentralized mechanism.
 *   **How to Trigger:** The `manager` calls `setReporter(malicious_reporter_address)`. The `malicious_reporter_address` then reports a manipulated `pricePerShare`.
+* **Resolution:** Acknowledged, this is by design, strategies are designed to be centralized.
 
 #### CON-1: `Conduit` receives `Registry` address instead of `RoleManager` address
 *   **Contract:** `src/registry/Registry.sol` (constructor, line 31) and `src/conduit/Conduit.sol` (constructor, line 21)
@@ -188,6 +190,7 @@ Severity levels are assigned based on potential impact and likelihood:
       conduit = address(new Conduit(roleManager));    // NEW (roleManager is the state var from RoleManaged)
       ```
 *   **How to Trigger:** This is a configuration error at deployment. Any call to `Conduit.collectDeposit` will likely revert. `Conduit.rescueERC20` will not have its intended role-based protection.
+* **Resolution**:
 
 ### High Severity Findings
 
@@ -203,6 +206,8 @@ Severity levels are assigned based on potential impact and likelihood:
         *   Consider a timelock mechanism for price changes exceeding certain thresholds.
     *   These measures would make the reporter more robust against errors and malicious manipulation by an authorized updater.
 *   **How to Trigger:** An `authorizedUpdater` calls `update(manipulated_price, "some_source")`.
+* **Resolution:** Acknowledged, this is by design, oracles tied to strategies are designed to be centralized.
+
 
 ### Medium Severity Findings
 

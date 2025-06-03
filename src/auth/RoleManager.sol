@@ -39,7 +39,6 @@ contract RoleManager is OwnableRoles, IRoleManager {
 
     // Custom errors
     error InvalidRole();
-    error OwnerCannotRenounceAdmin();
 
     /// @notice Emitted when a role is granted to a user
     /// @param user The address of the user
