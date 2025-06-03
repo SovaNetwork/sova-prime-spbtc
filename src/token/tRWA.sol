@@ -45,8 +45,8 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
     }
 
     // Internal storage for token metadata
-    string private immutable _symbol;
-    string private immutable _name;
+    string private _symbol;
+    string private _name;
     address private immutable _asset;
     uint8 private immutable _assetDecimals;
 
