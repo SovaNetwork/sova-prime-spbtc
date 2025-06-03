@@ -248,7 +248,7 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
      * @param operationType The type of operation to remove the hook from.
      * @param index The index of the hook to remove.
      */
-    function removeOperationHook(bytes32 operationType, uint256 index) external onlyStrategy {
+    function removeOperationHook(bytes32 operationType, uint256 index) external onlyStrategy nonReentrant {
         HookInfo[] storage opHooks = operationHooks[operationType];
 
         if (index >= opHooks.length) revert HookIndexOutOfBounds();
@@ -271,7 +271,7 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
      * @param newOrderIndices An array where newOrderIndices[i] specifies the OLD index of the hook
      *                        that should now be at NEW position i.
      */
-    function reorderOperationHooks(bytes32 operationType, uint256[] calldata newOrderIndices) external onlyStrategy {
+    function reorderOperationHooks(bytes32 operationType, uint256[] calldata newOrderIndices) external onlyStrategy nonReentrant {
         HookInfo[] storage opTypeHooks = operationHooks[operationType];
         uint256 numHooks = opTypeHooks.length;
         if (newOrderIndices.length != numHooks) revert ReorderInvalidLength();
