@@ -142,7 +142,7 @@ contract ManagedWithdrawRWA is tRWA {
      * @param assets Amount of assets to withdraw
      * @param shares Amount of shares to burn
      */
-    function _withdraw(address by, address to, address owner, uint256 assets, uint256 shares) internal override {
+    function _withdraw(address by, address to, address owner, uint256 assets, uint256 shares) internal override nonReentrant {
         if (by != owner) _spendAllowance(owner, by, shares);
         _beforeWithdraw(assets, shares);
         _burn(owner, shares);

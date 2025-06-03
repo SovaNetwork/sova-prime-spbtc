@@ -86,7 +86,7 @@ contract GatedMintRWA is tRWA {
         address to,
         uint256 assets,
         uint256 // shares
-    ) internal override {
+    ) internal override nonReentrant {
         // Run hooks (same as in tRWA)
         HookInfo[] storage opHooks = operationHooks[OP_DEPOSIT];
         for (uint i = 0; i < opHooks.length; i++) {
