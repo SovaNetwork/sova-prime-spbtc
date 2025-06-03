@@ -210,14 +210,14 @@ contract KycRulesHook is BaseHook, RoleManaged {
     }
 
     function _checkSenderAndReceiver(address from, address to) internal view returns (IHook.HookOutput memory) {
-        if (!isAllowed(from)) {
+        if (from != address(0) && !isAllowed(from)) {
             return IHook.HookOutput({
                 approved: false,
                 reason: "KycRules: sender"
             });
         }
 
-        if (!isAllowed(to)) {
+        if (to != address(0) && !isAllowed(to)) {
             return IHook.HookOutput({
                 approved: false,
                 reason: "KycRules: receiver"
