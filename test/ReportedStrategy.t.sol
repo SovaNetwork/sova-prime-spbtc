@@ -38,16 +38,16 @@ contract ReportedStrategyTest is BaseFountfiTest {
 
         // Deploy RoleManager first
         roleManager = new RoleManager();
-        
+
         // Deploy Registry with RoleManager address
         registry = new Registry(address(roleManager));
-        
+
         // Initialize the registry for RoleManager.
         roleManager.initializeRegistry(address(registry));
 
         // Deploy test DAI token as the asset
         daiToken = new MockERC20("DAI Stablecoin", "DAI", 18);
-        
+
         // Register the DAI token as allowed asset in the registry
         registry.setAsset(address(daiToken), 18);
 
@@ -59,7 +59,7 @@ contract ReportedStrategyTest is BaseFountfiTest {
 
         // Deploy the strategy implementation
         ReportedStrategy strategyImpl = new ReportedStrategy();
-        
+
         // Register the strategy implementation in the registry
         registry.setStrategy(address(strategyImpl), true);
 
@@ -73,8 +73,8 @@ contract ReportedStrategyTest is BaseFountfiTest {
             manager,
             initData
         );
-        
-        strategy = ReportedStrategy(strategyAddr);
+
+        strategy = ReportedStrategy(payable(strategyAddr));
         token = tRWA(tokenAddr);
 
         vm.stopPrank();
@@ -173,7 +173,7 @@ contract ReportedStrategyTest is BaseFountfiTest {
         token.deposit(1000e18, alice);
         vm.stopPrank();
         vm.startPrank(manager);
-        
+
 
         // Check that the balance reflects the new reporter's price per share
         // 5e18 * 1000e18 / 1e18 = 5000e18
@@ -259,8 +259,8 @@ contract ReportedStrategyTest is BaseFountfiTest {
         // With price per share = 1e18, she should get 1000 shares
         assertEq(shares1, 1000e18, "Should get 1000 shares for 1000 DAI at 1:1 ratio");
         assertEq(token.totalSupply(), 1000e18, "Total supply should be 1000");
-        
-        
+
+
         assertEq(token.totalAssets(), 1000e18, "Total assets should be 1000 (1e18 * 1000e18 / 1e18)");
 
         // Update price per share to 1.5 (fund performance)
@@ -280,10 +280,10 @@ contract ReportedStrategyTest is BaseFountfiTest {
         assertTrue(shares2 > 600e18, "Should get more than 600 shares");
 
         uint256 totalSupplyAfter = token.totalSupply();
-        
-        
+
+
         uint256 totalAssetsAfter = token.totalAssets();
-        
+
         // Total assets should be approximately 2500 (1.5 * new total supply)
         uint256 expectedAssets = (1.5e18 * totalSupplyAfter) / 1e18;
         assertApproxEqRel(totalAssetsAfter, expectedAssets, 0.01e18, "Total assets should match price per share calculation");

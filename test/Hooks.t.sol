@@ -76,7 +76,7 @@ contract HooksTest is BaseFountfiTest {
             initData
         );
 
-        removalTestStrategy = ReportedStrategy(strategyAddr);
+        removalTestStrategy = ReportedStrategy(payable(strategyAddr));
         removalTestToken = tRWA(tokenAddr);
 
         // Deploy test hooks for removal tests
@@ -366,7 +366,7 @@ contract HooksTest is BaseFountfiTest {
 
         // Add a hook
         removalTestToken.addOperationHook(removalTestToken.OP_DEPOSIT(), address(hook1));
-        
+
         // Verify hook was added
         address[] memory hooks = removalTestToken.getHooksForOperation(removalTestToken.OP_DEPOSIT());
         assertEq(hooks.length, 1);
@@ -384,10 +384,10 @@ contract HooksTest is BaseFountfiTest {
 
     function test_CannotRemoveHookAfterOperations() public {
         vm.startPrank(address(removalTestStrategy));
-        
+
         // Add a hook
         removalTestToken.addOperationHook(removalTestToken.OP_DEPOSIT(), address(hook1));
-        
+
         vm.stopPrank();
 
         // Perform a deposit operation
@@ -400,7 +400,7 @@ contract HooksTest is BaseFountfiTest {
 
         // Now try to remove the hook - should fail
         vm.startPrank(address(removalTestStrategy));
-        
+
         bool success = false;
         try removalTestToken.removeOperationHook(removalTestToken.OP_DEPOSIT(), 0) {
             success = true;
@@ -408,17 +408,17 @@ contract HooksTest is BaseFountfiTest {
             // Expected to revert
         }
         assertFalse(success, "Should not be able to remove hook after operations");
-        
+
         vm.stopPrank();
     }
 
     function test_CanRemoveUnusedHookEvenIfOthersUsed() public {
         vm.startPrank(address(removalTestStrategy));
-        
+
         // Add two hooks
         removalTestToken.addOperationHook(removalTestToken.OP_DEPOSIT(), address(hook1));
         removalTestToken.addOperationHook(removalTestToken.OP_WITHDRAW(), address(hook2));
-        
+
         vm.stopPrank();
 
         // Perform only a deposit operation (uses hook1 but not hook2)
@@ -430,7 +430,7 @@ contract HooksTest is BaseFountfiTest {
         vm.stopPrank();
 
         vm.startPrank(address(removalTestStrategy));
-        
+
         // Should not be able to remove the deposit hook (it was used)
         bool success = false;
         try removalTestToken.removeOperationHook(removalTestToken.OP_DEPOSIT(), 0) {
@@ -442,7 +442,7 @@ contract HooksTest is BaseFountfiTest {
 
         // Should be able to remove the withdraw hook (it was not used)
         removalTestToken.removeOperationHook(removalTestToken.OP_WITHDRAW(), 0);
-        
+
         // Verify withdraw hook was removed
         address[] memory withdrawHooks = removalTestToken.getHooksForOperation(removalTestToken.OP_WITHDRAW());
         assertEq(withdrawHooks.length, 0);
@@ -452,18 +452,18 @@ contract HooksTest is BaseFountfiTest {
 
     function test_HookInfoTracking() public {
         vm.startPrank(address(removalTestStrategy));
-        
+
         // Add a hook
         uint256 blockNumber = block.number;
         removalTestToken.addOperationHook(removalTestToken.OP_DEPOSIT(), address(hook1));
-        
+
         // Check hook info
         tRWA.HookInfo[] memory hookInfos = removalTestToken.getHookInfoForOperation(removalTestToken.OP_DEPOSIT());
         assertEq(hookInfos.length, 1);
         assertEq(address(hookInfos[0].hook), address(hook1));
         assertEq(hookInfos[0].addedAtBlock, blockNumber);
         assertFalse(hookInfos[0].hasProcessedOperations);
-        
+
         vm.stopPrank();
 
         // Perform operation
@@ -481,7 +481,7 @@ contract HooksTest is BaseFountfiTest {
 
     function test_RemoveHookIndexValidation() public {
         vm.startPrank(address(removalTestStrategy));
-        
+
         // Test 1: Try to remove hook from empty list
         bool success = false;
         try removalTestToken.removeOperationHook(removalTestToken.OP_DEPOSIT(), 0) {
@@ -509,7 +509,7 @@ contract HooksTest is BaseFountfiTest {
     function test_AuthorizationCheck() public {
         // Test that non-strategy caller gets rejected
         vm.startPrank(alice);
-        
+
         bool success = false;
         try removalTestToken.removeOperationHook(removalTestToken.OP_DEPOSIT(), 0) {
             success = true;
@@ -517,7 +517,7 @@ contract HooksTest is BaseFountfiTest {
             // Expected to revert
         }
         assertFalse(success, "Non-strategy caller should be rejected");
-        
+
         vm.stopPrank();
     }
 }

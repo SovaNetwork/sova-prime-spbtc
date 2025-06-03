@@ -126,14 +126,11 @@ contract ManagedWithdrawRWA is tRWA {
             if (recipientAssets < minAssets[i]) revert InsufficientOutputAssets();
 
             if (strategy != userOwner) _spendAllowance(userOwner, strategy, userShares);
-            _beforeWithdraw(assets[i], userShares);
+            _beforeWithdraw(recipientAssets, userShares);
             _burn(userOwner, userShares);
-        }
 
-        // Second pass: transfer assets (INTERACTIONS)
-        for (uint256 i = 0; i < shares.length; i++) {
-            SafeTransferLib.safeTransfer(asset(), to[i], assets[i]);
-            emit Withdraw(strategy, to[i], owner[i], assets[i], shares[i]);
+            SafeTransferLib.safeTransfer(asset(), to[i], recipientAssets);
+            emit Withdraw(strategy, to[i], userOwner, recipientAssets, userShares);
         }
     }
 

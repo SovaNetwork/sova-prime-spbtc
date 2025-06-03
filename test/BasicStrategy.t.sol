@@ -413,36 +413,6 @@ contract BasicStrategyTest is BaseFountfiTest {
         vm.stopPrank();
     }
 
-    function test_DelegateCall() public {
-        // Deploy a test contract that we'll delegate call to
-        DelegateCallTest delegate_contract = new DelegateCallTest();
-
-        vm.startPrank(manager);
-
-        // Make a delegate call to set a value
-        bytes memory callData = abi.encodeWithSelector(
-            DelegateCallTest.setValue.selector,
-            123
-        );
-
-        (bool success, bytes memory returnData) = strategy.delegateCall(address(delegate_contract), callData);
-
-        assertTrue(success, "DelegateCall should succeed");
-        assertEq(abi.decode(returnData, (uint256)), 123, "Return value should be 123");
-
-        vm.stopPrank();
-    }
-
-    function test_DelegateCallUnauthorized() public {
-        vm.startPrank(alice);
-
-        // Alice is not the manager
-        vm.expectRevert(IStrategy.Unauthorized.selector);
-        strategy.delegateCall(address(0), "");
-
-        vm.stopPrank();
-    }
-
     function test_CallStrategyToken() public {
         vm.startPrank(owner);
 
@@ -516,16 +486,6 @@ contract BasicStrategyTest is BaseFountfiTest {
         vm.prank(owner);
         vm.expectRevert(); // low-level solidity error
         strategy.callStrategyToken(invalidCalldata);
-    }
-}
-
-// Helper contract for testing delegate calls
-contract DelegateCallTest {
-    uint256 public value;
-
-    function setValue(uint256 _value) external returns (uint256) {
-        value = _value;
-        return _value;
     }
 }
 

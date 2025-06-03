@@ -191,7 +191,7 @@ contract ManagedWithdrawReportedStrategyTest is BaseFountfiTest {
         uint256 userBalanceBefore = usdc.balanceOf(user);
 
         vm.prank(manager);
-        ManagedWithdrawReportedStrategy(address(strategy)).redeem(request, signature);
+        strategy.redeem(request, signature);
 
         uint256 userBalanceAfter = usdc.balanceOf(user);
 
@@ -299,7 +299,7 @@ contract ManagedWithdrawReportedStrategyTest is BaseFountfiTest {
 
         vm.prank(manager);
         vm.expectRevert(ManagedWithdrawReportedStrategy.InvalidArrayLengths.selector);
-        ManagedWithdrawReportedStrategy(address(strategy)).batchRedeem(requests, signatures);
+        strategy.batchRedeem(requests, signatures);
     }
 
     function test_RedeemUnauthorized() public {
@@ -320,7 +320,7 @@ contract ManagedWithdrawReportedStrategyTest is BaseFountfiTest {
 
         vm.prank(alice); // Not manager
         vm.expectRevert(abi.encodeWithSelector(IStrategy.Unauthorized.selector));
-        ManagedWithdrawReportedStrategy(address(strategy)).redeem(request, signature);
+        strategy.redeem(request, signature);
     }
 
     function test_ValidateRedeemExpired() public {
@@ -341,7 +341,7 @@ contract ManagedWithdrawReportedStrategyTest is BaseFountfiTest {
 
         vm.prank(manager);
         vm.expectRevert(ManagedWithdrawReportedStrategy.WithdrawalRequestExpired.selector);
-        ManagedWithdrawReportedStrategy(address(strategy)).redeem(request, signature);
+        strategy.redeem(request, signature);
     }
 
     function test_ValidateRedeemNonceReuse() public {
@@ -390,12 +390,12 @@ contract ManagedWithdrawReportedStrategyTest is BaseFountfiTest {
 
         // First redeem should succeed
         vm.prank(manager);
-        ManagedWithdrawReportedStrategy(address(strategy)).redeem(request, signature);
+        strategy.redeem(request, signature);
 
         // Second redeem with same nonce should fail
         vm.prank(manager);
         vm.expectRevert(ManagedWithdrawReportedStrategy.WithdrawNonceReuse.selector);
-        ManagedWithdrawReportedStrategy(address(strategy)).redeem(request, signature);
+        strategy.redeem(request, signature);
     }
 
     function test_VerifySignatureInvalid() public {
@@ -443,7 +443,7 @@ contract ManagedWithdrawReportedStrategyTest is BaseFountfiTest {
         // Execute redeem as manager - should fail due to invalid signature
         vm.prank(manager);
         vm.expectRevert(ManagedWithdrawReportedStrategy.WithdrawInvalidSignature.selector);
-        ManagedWithdrawReportedStrategy(address(strategy)).redeem(request, signature);
+        strategy.redeem(request, signature);
     }
 }
 
