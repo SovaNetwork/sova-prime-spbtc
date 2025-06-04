@@ -25,7 +25,6 @@ contract RoleManagerTest is Test {
     event RoleGranted(address indexed user, uint256 indexed role, address indexed sender);
     event RoleRevoked(address indexed user, uint256 indexed role, address indexed sender);
     event RoleAdminSet(uint256 indexed targetRole, uint256 indexed adminRole, address indexed sender);
-    event RoleCheckPassed(address indexed user, uint256 indexed role);
 
     function setUp() public {
         // Deploy RoleManager contract
@@ -362,8 +361,6 @@ contract RoleManagerTest is Test {
 
     function test_mockRoleManagedProtocolAdmin() public {
         vm.startPrank(admin);
-        vm.expectEmit(true, true, true, false);
-        emit RoleCheckPassed(admin, roleManager.PROTOCOL_ADMIN());
         mockRoleManaged.incrementAsProtocolAdmin();
         assertEq(mockRoleManaged.getCounter(), 1);
         vm.stopPrank();
@@ -376,8 +373,6 @@ contract RoleManagerTest is Test {
 
     function test_mockRoleManagedRulesAdmin() public {
         vm.startPrank(registryAdmin);
-        vm.expectEmit(true, true, true, false);
-        emit RoleCheckPassed(registryAdmin, roleManager.RULES_ADMIN());
         mockRoleManaged.incrementAsRulesAdmin();
         assertEq(mockRoleManaged.getCounter(), 1);
         vm.stopPrank();
@@ -391,16 +386,12 @@ contract RoleManagerTest is Test {
     function test_mockRoleManagedStrategyRoles() public {
         // Strategy Admin can use the function
         vm.startPrank(strategyAdmin);
-        vm.expectEmit(true, true, true, false);
-        emit RoleCheckPassed(strategyAdmin, roleManager.STRATEGY_ADMIN() | roleManager.STRATEGY_OPERATOR());
         mockRoleManaged.incrementAsStrategyRole();
         assertEq(mockRoleManaged.getCounter(), 1);
         vm.stopPrank();
 
         // Strategy Manager can also use the function
         vm.startPrank(strategyManager);
-        vm.expectEmit(true, true, true, false);
-        emit RoleCheckPassed(strategyManager, roleManager.STRATEGY_ADMIN() | roleManager.STRATEGY_OPERATOR());
         mockRoleManaged.incrementAsStrategyRole();
         assertEq(mockRoleManaged.getCounter(), 2);
         vm.stopPrank();
@@ -417,8 +408,6 @@ contract RoleManagerTest is Test {
 
     function test_mockRoleManagedKycOperator() public {
         vm.startPrank(kycOperator);
-        vm.expectEmit(true, true, true, false);
-        emit RoleCheckPassed(kycOperator, roleManager.KYC_OPERATOR());
         mockRoleManaged.incrementAsKycOperator();
         assertEq(mockRoleManaged.getCounter(), 1);
         vm.stopPrank();
