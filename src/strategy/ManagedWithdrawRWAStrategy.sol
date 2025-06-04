@@ -149,6 +149,7 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
             _validateRedeem(requests[i]);
             _verifySignature(requests[i], signatures[i]);
             usedNonces[requests[i].owner][requests[i].nonce] = true;
+            emit WithdrawalNonceUsed(requests[i].owner, requests[i].nonce);
 
             shares[i] = requests[i].shares;
             recipients[i] = requests[i].to;

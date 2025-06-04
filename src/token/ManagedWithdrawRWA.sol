@@ -37,7 +37,7 @@ contract ManagedWithdrawRWA is tRWA {
      * @dev Use redeem instead - all accounting is share-based
      * @return shares The amount of shares burned
      */
-    function withdraw(uint256, address, address) public override onlyStrategy returns (uint256) {
+    function withdraw(uint256, address, address) public view override onlyStrategy returns (uint256) {
        revert UseRedeem();
     }
 
