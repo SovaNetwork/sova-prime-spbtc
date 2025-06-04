@@ -27,6 +27,9 @@ contract GatedMintRWA is tRWA {
     bytes32[] public depositIds;
     mapping(address => bytes32[]) public userDepositIds;
 
+    // Monotonically-increasing sequence number to guarantee unique depositIds
+    uint256 private sequenceNum;
+
     // Deposit expiration time (in seconds) - default to 7 days
     uint256 public depositExpirationPeriod = 7 days;
     uint256 public constant MAX_DEPOSIT_EXPIRATION_PERIOD = 30 days;
@@ -102,13 +105,14 @@ contract GatedMintRWA is tRWA {
             }
         }
 
-        // Generate deposit ID
+        // Generate a unique deposit ID
         bytes32 depositId = keccak256(abi.encodePacked(
             by,
             to,
             assets,
             block.timestamp,
-            address(this)
+            address(this),
+            sequenceNum++
         ));
 
         // Record the deposit ID for lookup

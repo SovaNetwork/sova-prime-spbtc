@@ -10,6 +10,7 @@ import {ReportedStrategy} from "../src/strategy/ReportedStrategy.sol";
 import {GatedMintReportedStrategy} from "../src/strategy/GatedMintRWAStrategy.sol";
 import {ManagedWithdrawReportedStrategy} from "../src/strategy/ManagedWithdrawRWAStrategy.sol";
 import {RoleManager} from "../src/auth/RoleManager.sol";
+import {Conduit} from "../src/conduit/Conduit.sol";
 
 contract DeployProtocolScript is Script {
     // Management addresses
@@ -137,7 +138,7 @@ contract DeployProtocolScript is Script {
         console.log("Role Manager:", address(roleManager));
         console.log("Mock USD Token:", address(usdToken));
         console.log("Registry:", address(registry));
-        console.log("Conduit:", address(conduit);
+        console.log("Conduit:", address(conduit));
         console.log("KYC Rules Hook:", address(kycRulesHook));
         console.log("Price Oracle Reporter:", address(priceOracle));
         console.log("ReportedStrategy Implementation:", address(reportedStrategyImplementation));
