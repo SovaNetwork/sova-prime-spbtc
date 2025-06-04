@@ -28,7 +28,7 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
     // Test constants
     uint256 internal constant INITIAL_SUPPLY = 10000 * 10**6; // 10,000 USDC
     uint256 internal constant REDEEM_AMOUNT = 1000 * 10**6; // 1,000 USDC
-    
+
     // Hook operation types
     bytes32 public constant OP_WITHDRAW = keccak256("WITHDRAW_OPERATION");
 
@@ -93,10 +93,10 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
     function test_Redeem_WithPassingHook() public {
         // Setup initial deposit
         _depositAsUser(alice, INITIAL_SUPPLY / 2);
-        
+
         // Create a hook that passes withdraw operations
         MockHook passingHook = new MockHook(true, "");
-        
+
         // Add hook to withdraw operations (redeem uses withdraw operations)
         vm.prank(address(strategy));
         managedToken.addOperationHook(OP_WITHDRAW, address(passingHook));
@@ -122,10 +122,10 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
     function test_Redeem_WithFailingHook() public {
         // Setup initial deposit
         _depositAsUser(alice, INITIAL_SUPPLY / 2);
-        
+
         // Create a hook that rejects withdraw operations
         MockHook rejectingHook = new MockHook(false, "Redeem blocked by hook");
-        
+
         // Add hook to withdraw operations (redeem uses withdraw operations)
         vm.prank(address(strategy));
         managedToken.addOperationHook(OP_WITHDRAW, address(rejectingHook));
@@ -535,7 +535,7 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
     function test_Redeem_RedeemMoreThanMax() public {
         // Setup initial deposit
         _depositAsUser(alice, INITIAL_SUPPLY / 2);
-        
+
         uint256 aliceShares = managedToken.balanceOf(alice);
         uint256 tooManyShares = aliceShares + 1;
 
@@ -552,7 +552,7 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
     function test_RedeemWithMinAssets_RedeemMoreThanMax() public {
         // Setup initial deposit
         _depositAsUser(alice, INITIAL_SUPPLY / 2);
-        
+
         uint256 aliceShares = managedToken.balanceOf(alice);
         uint256 tooManyShares = aliceShares + 1;
 
@@ -570,7 +570,7 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
         // Setup initial deposits
         _depositAsUser(alice, INITIAL_SUPPLY / 4);
         _depositAsUser(bob, INITIAL_SUPPLY / 4);
-        
+
         uint256 aliceShares = managedToken.balanceOf(alice);
         uint256 bobShares = managedToken.balanceOf(bob);
 
@@ -606,10 +606,10 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
     function test_Withdraw_WithHooks() public {
         // Setup initial deposit
         _depositAsUser(alice, INITIAL_SUPPLY / 2);
-        
+
         // Create and add a hook that tracks withdraw operations
         TrackingHook trackingHook = new TrackingHook();
-        
+
         vm.prank(address(strategy));
         managedToken.addOperationHook(OP_WITHDRAW, address(trackingHook));
 
@@ -636,11 +636,11 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
     function test_Withdraw_MultipleHooks() public {
         // Setup initial deposit
         _depositAsUser(alice, INITIAL_SUPPLY / 2);
-        
+
         // Create and add multiple hooks
         TrackingHook hook1 = new TrackingHook();
         TrackingHook hook2 = new TrackingHook();
-        
+
         vm.startPrank(address(strategy));
         managedToken.addOperationHook(OP_WITHDRAW, address(hook1));
         managedToken.addOperationHook(OP_WITHDRAW, address(hook2));
@@ -666,10 +666,10 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
         // Setup initial deposits
         _depositAsUser(alice, INITIAL_SUPPLY / 4);
         _depositAsUser(bob, INITIAL_SUPPLY / 4);
-        
+
         // Create and add a hook that tracks withdraw operations
         TrackingHook trackingHook = new TrackingHook();
-        
+
         vm.prank(address(strategy));
         managedToken.addOperationHook(OP_WITHDRAW, address(trackingHook));
 
@@ -714,10 +714,10 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
         // Setup initial deposits
         _depositAsUser(alice, INITIAL_SUPPLY / 4);
         _depositAsUser(bob, INITIAL_SUPPLY / 4);
-        
+
         // Create a hook that rejects withdraw operations
         MockHook rejectingHook = new MockHook(false, "Batch withdrawal rejected");
-        
+
         vm.prank(address(strategy));
         managedToken.addOperationHook(OP_WITHDRAW, address(rejectingHook));
 
@@ -811,7 +811,7 @@ contract TrackingHook is IHook {
         return HookOutput(true, "");
     }
 
-    function hookName() external pure override returns (string memory) {
+    function name() external pure override returns (string memory) {
         return "TrackingHook";
     }
 

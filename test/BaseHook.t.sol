@@ -44,7 +44,7 @@ contract ConcreteHook is BaseHook {
                 reason: "Invalid parameters"
             });
         }
-        
+
         return IHook.HookOutput({
             approved: _shouldApprove,
             reason: _shouldApprove ? "" : _rejectionReason
@@ -68,7 +68,7 @@ contract ConcreteHook is BaseHook {
                 reason: "Invalid parameters"
             });
         }
-        
+
         return IHook.HookOutput({
             approved: _shouldApprove,
             reason: _shouldApprove ? "" : _rejectionReason
@@ -91,7 +91,7 @@ contract ConcreteHook is BaseHook {
                 reason: "Invalid parameters"
             });
         }
-        
+
         return IHook.HookOutput({
             approved: _shouldApprove,
             reason: _shouldApprove ? "" : _rejectionReason
@@ -130,7 +130,7 @@ contract BaseHookTest is Test {
     ConcreteHook public approveHook;
     ConcreteHook public rejectHook;
     DefaultBaseHook public defaultHook;
-    
+
     // Test addresses
     address public constant TOKEN = address(0x1);
     address public constant USER = address(0x2);
@@ -150,17 +150,10 @@ contract BaseHookTest is Test {
     //////////////////////////////////////////////////////////////*/
 
     function test_Name() public {
-        // Test that names are correctly set in constructor
-        assertEq(approveHook.name(), "ApproveHook", "Name should be set in constructor");
-        assertEq(rejectHook.name(), "RejectHook", "Name should be set in constructor");
-        assertEq(defaultHook.name(), "DefaultHook", "Name should be set in constructor");
-    }
-
-    function test_HookName() public {
-        // Test that hookName returns the correct name
-        assertEq(approveHook.hookName(), "ApproveHook", "hookName should return the name");
-        assertEq(rejectHook.hookName(), "RejectHook", "hookName should return the name");
-        assertEq(defaultHook.hookName(), "DefaultHook", "hookName should return the name");
+        // Test that name returns the correct name
+        assertEq(approveHook.name(), "ApproveHook", "name should return the name");
+        assertEq(rejectHook.name(), "RejectHook", "name should return the name");
+        assertEq(defaultHook.name(), "DefaultHook", "name should return the name");
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -172,7 +165,7 @@ contract BaseHookTest is Test {
         bytes32 expectedApproveId = keccak256(abi.encodePacked("ApproveHook"));
         bytes32 expectedRejectId = keccak256(abi.encodePacked("RejectHook"));
         bytes32 expectedDefaultId = keccak256(abi.encodePacked("DefaultHook"));
-        
+
         assertEq(approveHook.hookId(), expectedApproveId, "Hook ID should be hash of name");
         assertEq(rejectHook.hookId(), expectedRejectId, "Hook ID should be hash of name");
         assertEq(defaultHook.hookId(), expectedDefaultId, "Hook ID should be hash of name");
@@ -226,15 +219,15 @@ contract BaseHookTest is Test {
         IHook.HookOutput memory output = approveHook.onBeforeDeposit(address(0), USER, AMOUNT, RECEIVER);
         assertFalse(output.approved, "Should reject with zero token address");
         assertEq(output.reason, "Invalid parameters", "Should have appropriate error message");
-        
+
         output = approveHook.onBeforeDeposit(TOKEN, address(0), AMOUNT, RECEIVER);
         assertFalse(output.approved, "Should reject with zero user address");
         assertEq(output.reason, "Invalid parameters", "Should have appropriate error message");
-        
+
         output = approveHook.onBeforeDeposit(TOKEN, USER, 0, RECEIVER);
         assertFalse(output.approved, "Should reject with zero amount");
         assertEq(output.reason, "Invalid parameters", "Should have appropriate error message");
-        
+
         output = approveHook.onBeforeDeposit(TOKEN, USER, AMOUNT, address(0));
         assertFalse(output.approved, "Should reject with zero receiver address");
         assertEq(output.reason, "Invalid parameters", "Should have appropriate error message");
@@ -263,19 +256,19 @@ contract BaseHookTest is Test {
         IHook.HookOutput memory output = approveHook.onBeforeWithdraw(address(0), USER, AMOUNT, RECEIVER, OWNER);
         assertFalse(output.approved, "Should reject with zero token address");
         assertEq(output.reason, "Invalid parameters", "Should have appropriate error message");
-        
+
         output = approveHook.onBeforeWithdraw(TOKEN, address(0), AMOUNT, RECEIVER, OWNER);
         assertFalse(output.approved, "Should reject with zero by address");
         assertEq(output.reason, "Invalid parameters", "Should have appropriate error message");
-        
+
         output = approveHook.onBeforeWithdraw(TOKEN, USER, 0, RECEIVER, OWNER);
         assertFalse(output.approved, "Should reject with zero amount");
         assertEq(output.reason, "Invalid parameters", "Should have appropriate error message");
-        
+
         output = approveHook.onBeforeWithdraw(TOKEN, USER, AMOUNT, address(0), OWNER);
         assertFalse(output.approved, "Should reject with zero to address");
         assertEq(output.reason, "Invalid parameters", "Should have appropriate error message");
-        
+
         output = approveHook.onBeforeWithdraw(TOKEN, USER, AMOUNT, RECEIVER, address(0));
         assertFalse(output.approved, "Should reject with zero owner address");
         assertEq(output.reason, "Invalid parameters", "Should have appropriate error message");
@@ -304,15 +297,15 @@ contract BaseHookTest is Test {
         IHook.HookOutput memory output = approveHook.onBeforeTransfer(address(0), USER, RECEIVER, AMOUNT);
         assertFalse(output.approved, "Should reject with zero token address");
         assertEq(output.reason, "Invalid parameters", "Should have appropriate error message");
-        
+
         output = approveHook.onBeforeTransfer(TOKEN, address(0), RECEIVER, AMOUNT);
         assertFalse(output.approved, "Should reject with zero from address");
         assertEq(output.reason, "Invalid parameters", "Should have appropriate error message");
-        
+
         output = approveHook.onBeforeTransfer(TOKEN, USER, address(0), AMOUNT);
         assertFalse(output.approved, "Should reject with zero to address");
         assertEq(output.reason, "Invalid parameters", "Should have appropriate error message");
-        
+
         output = approveHook.onBeforeTransfer(TOKEN, USER, RECEIVER, 0);
         assertFalse(output.approved, "Should reject with zero amount");
         assertEq(output.reason, "Invalid parameters", "Should have appropriate error message");

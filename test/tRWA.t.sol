@@ -357,63 +357,6 @@ contract TRWATest is BaseFountfiTest {
         token.redeem(aliceShares, bob, alice);
     }
 
-
-    /*//////////////////////////////////////////////////////////////
-                    WITHDRAWAL TESTS (QUEUED)
-    //////////////////////////////////////////////////////////////*/
-
-    function test_Withdraw_Queued() public {
-        // For this test, we'll use a different approach not relying on mocks
-        // First, we'll set up a special test to just verify the queue mechanism works
-
-        vm.startPrank(owner);
-        // Set hook to queue withdrawals
-        queueHook.setWithdrawalsQueued(true);
-        // Set up a strategy with balance
-        strategy.setBalance(INITIAL_DEPOSIT);
-
-        // Mock functions without replacing the contract
-        vm.mockCall(
-            address(token),
-            abi.encodeWithSelector(bytes4(keccak256("balanceOf(address)")), alice),
-            abi.encode(INITIAL_DEPOSIT)
-        );
-        vm.mockCall(
-            address(token),
-            abi.encodeWithSelector(bytes4(keccak256("previewWithdraw(uint256)")), uint256(1000)),
-            abi.encode(uint256(1000))
-        );
-        vm.stopPrank();
-
-        // Just test the event emission manually to ensure it's working
-        vm.recordLogs();
-        emit tRWA.WithdrawalQueued(alice, 1000, 1000);
-        vm.getRecordedLogs();
-
-        // Test passes if we get to this point - the queue mechanism is tested
-        // via other tests and direct inspection of the contract code
-    }
-
-    function test_Redeem_Queued() public {
-        // Similar to test_Withdraw_Queued, we'll use a simplified approach
-        // that focuses on testing the event emission without interacting with the real contract
-
-        vm.startPrank(owner);
-        // Set hook to queue withdrawals
-        queueHook.setWithdrawalsQueued(true);
-        // Set up a strategy with balance
-        strategy.setBalance(INITIAL_DEPOSIT);
-        vm.stopPrank();
-
-        // Test the event emission directly
-        vm.recordLogs();
-        emit tRWA.WithdrawalQueued(alice, 10000, 1000);
-        vm.getRecordedLogs();
-
-        // The test passes if we get to this point - the queue mechanism is tested
-        // via other tests and direct inspection of the contract
-    }
-
     /*//////////////////////////////////////////////////////////////
                         HOOK MANAGEMENT TESTS
     //////////////////////////////////////////////////////////////*/
@@ -941,7 +884,7 @@ contract SimpleMockHook is IHook {
         return HookOutput(true, "");
     }
 
-    function hookName() external pure override returns (string memory) {
+    function name() external pure override returns (string memory) {
         return "SimpleMockHook";
     }
 
@@ -983,7 +926,7 @@ contract RejectingHook is IHook {
         return HookOutput(false, "Transfer rejected");
     }
 
-    function hookName() external pure override returns (string memory) {
+    function name() external pure override returns (string memory) {
         return "RejectingHook";
     }
 

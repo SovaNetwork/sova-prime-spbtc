@@ -646,7 +646,7 @@ contract UniqueHook1 is IHook {
         return keccak256("UniqueHook1ForRulesEngine");
     }
 
-    function hookName() external pure returns (string memory) {
+    function name() external pure returns (string memory) {
         return "UniqueHook1";
     }
 
@@ -668,7 +668,7 @@ contract UniqueHook2 is IHook {
         return keccak256("UniqueHook2ForRulesEngine");
     }
 
-    function hookName() external pure returns (string memory) {
+    function name() external pure returns (string memory) {
         return "UniqueHook2";
     }
 
@@ -690,7 +690,7 @@ contract UniqueHook3 is IHook {
         return keccak256("UniqueHook3ForRulesEngine");
     }
 
-    function hookName() external pure returns (string memory) {
+    function name() external pure returns (string memory) {
         return "UniqueHook3";
     }
 
@@ -716,7 +716,7 @@ contract FailingHook is IHook {
         return keccak256("FailingHookForRulesEngine");
     }
 
-    function hookName() external pure returns (string memory) {
+    function name() external pure returns (string memory) {
         return "FailingHook";
     }
 

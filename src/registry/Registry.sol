@@ -30,8 +30,8 @@ contract Registry is IRegistry, RoleManaged {
     /// @notice asset => decimals (0 if not allowed)
     mapping(address => uint8) public override allowedAssets;
 
-    /// @notice Deployed contracts registry
-    address[] public override allStrategies;
+    /// @notice Deployed strategies
+    address[] internal  _allStrategies;
     mapping(address => bool) public override isStrategy;
 
     /*//////////////////////////////////////////////////////////////
@@ -114,6 +114,14 @@ contract Registry is IRegistry, RoleManaged {
                 ++i;
             }
         }
+    }
+
+    /**
+     * @notice Get all strategies
+     * @return strategies Array of strategy addresses
+     */
+    function allStrategies() external view override returns (address[] memory strategies) {
+        return _allStrategies;
     }
 
     /*//////////////////////////////////////////////////////////////
