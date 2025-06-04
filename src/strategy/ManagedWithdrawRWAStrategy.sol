@@ -145,7 +145,7 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
         address[] memory owners = new address[](requests.length);
         uint256[] memory minAssets = new uint256[](requests.length);
 
-        for (uint256 i = 0; i < requests.length; i++) {
+        for (uint256 i = 0; i < requests.length;) {
             _validateRedeem(requests[i]);
             _verifySignature(requests[i], signatures[i]);
             usedNonces[requests[i].owner][requests[i].nonce] = true;
@@ -155,6 +155,10 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
             recipients[i] = requests[i].to;
             owners[i] = requests[i].owner;
             minAssets[i] = requests[i].minAssets;
+
+            unchecked {
+                ++i;
+            }
         }
 
         assets = ManagedWithdrawRWA(sToken).batchRedeemShares(shares, recipients, owners, minAssets);

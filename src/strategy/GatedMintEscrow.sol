@@ -167,7 +167,7 @@ contract GatedMintEscrow {
         uint256[] memory assetAmounts = new uint256[](depositIds.length);
 
         // First pass: validate all deposits and collect information
-        for (uint256 i = 0; i < depositIds.length; i++) {
+        for (uint256 i = 0; i < depositIds.length;) {
             bytes32 depositId = depositIds[i];
             PendingDeposit storage deposit = pendingDeposits[depositId];
 
@@ -184,6 +184,10 @@ contract GatedMintEscrow {
 
             recipients[i] = deposit.recipient;
             assetAmounts[i] = deposit.assetAmount;
+
+            unchecked {
+                ++i;
+            }
         }
 
         totalPendingAssets -= totalBatchAssets;
@@ -244,7 +248,7 @@ contract GatedMintEscrow {
         uint256 totalRefundedAssets = 0;
 
         // Process each deposit
-        for (uint256 i = 0; i < depositIds.length; i++) {
+        for (uint256 i = 0; i < depositIds.length;) {
             bytes32 depositId = depositIds[i];
             PendingDeposit storage deposit = pendingDeposits[depositId];
 
@@ -262,6 +266,10 @@ contract GatedMintEscrow {
 
             // Emit individual refund event
             emit DepositRefunded(depositId, deposit.depositor, deposit.assetAmount);
+
+            unchecked {
+                ++i;
+            }
         }
 
         // Update accounting

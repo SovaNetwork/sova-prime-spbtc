@@ -93,11 +93,15 @@ contract RulesEngine is BaseHook, RoleManaged {
 
         delete _hooks[hookId];
 
-        for (uint256 i = 0; i < _hookIds.length; i++) {
+        for (uint256 i = 0; i < _hookIds.length;) {
             if (_hookIds[i] == hookId) {
                 _hookIds[i] = _hookIds[_hookIds.length - 1];
                 _hookIds.pop();
                 break;
+            }
+
+            unchecked {
+                ++i;
             }
         }
 
@@ -240,7 +244,7 @@ contract RulesEngine is BaseHook, RoleManaged {
     function _evaluateSubHooks(bytes memory callData) internal returns (IHook.HookOutput memory) {
         bytes32[] memory sortedHookIds = _getSortedActiveHookIds();
 
-        for (uint256 i = 0; i < sortedHookIds.length; i++) {
+        for (uint256 i = 0; i < sortedHookIds.length;) {
             bytes32 hookId = sortedHookIds[i];
             HookInfo memory hook = _hooks[hookId];
 
@@ -267,6 +271,10 @@ contract RulesEngine is BaseHook, RoleManaged {
             if (!hookOutput.approved) {
                 return hookOutput;
             }
+
+            unchecked {
+                ++i;
+            }
         }
 
         // If we made it through all hooks, operation is allowed
@@ -287,15 +295,19 @@ contract RulesEngine is BaseHook, RoleManaged {
         uint256 currentIndex = 0;
 
         // Count active hooks
-        for (uint256 i = 0; i < numHooks; i++) {
+        for (uint256 i = 0; i < numHooks;) {
             if (_hooks[_hookIds[i]].active) {
                 activeHooksCount++;
                 sortedActiveIds[currentIndex++] = _hookIds[i];
             }
+
+            unchecked {
+                ++i;
+            }
         }
 
         // Simple insertion sort by priority on the active hooks
-        for (uint256 i = 1; i < activeHooksCount; i++) {
+        for (uint256 i = 1; i < activeHooksCount;) {
             bytes32 key = sortedActiveIds[i];
             uint256 keyPriority = _hooks[key].priority;
             uint256 j = i;
@@ -305,6 +317,10 @@ contract RulesEngine is BaseHook, RoleManaged {
                 j--;
             }
             sortedActiveIds[j] = key;
+
+            unchecked {
+                ++i;
+            }
         }
 
         return sortedActiveIds;

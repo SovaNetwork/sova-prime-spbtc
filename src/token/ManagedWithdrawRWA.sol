@@ -166,13 +166,17 @@ contract ManagedWithdrawRWA is tRWA {
 
         // Call hooks after state changes but before final transfer
         HookInfo[] storage opHooks = operationHooks[OP_WITHDRAW];
-        for (uint256 i = 0; i < opHooks.length; i++) {
+        for (uint256 i = 0; i < opHooks.length;) {
             IHook.HookOutput memory hookOutput = opHooks[i].hook.onBeforeWithdraw(address(this), by, assets, to, owner);
             if (!hookOutput.approved) {
                 revert HookCheckFailed(hookOutput.reason);
             }
             // Mark hook as having processed operations
             opHooks[i].hasProcessedOperations = true;
+
+            unchecked {
+                ++i;
+            }
         }
 
         // Transfer the assets to the recipient

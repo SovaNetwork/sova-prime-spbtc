@@ -89,13 +89,17 @@ contract GatedMintRWA is tRWA {
     ) internal override nonReentrant {
         // Run hooks (same as in tRWA)
         HookInfo[] storage opHooks = operationHooks[OP_DEPOSIT];
-        for (uint i = 0; i < opHooks.length; i++) {
+        for (uint i = 0; i < opHooks.length;) {
             IHook.HookOutput memory hookOutput = opHooks[i].hook.onBeforeDeposit(address(this), by, assets, to);
             if (!hookOutput.approved) {
                 revert HookCheckFailed(hookOutput.reason);
             }
             // Mark hook as having processed operations
             opHooks[i].hasProcessedOperations = true;
+
+            unchecked {
+                ++i;
+            }
         }
 
         // Generate deposit ID
@@ -165,14 +169,24 @@ contract GatedMintRWA is tRWA {
         // This ensures all deposits get the same exchange rate
         uint256 totalShares = previewDeposit(totalAssets);
 
-        // Distribute shares proportionally to each recipient based on their contribution
-        for (uint256 i = 0; i < recipients.length; i++) {
-            // Calculate this recipient's share of the total using higher precision
-            uint256 scaledShares = totalShares * ONE;
-            uint256 recipientShares = (assetAmounts[i] * scaledShares / totalAssets) / ONE;
+        // Determine shares to be minted for each recipient
+        uint256[] memory sharesToMint = new uint256[](recipients.length);
+        for (uint256 i = 0; i < recipients.length;) {
+            sharesToMint[i] = previewDeposit(assetAmounts[i]);
 
+            unchecked {
+                ++i;
+            }
+        }
+
+        // Distribute shares proportionally to each recipient based on their contribution
+        for (uint256 i = 0; i < recipients.length;) {
             // Mint shares to the recipient
-            _mint(recipients[i], recipientShares);
+            _mint(recipients[i], sharesToMint[i]);
+
+            unchecked {
+                ++i;
+            }
         }
 
         emit BatchSharesMinted(ids, totalAssets, totalShares);
@@ -187,7 +201,7 @@ contract GatedMintRWA is tRWA {
         bytes32[] memory userDeposits = new bytes32[](userDepositIds[user].length);
         uint256 count = 0;
 
-        for (uint256 i = 0; i < userDepositIds[user].length; i++) {
+        for (uint256 i = 0; i < userDepositIds[user].length;) {
             bytes32 depositId = userDepositIds[user][i];
 
             // Query the escrow for deposit status
@@ -198,12 +212,20 @@ contract GatedMintRWA is tRWA {
                 userDeposits[count] = depositId;
                 count++;
             }
+
+            unchecked {
+                ++i;
+            }
         }
 
         // Resize array to fit only pending deposits
         bytes32[] memory result = new bytes32[](count);
-        for (uint256 i = 0; i < count; i++) {
+        for (uint256 i = 0; i < count;) {
             result[i] = userDeposits[i];
+
+            unchecked {
+                ++i;
+            }
         }
 
         return result;

@@ -137,8 +137,12 @@ contract Registry is IRegistry, RoleManaged {
     function allStrategyTokens() external view override returns (address[] memory tokens) {
         tokens = new address[](_allStrategies.length);
 
-        for (uint256 i = 0; i < _allStrategies.length; i++) {
+        for (uint256 i = 0; i < _allStrategies.length;) {
             tokens[i] = IStrategy(_allStrategies[i]).sToken();
+
+            unchecked {
+                ++i;
+            }
         }
     }
 

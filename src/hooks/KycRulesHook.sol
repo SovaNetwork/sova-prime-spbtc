@@ -84,7 +84,7 @@ contract KycRulesHook is BaseHook, RoleManaged {
         uint256 length = accounts.length;
         if (length == 0) revert InvalidArrayLength();
 
-        for (uint256 i = 0; i < length; i++) {
+        for (uint256 i = 0; i < length;) {
             address account = accounts[i];
             if (account == address(0)) revert ZeroAddress();
             if (isAddressDenied[account]) revert AddressAlreadyDenied();
@@ -92,6 +92,10 @@ contract KycRulesHook is BaseHook, RoleManaged {
             isAddressAllowed[account] = true;
 
             emit AddressAllowed(account, msg.sender);
+
+            unchecked {
+                ++i;
+            }
         }
 
         emit BatchAddressAllowed(length, msg.sender);
@@ -105,7 +109,7 @@ contract KycRulesHook is BaseHook, RoleManaged {
         uint256 length = accounts.length;
         if (length == 0) revert InvalidArrayLength();
 
-        for (uint256 i = 0; i < length; i++) {
+        for (uint256 i = 0; i < length;) {
             address account = accounts[i];
             if (account == address(0)) revert ZeroAddress();
 
@@ -113,6 +117,10 @@ contract KycRulesHook is BaseHook, RoleManaged {
             isAddressDenied[account] = true;
 
             emit AddressDenied(account, msg.sender);
+
+            unchecked {
+                ++i;
+            }
         }
 
         emit BatchAddressDenied(length, msg.sender);
@@ -126,7 +134,7 @@ contract KycRulesHook is BaseHook, RoleManaged {
         uint256 length = accounts.length;
         if (length == 0) revert InvalidArrayLength();
 
-        for (uint256 i = 0; i < length; i++) {
+        for (uint256 i = 0; i < length;) {
             address account = accounts[i];
             if (account == address(0)) revert ZeroAddress();
 
@@ -134,6 +142,10 @@ contract KycRulesHook is BaseHook, RoleManaged {
             isAddressDenied[account] = false;
 
             emit AddressRestrictionRemoved(account, msg.sender);
+
+            unchecked {
+                ++i;
+            }
         }
 
         emit BatchAddressRestrictionRemoved(length, msg.sender);

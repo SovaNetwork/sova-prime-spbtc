@@ -153,13 +153,17 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
      */
     function _deposit(address by, address to, uint256 assets, uint256 shares) internal virtual override nonReentrant {
         HookInfo[] storage opHooks = operationHooks[OP_DEPOSIT];
-        for (uint i = 0; i < opHooks.length; i++) {
+        for (uint i = 0; i < opHooks.length;) {
             IHook.HookOutput memory hookOutput = opHooks[i].hook.onBeforeDeposit(address(this), by, assets, to);
             if (!hookOutput.approved) {
                 revert HookCheckFailed(hookOutput.reason);
             }
             // Mark hook as having processed operations
             opHooks[i].hasProcessedOperations = true;
+
+            unchecked {
+                ++i;
+            }
         }
 
         Conduit(
@@ -190,13 +194,17 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
 
         // Call hooks after state changes but before final transfer
         HookInfo[] storage opHooks = operationHooks[OP_WITHDRAW];
-        for (uint256 i = 0; i < opHooks.length; i++) {
+        for (uint256 i = 0; i < opHooks.length;) {
             IHook.HookOutput memory hookOutput = opHooks[i].hook.onBeforeWithdraw(address(this), by, assets, to, owner);
             if (!hookOutput.approved) {
                 revert HookCheckFailed(hookOutput.reason);
             }
             // Mark hook as having processed operations
             opHooks[i].hasProcessedOperations = true;
+
+            unchecked {
+                ++i;
+            }
         }
 
         // Transfer the assets to the recipient
@@ -277,20 +285,28 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
 
         // Create a temporary copy of all hooks
         HookInfo[] memory tempHooks = new HookInfo[](numHooks);
-        for (uint256 i = 0; i < numHooks; i++) {
+        for (uint256 i = 0; i < numHooks;) {
             tempHooks[i] = opTypeHooks[i];
+
+            unchecked {
+                ++i;
+            }
         }
 
         bool[] memory indexSeen = new bool[](numHooks);
 
         // Reorder by copying from temp array back to storage
-        for (uint256 i = 0; i < numHooks; i++) {
+        for (uint256 i = 0; i < numHooks;) {
             uint256 oldIndex = newOrderIndices[i];
             if (oldIndex >= numHooks) revert ReorderIndexOutOfBounds();
             if (indexSeen[oldIndex]) revert ReorderDuplicateIndex();
 
             opTypeHooks[i] = tempHooks[oldIndex];
             indexSeen[oldIndex] = true;
+
+            unchecked {
+                ++i;
+            }
         }
 
         emit HooksReordered(operationType, newOrderIndices);
@@ -304,8 +320,12 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
     function getHooksForOperation(bytes32 operationType) external view returns (address[] memory) {
         HookInfo[] storage opTypeHooks = operationHooks[operationType];
         address[] memory hookAddresses = new address[](opTypeHooks.length);
-        for (uint i = 0; i < opTypeHooks.length; i++) {
+        for (uint i = 0; i < opTypeHooks.length;) {
             hookAddresses[i] = address(opTypeHooks[i].hook);
+
+            unchecked {
+                ++i;
+            }
         }
         return hookAddresses;
     }
@@ -336,13 +356,17 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
 
         HookInfo[] storage opHooks = operationHooks[OP_TRANSFER];
         if (opHooks.length > 0) { // Optimization to save gas if no hooks registered for OP_TRANSFER
-            for (uint i = 0; i < opHooks.length; i++) {
+            for (uint i = 0; i < opHooks.length;) {
                 IHook.HookOutput memory hookOutput = opHooks[i].hook.onBeforeTransfer(address(this), from, to, amount);
                 if (!hookOutput.approved) {
                     revert HookCheckFailed(hookOutput.reason);
                 }
                 // Mark hook as having processed operations
                 opHooks[i].hasProcessedOperations = true;
+
+                unchecked {
+                    ++i;
+                }
             }
         }
     }
