@@ -52,14 +52,13 @@ contract GatedMintEscrow {
 
     /// @notice Struct to track pending deposit information
     struct PendingDeposit {
-        address depositor;      // Address that initiated the deposit
-        address recipient;      // Address that will receive shares if approved
-        uint256 assetAmount;    // Amount of assets deposited
+        address depositor; // Address that initiated the deposit
+        address recipient; // Address that will receive shares if approved
+        uint256 assetAmount; // Amount of assets deposited
         uint96 expirationTime; // Timestamp after which deposit can be reclaimed
-        uint96 atRound;         // Round number at which the deposit was received
-        DepositState state;     // Current state of the deposit
+        uint96 atRound; // Round number at which the deposit was received
+        DepositState state; // Current state of the deposit
     }
-
 
     /// @notice The GatedMintRWA token address
     address public immutable token;
@@ -89,11 +88,7 @@ contract GatedMintEscrow {
      * @param _asset The underlying asset address
      * @param _strategy The strategy contract address
      */
-    constructor(
-        address _token,
-        address _asset,
-        address _strategy
-    ) {
+    constructor(address _token, address _asset, address _strategy) {
         if (_token == address(0)) revert InvalidAddress();
         if (_asset == address(0)) revert InvalidAddress();
         if (_strategy == address(0)) revert InvalidAddress();
@@ -222,12 +217,7 @@ contract GatedMintEscrow {
         SafeTransferLib.safeTransfer(asset, strategy, totalBatchAssets);
 
         // Tell the GatedMintRWA token to mint shares for all deposits with equal treatment
-        GatedMintRWA(token).batchMintShares(
-            depositIds,
-            recipients,
-            assetAmounts,
-            totalBatchAssets
-        );
+        GatedMintRWA(token).batchMintShares(depositIds, recipients, assetAmounts, totalBatchAssets);
 
         emit BatchDepositsAccepted(depositIds, totalBatchAssets);
     }
@@ -313,10 +303,7 @@ contract GatedMintEscrow {
         if (msg.sender != deposit.depositor) revert Unauthorized();
 
         // Allow reclamation if round has passed without acceptance
-        if (
-            block.timestamp < deposit.expirationTime &&
-            deposit.atRound == currentRound
-        ) revert Unauthorized();
+        if (block.timestamp < deposit.expirationTime && deposit.atRound == currentRound) revert Unauthorized();
 
         // Mark as refunded
         deposit.state = DepositState.REFUNDED;

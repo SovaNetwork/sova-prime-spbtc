@@ -49,16 +49,16 @@ contract RoleManager is OwnableRoles, IRoleManager {
                             ROLE DEFINITIONS
     //////////////////////////////////////////////////////////////*/
 
-    uint256 public constant PROTOCOL_ADMIN          = 1 << 1; // Bit 1 = Protocol Admin Authority
-    uint256 public constant STRATEGY_ADMIN          = 1 << 2; // Bit 2 = Strategy Admin Authority
-    uint256 public constant RULES_ADMIN             = 1 << 3; // Bit 3 = Rules Admin Authority
+    uint256 public constant PROTOCOL_ADMIN = 1 << 1; // Bit 1 = Protocol Admin Authority
+    uint256 public constant STRATEGY_ADMIN = 1 << 2; // Bit 2 = Strategy Admin Authority
+    uint256 public constant RULES_ADMIN = 1 << 3; // Bit 3 = Rules Admin Authority
 
-    uint256 public constant STRATEGY_OPERATOR       = 1 << 4; // Bit 4 = Strategy Operator Authority
-    uint256 public constant KYC_OPERATOR            = 1 << 5; // Bit 5 = KYC Operator Authority
+    uint256 public constant STRATEGY_OPERATOR = 1 << 4; // Bit 4 = Strategy Operator Authority
+    uint256 public constant KYC_OPERATOR = 1 << 5; // Bit 5 = KYC Operator Authority
 
     // Not meant to be granted, but used for role checks
-    uint256 public constant STRATEGY_ANY            = PROTOCOL_ADMIN | STRATEGY_ADMIN | STRATEGY_OPERATOR;
-    uint256 public constant RULES_ANY               = PROTOCOL_ADMIN | RULES_ADMIN | KYC_OPERATOR;
+    uint256 public constant STRATEGY_ANY = PROTOCOL_ADMIN | STRATEGY_ADMIN | STRATEGY_OPERATOR;
+    uint256 public constant RULES_ANY = PROTOCOL_ADMIN | RULES_ADMIN | KYC_OPERATOR;
 
     /*//////////////////////////////////////////////////////////////
                                STATE
@@ -161,7 +161,7 @@ contract RoleManager is OwnableRoles, IRoleManager {
         // Authorization: Only Owner or PROTOCOL_ADMIN
         // Use hasAllRoles for the strict check against the composite PROTOCOL_ADMIN role
         if (msg.sender != owner() && !hasAllRoles(msg.sender, PROTOCOL_ADMIN)) {
-             revert Unauthorized();
+            revert Unauthorized();
         }
 
         // Prevent managing PROTOCOL_ADMIN itself via this mechanism or setting role 0

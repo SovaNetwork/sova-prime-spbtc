@@ -19,11 +19,7 @@ contract ConcreteHook is BaseHook {
      * @param shouldApprove_ Whether the hook should approve operations
      * @param rejectionReason_ The reason for rejection if not approving
      */
-    constructor(
-        string memory name_,
-        bool shouldApprove_,
-        string memory rejectionReason_
-    ) BaseHook(name_) {
+    constructor(string memory name_, bool shouldApprove_, string memory rejectionReason_) BaseHook(name_) {
         _shouldApprove = shouldApprove_;
         _rejectionReason = rejectionReason_;
     }
@@ -31,71 +27,49 @@ contract ConcreteHook is BaseHook {
     /**
      * @notice Override to test custom behavior
      */
-    function onBeforeDeposit(
-        address token,
-        address user,
-        uint256 assets,
-        address receiver
-    ) public override returns (IHook.HookOutput memory) {
+    function onBeforeDeposit(address token, address user, uint256 assets, address receiver)
+        public
+        override
+        returns (IHook.HookOutput memory)
+    {
         // Custom logic that uses the parameters to ensure they're passed correctly
         if (token == address(0) || user == address(0) || assets == 0 || receiver == address(0)) {
-            return IHook.HookOutput({
-                approved: false,
-                reason: "Invalid parameters"
-            });
+            return IHook.HookOutput({approved: false, reason: "Invalid parameters"});
         }
 
-        return IHook.HookOutput({
-            approved: _shouldApprove,
-            reason: _shouldApprove ? "" : _rejectionReason
-        });
+        return IHook.HookOutput({approved: _shouldApprove, reason: _shouldApprove ? "" : _rejectionReason});
     }
 
     /**
      * @notice Override to test custom behavior
      */
-    function onBeforeWithdraw(
-        address token,
-        address by,
-        uint256 assets,
-        address to,
-        address owner
-    ) public override returns (IHook.HookOutput memory) {
+    function onBeforeWithdraw(address token, address by, uint256 assets, address to, address owner)
+        public
+        override
+        returns (IHook.HookOutput memory)
+    {
         // Custom logic that uses the parameters to ensure they're passed correctly
         if (token == address(0) || by == address(0) || assets == 0 || to == address(0) || owner == address(0)) {
-            return IHook.HookOutput({
-                approved: false,
-                reason: "Invalid parameters"
-            });
+            return IHook.HookOutput({approved: false, reason: "Invalid parameters"});
         }
 
-        return IHook.HookOutput({
-            approved: _shouldApprove,
-            reason: _shouldApprove ? "" : _rejectionReason
-        });
+        return IHook.HookOutput({approved: _shouldApprove, reason: _shouldApprove ? "" : _rejectionReason});
     }
 
     /**
      * @notice Override to test custom behavior
      */
-    function onBeforeTransfer(
-        address token,
-        address from,
-        address to,
-        uint256 amount
-    ) public override returns (IHook.HookOutput memory) {
+    function onBeforeTransfer(address token, address from, address to, uint256 amount)
+        public
+        override
+        returns (IHook.HookOutput memory)
+    {
         // Custom logic that uses the parameters to ensure they're passed correctly
         if (token == address(0) || from == address(0) || to == address(0) || amount == 0) {
-            return IHook.HookOutput({
-                approved: false,
-                reason: "Invalid parameters"
-            });
+            return IHook.HookOutput({approved: false, reason: "Invalid parameters"});
         }
 
-        return IHook.HookOutput({
-            approved: _shouldApprove,
-            reason: _shouldApprove ? "" : _rejectionReason
-        });
+        return IHook.HookOutput({approved: _shouldApprove, reason: _shouldApprove ? "" : _rejectionReason});
     }
 
     /**

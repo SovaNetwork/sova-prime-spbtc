@@ -24,9 +24,9 @@ contract GatedMintRWATest is BaseFountfiTest {
     MockConduit internal mockConduit;
 
     // Test constants
-    uint256 internal constant DEPOSIT_AMOUNT = 1000 * 10**6; // 1000 USDC
-    uint256 internal constant INITIAL_BALANCE = 10000 * 10**6; // 10,000 USDC
-    
+    uint256 internal constant DEPOSIT_AMOUNT = 1000 * 10 ** 6; // 1000 USDC
+    uint256 internal constant INITIAL_BALANCE = 10000 * 10 ** 6; // 10,000 USDC
+
     // Hook operation types
     bytes32 public constant OP_DEPOSIT = keccak256("DEPOSIT_OPERATION");
 
@@ -43,15 +43,7 @@ contract GatedMintRWATest is BaseFountfiTest {
 
         // Deploy strategy
         strategy = new MockStrategy();
-        strategy.initialize(
-            "Gated RWA",
-            "GRWA",
-            owner,
-            manager,
-            address(usdc),
-            6,
-            ""
-        );
+        strategy.initialize("Gated RWA", "GRWA", owner, manager, address(usdc), 6, "");
 
         // Mock the strategy's registry call
         vm.mockCall(
@@ -61,13 +53,7 @@ contract GatedMintRWATest is BaseFountfiTest {
         );
 
         // Deploy GatedMintRWA token
-        gatedToken = new GatedMintRWA(
-            "Gated RWA",
-            "GRWA",
-            address(usdc),
-            6,
-            address(strategy)
-        );
+        gatedToken = new GatedMintRWA("Gated RWA", "GRWA", address(usdc), 6, address(strategy));
 
         // Get the escrow from the token
         escrow = GatedMintEscrow(gatedToken.escrow());
@@ -83,13 +69,7 @@ contract GatedMintRWATest is BaseFountfiTest {
     // ============ Constructor Tests ============
 
     function test_Constructor() public {
-        GatedMintRWA newToken = new GatedMintRWA(
-            "Test Token",
-            "TEST",
-            address(usdc),
-            6,
-            address(strategy)
-        );
+        GatedMintRWA newToken = new GatedMintRWA("Test Token", "TEST", address(usdc), 6, address(strategy));
 
         assertEq(newToken.name(), "Test Token");
         assertEq(newToken.symbol(), "TEST");
@@ -182,8 +162,7 @@ contract GatedMintRWATest is BaseFountfiTest {
         bytes32[] memory pendingDeposits = gatedToken.getUserPendingDeposits(alice);
         assertEq(pendingDeposits.length, 1);
 
-        (address depositor, address recipient,,, ) =
-            gatedToken.getDepositDetails(pendingDeposits[0]);
+        (address depositor, address recipient,,,) = gatedToken.getDepositDetails(pendingDeposits[0]);
 
         assertEq(depositor, alice);
         assertEq(recipient, bob);
@@ -192,7 +171,7 @@ contract GatedMintRWATest is BaseFountfiTest {
     function test_Deposit_WithPassingHook() public {
         // Create a hook that passes deposit operations
         MockHook passingHook = new MockHook(true, "");
-        
+
         // Add hook to deposit operations
         vm.prank(address(strategy));
         gatedToken.addOperationHook(OP_DEPOSIT, address(passingHook));
@@ -221,7 +200,7 @@ contract GatedMintRWATest is BaseFountfiTest {
     function test_Deposit_WithFailingHook() public {
         // Create a hook that rejects deposit operations
         MockHook rejectingHook = new MockHook(false, "Deposit blocked by hook");
-        
+
         // Add hook to deposit operations
         vm.prank(address(strategy));
         gatedToken.addOperationHook(OP_DEPOSIT, address(rejectingHook));
@@ -292,7 +271,6 @@ contract GatedMintRWATest is BaseFountfiTest {
 
         uint256 totalAssets = DEPOSIT_AMOUNT + (DEPOSIT_AMOUNT * 2) + (DEPOSIT_AMOUNT / 2);
 
-
         // Get the actual escrow address from the gatedToken
         address actualEscrow = gatedToken.escrow();
 
@@ -303,9 +281,9 @@ contract GatedMintRWATest is BaseFountfiTest {
 
         // Verify shares were minted correctly
         // For the first batch mint, shares should equal assets * decimal conversion (6 to 18)
-        assertEq(gatedToken.balanceOf(alice), DEPOSIT_AMOUNT * 10**12);
-        assertEq(gatedToken.balanceOf(bob), (DEPOSIT_AMOUNT * 2) * 10**12);
-        assertEq(gatedToken.balanceOf(charlie), (DEPOSIT_AMOUNT / 2) * 10**12);
+        assertEq(gatedToken.balanceOf(alice), DEPOSIT_AMOUNT * 10 ** 12);
+        assertEq(gatedToken.balanceOf(bob), (DEPOSIT_AMOUNT * 2) * 10 ** 12);
+        assertEq(gatedToken.balanceOf(charlie), (DEPOSIT_AMOUNT / 2) * 10 ** 12);
     }
 
     function test_BatchMintShares_InvalidArrayLengths() public {
@@ -414,8 +392,8 @@ contract GatedMintRWATest is BaseFountfiTest {
         uint256 aliceBalance = gatedToken.balanceOf(alice);
         assertGt(aliceBalance, 0);
         // Verify the balance is reasonable (around 10^12 for 1000 USDC)
-        assertGt(aliceBalance, 900 * 10**9); // At least 900 * 10^9
-        assertLt(aliceBalance, 1100 * 10**12); // Less than 1100 * 10^12
+        assertGt(aliceBalance, 900 * 10 ** 9); // At least 900 * 10^9
+        assertLt(aliceBalance, 1100 * 10 ** 12); // Less than 1100 * 10^12
 
         // 5. Verify deposit is no longer pending
         pendingDeposits = gatedToken.getUserPendingDeposits(alice);
@@ -552,9 +530,9 @@ contract GatedMintRWATest is BaseFountfiTest {
 
     function test_BatchMintShares_ProportionalDistribution() public {
         // Test with different asset amounts to ensure proper proportional distribution
-        uint256 amount1 = 1000 * 10**6; // 1000 USDC
-        uint256 amount2 = 3000 * 10**6; // 3000 USDC
-        uint256 amount3 = 1000 * 10**6; // 1000 USDC
+        uint256 amount1 = 1000 * 10 ** 6; // 1000 USDC
+        uint256 amount2 = 3000 * 10 ** 6; // 3000 USDC
+        uint256 amount3 = 1000 * 10 ** 6; // 1000 USDC
         uint256 totalAssets = amount1 + amount2 + amount3; // 5000 total
 
         bytes32[] memory depositIds = new bytes32[](3);
@@ -622,17 +600,14 @@ contract GatedMintRWATest is BaseFountfiTest {
         vm.prank(address(escrow));
         // This should succeed but mint 0 shares
         gatedToken.batchMintShares(depositIds, recipients, assetAmounts, totalAssets);
-        
+
         // Verify no shares were minted
         assertEq(gatedToken.balanceOf(alice), aliceBalanceBefore);
     }
 
     // ============ Helper Functions ============
 
-    function _createPendingDeposit(address depositor, address recipient, uint256 amount)
-        internal
-        returns (bytes32)
-    {
+    function _createPendingDeposit(address depositor, address recipient, uint256 amount) internal returns (bytes32) {
         vm.prank(depositor);
         usdc.approve(address(mockConduit), amount);
 

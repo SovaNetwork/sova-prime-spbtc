@@ -32,11 +32,7 @@ contract MockSubscriptionHook is BaseHook {
      * @param _enforceApproval Whether to enforce approval
      * @param _subscriptionsOpen Whether subscriptions are open
      */
-    constructor(
-        address _manager,
-        bool _enforceApproval,
-        bool _subscriptionsOpen
-    ) BaseHook("MockSubscriptionHook") {
+    constructor(address _manager, bool _enforceApproval, bool _subscriptionsOpen) BaseHook("MockSubscriptionHook") {
         manager = _manager;
         enforceApproval = _enforceApproval;
         subscriptionsOpen = _subscriptionsOpen;
@@ -100,32 +96,23 @@ contract MockSubscriptionHook is BaseHook {
      * @param receiver Address of the receiver
      * @return output Hook output
      */
-    function onBeforeDeposit(
-        address,
-        address,
-        uint256,
-        address receiver
-    ) public view override returns (IHook.HookOutput memory output) {
+    function onBeforeDeposit(address, address, uint256, address receiver)
+        public
+        view
+        override
+        returns (IHook.HookOutput memory output)
+    {
         // First check if subscriptions are open
         if (!subscriptionsOpen) {
-            return IHook.HookOutput({
-                approved: false,
-                reason: "Subscriptions are closed"
-            });
+            return IHook.HookOutput({approved: false, reason: "Subscriptions are closed"});
         }
 
         // Then check if user is approved (if enforcement is enabled)
         if (enforceApproval && !isSubscriber[receiver]) {
-            return IHook.HookOutput({
-                approved: false,
-                reason: "Address is not approved for subscription"
-            });
+            return IHook.HookOutput({approved: false, reason: "Address is not approved for subscription"});
         }
 
         // All checks passed
-        return IHook.HookOutput({
-            approved: true,
-            reason: ""
-        });
+        return IHook.HookOutput({approved: true, reason: ""});
     }
 }

@@ -14,11 +14,9 @@ import {LibRoleManaged} from "../src/auth/LibRoleManaged.sol";
  * @notice Mock hook implementation with customizable name for unique hookId
  */
 contract CustomMockHook is MockHook {
-    constructor(
-        bool initialApprove,
-        string memory rejectReason,
-        string memory hookName
-    ) MockHook(initialApprove, rejectReason) {
+    constructor(bool initialApprove, string memory rejectReason, string memory hookName)
+        MockHook(initialApprove, rejectReason)
+    {
         name = hookName;
     }
 }
@@ -30,11 +28,9 @@ contract CustomMockHook is MockHook {
 contract OperationSpecificMockHook is MockHook {
     uint256 private _operationType;
 
-    constructor(
-        uint256 operationType,
-        bool initialApprove,
-        string memory rejectReason
-    ) MockHook(initialApprove, rejectReason) {
+    constructor(uint256 operationType, bool initialApprove, string memory rejectReason)
+        MockHook(initialApprove, rejectReason)
+    {
         _operationType = operationType;
 
         // Set a unique name based on operation type to ensure unique hookId
@@ -50,72 +46,53 @@ contract OperationSpecificMockHook is MockHook {
     }
 
     // Override the deposit hook if this is a deposit hook
-    function onBeforeDeposit(
-        address token,
-        address user,
-        uint256 assets,
-        address receiver
-    ) external override returns (IHook.HookOutput memory) {
-        if (_operationType == 1) { // Deposit operation
+    function onBeforeDeposit(address token, address user, uint256 assets, address receiver)
+        external
+        override
+        returns (IHook.HookOutput memory)
+    {
+        if (_operationType == 1) {
+            // Deposit operation
             emit HookCalled("deposit", token, user, assets, receiver);
-            return IHook.HookOutput({
-                approved: true,
-                reason: ""
-            });
+            return IHook.HookOutput({approved: true, reason: ""});
         } else {
             // For other operation types, return the default behavior based on approveOperations
             emit HookCalled("deposit", token, user, assets, receiver);
-            return IHook.HookOutput({
-                approved: approveOperations,
-                reason: approveOperations ? "" : rejectReason
-            });
+            return IHook.HookOutput({approved: approveOperations, reason: approveOperations ? "" : rejectReason});
         }
     }
 
     // Override the withdraw hook if this is a withdraw hook
-    function onBeforeWithdraw(
-        address token,
-        address by,
-        uint256 assets,
-        address to,
-        address owner
-    ) external override returns (IHook.HookOutput memory) {
-        if (_operationType == 2) { // Withdraw operation
+    function onBeforeWithdraw(address token, address by, uint256 assets, address to, address owner)
+        external
+        override
+        returns (IHook.HookOutput memory)
+    {
+        if (_operationType == 2) {
+            // Withdraw operation
             emit WithdrawHookCalled(token, by, assets, to, owner);
-            return IHook.HookOutput({
-                approved: true,
-                reason: ""
-            });
+            return IHook.HookOutput({approved: true, reason: ""});
         } else {
             // For other operation types, return the default behavior based on approveOperations
             emit WithdrawHookCalled(token, by, assets, to, owner);
-            return IHook.HookOutput({
-                approved: approveOperations,
-                reason: approveOperations ? "" : rejectReason
-            });
+            return IHook.HookOutput({approved: approveOperations, reason: approveOperations ? "" : rejectReason});
         }
     }
 
     // Override the transfer hook if this is a transfer hook
-    function onBeforeTransfer(
-        address token,
-        address from,
-        address to,
-        uint256 amount
-    ) external override returns (IHook.HookOutput memory) {
-        if (_operationType == 3) { // Transfer operation
+    function onBeforeTransfer(address token, address from, address to, uint256 amount)
+        external
+        override
+        returns (IHook.HookOutput memory)
+    {
+        if (_operationType == 3) {
+            // Transfer operation
             emit TransferHookCalled(token, from, to, amount);
-            return IHook.HookOutput({
-                approved: true,
-                reason: ""
-            });
+            return IHook.HookOutput({approved: true, reason: ""});
         } else {
             // For other operation types, return the default behavior based on approveOperations
             emit TransferHookCalled(token, from, to, amount);
-            return IHook.HookOutput({
-                approved: approveOperations,
-                reason: approveOperations ? "" : rejectReason
-            });
+            return IHook.HookOutput({approved: approveOperations, reason: approveOperations ? "" : rejectReason});
         }
     }
 }
@@ -307,9 +284,7 @@ contract RulesEngineTests is BaseFountfiTest {
 
         // Since deny hook has lower priority (50), it will execute first
         // and block the operation, so the result should be deny
-        IHook.HookOutput memory result = rulesEngine.onBeforeTransfer(
-            address(0), alice, bob, 100
-        );
+        IHook.HookOutput memory result = rulesEngine.onBeforeTransfer(address(0), alice, bob, 100);
 
         // Check the result - operation should be denied
         assertFalse(result.approved);
@@ -320,9 +295,7 @@ contract RulesEngineTests is BaseFountfiTest {
 
         // Now the allow hook has priority 25 (lower = first)
         // But it doesn't matter since all hooks must approve
-        result = rulesEngine.onBeforeTransfer(
-            address(0), alice, bob, 100
-        );
+        result = rulesEngine.onBeforeTransfer(address(0), alice, bob, 100);
 
         // Still denied because both hooks must approve
         assertFalse(result.approved);
@@ -337,27 +310,21 @@ contract RulesEngineTests is BaseFountfiTest {
         allowHookId = rulesEngine.addHook(address(allowHook), 100);
 
         // Test transfer evaluation - should approve
-        IHook.HookOutput memory result = rulesEngine.onBeforeTransfer(
-            address(0), alice, bob, 100
-        );
+        IHook.HookOutput memory result = rulesEngine.onBeforeTransfer(address(0), alice, bob, 100);
 
         // Check result - should be approved
         assertTrue(result.approved);
         assertEq(result.reason, "");
 
         // Test deposit evaluation - should approve
-        result = rulesEngine.onBeforeDeposit(
-            address(0), alice, 100, alice
-        );
+        result = rulesEngine.onBeforeDeposit(address(0), alice, 100, alice);
 
         // Check result - should be approved
         assertTrue(result.approved);
         assertEq(result.reason, "");
 
         // Test withdraw evaluation - should approve
-        result = rulesEngine.onBeforeWithdraw(
-            address(0), alice, 100, alice, alice
-        );
+        result = rulesEngine.onBeforeWithdraw(address(0), alice, 100, alice, alice);
 
         // Check result - should be approved
         assertTrue(result.approved);
@@ -377,9 +344,7 @@ contract RulesEngineTests is BaseFountfiTest {
         allowHookId = rulesEngine.addHook(address(allowHook), 200);
 
         // Run evaluation, deny hook should be skipped
-        IHook.HookOutput memory result = rulesEngine.onBeforeTransfer(
-            address(0), alice, bob, 100
-        );
+        IHook.HookOutput memory result = rulesEngine.onBeforeTransfer(address(0), alice, bob, 100);
 
         // Only allow hook should be evaluated, so result is approved
         assertTrue(result.approved);
@@ -388,9 +353,7 @@ contract RulesEngineTests is BaseFountfiTest {
         rulesEngine.enableHook(denyHookId);
 
         // Now deny hook will be evaluated, so result is denied
-        result = rulesEngine.onBeforeTransfer(
-            address(0), alice, bob, 100
-        );
+        result = rulesEngine.onBeforeTransfer(address(0), alice, bob, 100);
         assertFalse(result.approved);
 
         vm.stopPrank();
@@ -405,20 +368,16 @@ contract RulesEngineTests is BaseFountfiTest {
         withdrawHookId = rulesEngine.addHook(address(withdrawHook), 100);
 
         // Test transfer - should be approved by the transfer hook
-        IHook.HookOutput memory result = rulesEngine.onBeforeTransfer(
-            address(0), alice, bob, 100
-        );
+        IHook.HookOutput memory result = rulesEngine.onBeforeTransfer(address(0), alice, bob, 100);
 
         // Transfer should be approved
         assertTrue(result.approved);
 
         // Now add a deny hook for all operations
-        denyHookId = rulesEngine.addHook(address(denyHook), 50);  // Lower priority so it runs first
+        denyHookId = rulesEngine.addHook(address(denyHook), 50); // Lower priority so it runs first
 
         // Test transfer again - should be denied by deny hook
-        result = rulesEngine.onBeforeTransfer(
-            address(0), alice, bob, 100
-        );
+        result = rulesEngine.onBeforeTransfer(address(0), alice, bob, 100);
 
         // Should be denied
         assertFalse(result.approved);
@@ -430,9 +389,7 @@ contract RulesEngineTests is BaseFountfiTest {
         vm.startPrank(owner);
 
         // No hooks added, everything should pass
-        IHook.HookOutput memory result = rulesEngine.onBeforeTransfer(
-            address(0), alice, bob, 100
-        );
+        IHook.HookOutput memory result = rulesEngine.onBeforeTransfer(address(0), alice, bob, 100);
 
         // Should be approved by default when no hooks to check
         assertTrue(result.approved);
@@ -445,7 +402,9 @@ contract RulesEngineTests is BaseFountfiTest {
         vm.startPrank(alice);
 
         // Attempt to add a hook
-        vm.expectRevert(abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, alice, roleManager.RULES_ADMIN()));
+        vm.expectRevert(
+            abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, alice, roleManager.RULES_ADMIN())
+        );
         rulesEngine.addHook(address(allowHook), 100);
 
         vm.stopPrank();
@@ -457,7 +416,9 @@ contract RulesEngineTests is BaseFountfiTest {
 
         // Attempt to disable a hook as non-owner
         vm.startPrank(alice);
-        vm.expectRevert(abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, alice, roleManager.RULES_ADMIN()));
+        vm.expectRevert(
+            abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, alice, roleManager.RULES_ADMIN())
+        );
         rulesEngine.disableHook(allowHookId);
         vm.stopPrank();
     }
@@ -487,7 +448,9 @@ contract RulesEngineTests is BaseFountfiTest {
         vm.startPrank(alice); // Alice does not have RULES_ADMIN
 
         // Expect revert due to unauthorized access
-        vm.expectRevert(abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, alice, roleManager.RULES_ADMIN()));
+        vm.expectRevert(
+            abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, alice, roleManager.RULES_ADMIN())
+        );
         rulesEngine.addHook(address(allowHook), 0); // Use priority 0
 
         vm.stopPrank();
@@ -534,7 +497,9 @@ contract RulesEngineTests is BaseFountfiTest {
 
         vm.startPrank(alice); // Alice does not have RULES_ADMIN
         // Expect revert due to unauthorized access
-        vm.expectRevert(abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, alice, roleManager.RULES_ADMIN()));
+        vm.expectRevert(
+            abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, alice, roleManager.RULES_ADMIN())
+        );
         rulesEngine.removeHook(addedHookId); // Call with hookId
         vm.stopPrank();
     }
@@ -654,7 +619,11 @@ contract UniqueHook1 is IHook {
         return IHook.HookOutput(true, "");
     }
 
-    function onBeforeWithdraw(address, address, uint256, address, address) external pure returns (IHook.HookOutput memory) {
+    function onBeforeWithdraw(address, address, uint256, address, address)
+        external
+        pure
+        returns (IHook.HookOutput memory)
+    {
         return IHook.HookOutput(true, "");
     }
 
@@ -676,7 +645,11 @@ contract UniqueHook2 is IHook {
         return IHook.HookOutput(true, "");
     }
 
-    function onBeforeWithdraw(address, address, uint256, address, address) external pure returns (IHook.HookOutput memory) {
+    function onBeforeWithdraw(address, address, uint256, address, address)
+        external
+        pure
+        returns (IHook.HookOutput memory)
+    {
         return IHook.HookOutput(true, "");
     }
 
@@ -698,7 +671,11 @@ contract UniqueHook3 is IHook {
         return IHook.HookOutput(true, "");
     }
 
-    function onBeforeWithdraw(address, address, uint256, address, address) external pure returns (IHook.HookOutput memory) {
+    function onBeforeWithdraw(address, address, uint256, address, address)
+        external
+        pure
+        returns (IHook.HookOutput memory)
+    {
         return IHook.HookOutput(true, "");
     }
 
@@ -724,7 +701,11 @@ contract FailingHook is IHook {
         revert("Hook intentionally fails");
     }
 
-    function onBeforeWithdraw(address, address, uint256, address, address) external pure returns (IHook.HookOutput memory) {
+    function onBeforeWithdraw(address, address, uint256, address, address)
+        external
+        pure
+        returns (IHook.HookOutput memory)
+    {
         revert("Hook intentionally fails");
     }
 

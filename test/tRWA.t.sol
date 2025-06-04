@@ -16,7 +16,6 @@ import {Registry} from "../src/registry/Registry.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {ERC4626} from "solady/tokens/ERC4626.sol";
 
-
 /**
  * @title TRWATest
  * @notice Comprehensive tests for tRWA contract to achieve 100% coverage
@@ -28,7 +27,7 @@ contract TRWATest is BaseFountfiTest {
     WithdrawQueueMockHook internal queueHook;
 
     // Test constants
-    uint256 internal constant INITIAL_DEPOSIT = 1000 * 10**6; // 1000 USDC
+    uint256 internal constant INITIAL_DEPOSIT = 1000 * 10 ** 6; // 1000 USDC
 
     // Helper to set allowances and deposit USDC to a tRWA token and update MockStrategy balance
     function depositTRWA(address user, address trwaToken, uint256 assets) internal override returns (uint256) {
@@ -108,15 +107,13 @@ contract TRWATest is BaseFountfiTest {
 
         // Add hook to token for withdrawal operations
         bytes32 opWithdraw = keccak256("WITHDRAW_OPERATION");
-        strategy.callStrategyToken(
-            abi.encodeCall(tRWA.addOperationHook, (opWithdraw, address(queueHook)))
-        );
+        strategy.callStrategyToken(abi.encodeCall(tRWA.addOperationHook, (opWithdraw, address(queueHook))));
 
         // Since we're the owner, we can mint tokens freely
-        usdc.mint(alice, 10_000 * 10**6);
-        usdc.mint(bob, 10_000 * 10**6);
-        usdc.mint(manager, 10_000 * 10**6);
-        usdc.mint(address(this), 10_000 * 10**6);
+        usdc.mint(alice, 10_000 * 10 ** 6);
+        usdc.mint(bob, 10_000 * 10 ** 6);
+        usdc.mint(manager, 10_000 * 10 ** 6);
+        usdc.mint(address(this), 10_000 * 10 ** 6);
 
         vm.stopPrank();
 
@@ -262,7 +259,7 @@ contract TRWATest is BaseFountfiTest {
         // Try to deposit
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(tRWA.HookCheckFailed.selector, "Deposit rejected"));
-        token.deposit(100 * 10**6, alice);
+        token.deposit(100 * 10 ** 6, alice);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -272,8 +269,8 @@ contract TRWATest is BaseFountfiTest {
     function test_Withdraw_HookRejects() public {
         // First deposit some funds
         vm.startPrank(alice);
-        usdc.approve(address(mockConduit), 100 * 10**6);
-        token.deposit(100 * 10**6, alice);
+        usdc.approve(address(mockConduit), 100 * 10 ** 6);
+        token.deposit(100 * 10 ** 6, alice);
         vm.stopPrank();
 
         // Deploy a rejecting hook for withdrawals
@@ -282,20 +279,20 @@ contract TRWATest is BaseFountfiTest {
         // Add hook
         vm.startPrank(address(strategy));
         token.addOperationHook(OP_WITHDRAW, address(rejectHook));
-        usdc.approve(address(token), 50 * 10**6);
+        usdc.approve(address(token), 50 * 10 ** 6);
         vm.stopPrank();
 
         // Try to withdraw
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(tRWA.HookCheckFailed.selector, "Withdraw rejected"));
-        token.withdraw(50 * 10**6, alice, alice);
+        token.withdraw(50 * 10 ** 6, alice, alice);
     }
 
     function test_Redeem_MoreThanMax() public {
         // First deposit some funds
         vm.startPrank(alice);
-        usdc.approve(address(mockConduit), 100 * 10**6);
-        token.deposit(100 * 10**6, alice);
+        usdc.approve(address(mockConduit), 100 * 10 ** 6);
+        token.deposit(100 * 10 ** 6, alice);
         vm.stopPrank();
 
         uint256 aliceShares = token.balanceOf(alice);
@@ -309,21 +306,21 @@ contract TRWATest is BaseFountfiTest {
     function test_Withdraw_MoreThanMax() public {
         // First deposit some funds
         vm.startPrank(alice);
-        usdc.approve(address(mockConduit), 100 * 10**6);
-        token.deposit(100 * 10**6, alice);
+        usdc.approve(address(mockConduit), 100 * 10 ** 6);
+        token.deposit(100 * 10 ** 6, alice);
         vm.stopPrank();
 
         // Try to withdraw more assets than alice has
         vm.prank(alice);
         vm.expectRevert(ERC4626.WithdrawMoreThanMax.selector);
-        token.withdraw(101 * 10**6, alice, alice);
+        token.withdraw(101 * 10 ** 6, alice, alice);
     }
 
     function test_Withdraw_ThirdParty() public {
         // First deposit some funds
         vm.startPrank(alice);
-        usdc.approve(address(mockConduit), 100 * 10**6);
-        token.deposit(100 * 10**6, alice);
+        usdc.approve(address(mockConduit), 100 * 10 ** 6);
+        token.deposit(100 * 10 ** 6, alice);
 
         uint256 aliceShares = token.balanceOf(alice);
         token.approve(bob, aliceShares);
@@ -331,18 +328,18 @@ contract TRWATest is BaseFountfiTest {
 
         // Set up withdrawal in strategy
         vm.prank(address(strategy));
-        usdc.approve(address(token), 50 * 10**6);
+        usdc.approve(address(token), 50 * 10 ** 6);
 
         // Try to withdraw with a third party
         vm.prank(bob);
-        token.withdraw(50 * 10**6, bob, alice);
+        token.withdraw(50 * 10 ** 6, bob, alice);
     }
 
     function test_Redeem_ThirdParty() public {
         // First deposit some funds
         vm.startPrank(alice);
-        usdc.approve(address(mockConduit), 100 * 10**6);
-        token.deposit(100 * 10**6, alice);
+        usdc.approve(address(mockConduit), 100 * 10 ** 6);
+        token.deposit(100 * 10 ** 6, alice);
 
         uint256 aliceShares = token.balanceOf(alice);
         token.approve(bob, aliceShares);
@@ -350,7 +347,7 @@ contract TRWATest is BaseFountfiTest {
 
         // Set up withdrawal in strategy
         vm.prank(address(strategy));
-        usdc.approve(address(token), 100 * 10**6);
+        usdc.approve(address(token), 100 * 10 ** 6);
 
         // Try to withdraw with a third party
         vm.prank(bob);
@@ -415,8 +412,8 @@ contract TRWATest is BaseFountfiTest {
 
         // Process a deposit to mark hook as having processed operations
         vm.startPrank(alice);
-        usdc.approve(address(mockConduit), 100 * 10**6);
-        token.deposit(100 * 10**6, alice);
+        usdc.approve(address(mockConduit), 100 * 10 ** 6);
+        token.deposit(100 * 10 ** 6, alice);
         vm.stopPrank();
 
         // Try to remove the hook
@@ -591,23 +588,23 @@ contract TRWATest is BaseFountfiTest {
     function test_Transfer_NoHooks() public {
         // First deposit some funds
         vm.startPrank(alice);
-        usdc.approve(address(mockConduit), 100 * 10**6);
-        token.deposit(100 * 10**6, alice);
+        usdc.approve(address(mockConduit), 100 * 10 ** 6);
+        token.deposit(100 * 10 ** 6, alice);
         vm.stopPrank();
 
         // Transfer without any transfer hooks
         vm.prank(alice);
-        token.transfer(bob, 50 * 10**18);
+        token.transfer(bob, 50 * 10 ** 18);
 
         // Check balances
-        assertEq(token.balanceOf(bob), 50 * 10**18);
+        assertEq(token.balanceOf(bob), 50 * 10 ** 18);
     }
 
     function test_Transfer_HookRejects() public {
         // First deposit some funds
         vm.startPrank(alice);
-        usdc.approve(address(mockConduit), 100 * 10**6);
-        token.deposit(100 * 10**6, alice);
+        usdc.approve(address(mockConduit), 100 * 10 ** 6);
+        token.deposit(100 * 10 ** 6, alice);
         vm.stopPrank();
 
         // Deploy a rejecting hook for transfers
@@ -620,7 +617,7 @@ contract TRWATest is BaseFountfiTest {
         // Try to transfer
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(tRWA.HookCheckFailed.selector, "Transfer rejected"));
-        token.transfer(bob, 50 * 10**18);
+        token.transfer(bob, 50 * 10 ** 18);
     }
 
     function test_OperationSpecificHooks() public {
@@ -634,15 +631,7 @@ contract TRWATest is BaseFountfiTest {
         // Create a new token with no hooks
         vm.startPrank(owner);
         MockStrategy newStrategy = new MockStrategy();
-        newStrategy.initialize(
-            "Test RWA",
-            "tTEST",
-            owner,
-            manager,
-            address(usdc),
-            6,
-            ""
-        );
+        newStrategy.initialize("Test RWA", "tTEST", owner, manager, address(usdc), 6, "");
         tRWA newToken = tRWA(newStrategy.sToken());
 
         // Create hooks for different operations
@@ -652,15 +641,9 @@ contract TRWATest is BaseFountfiTest {
 
         // Add hooks to different operations via strategy
         // Two hooks for deposit, one for withdraw, none for transfer
-        newStrategy.callStrategyToken(
-            abi.encodeCall(tRWA.addOperationHook, (opDeposit, address(hook1)))
-        );
-        newStrategy.callStrategyToken(
-            abi.encodeCall(tRWA.addOperationHook, (opDeposit, address(hook2)))
-        );
-        newStrategy.callStrategyToken(
-            abi.encodeCall(tRWA.addOperationHook, (opWithdraw, address(hook3)))
-        );
+        newStrategy.callStrategyToken(abi.encodeCall(tRWA.addOperationHook, (opDeposit, address(hook1))));
+        newStrategy.callStrategyToken(abi.encodeCall(tRWA.addOperationHook, (opDeposit, address(hook2))));
+        newStrategy.callStrategyToken(abi.encodeCall(tRWA.addOperationHook, (opWithdraw, address(hook3))));
 
         // Fetch hooks for each operation
         address[] memory depositHooks = newToken.getHooksForOperation(opDeposit);
@@ -856,31 +839,30 @@ contract TRWATest is BaseFountfiTest {
  * @notice Simple hook that always approves operations
  */
 contract SimpleMockHook is IHook {
-    function onBeforeDeposit(
-        address token,
-        address from,
-        uint256 assets,
-        address receiver
-    ) external pure override returns (HookOutput memory) {
+    function onBeforeDeposit(address token, address from, uint256 assets, address receiver)
+        external
+        pure
+        override
+        returns (HookOutput memory)
+    {
         return HookOutput(true, "");
     }
 
-    function onBeforeWithdraw(
-        address token,
-        address operator,
-        uint256 assets,
-        address receiver,
-        address owner
-    ) external pure override returns (HookOutput memory) {
+    function onBeforeWithdraw(address token, address operator, uint256 assets, address receiver, address owner)
+        external
+        pure
+        override
+        returns (HookOutput memory)
+    {
         return HookOutput(true, "");
     }
 
-    function onBeforeTransfer(
-        address token,
-        address from,
-        address to,
-        uint256 amount
-    ) external pure override returns (HookOutput memory) {
+    function onBeforeTransfer(address token, address from, address to, uint256 amount)
+        external
+        pure
+        override
+        returns (HookOutput memory)
+    {
         return HookOutput(true, "");
     }
 
@@ -898,31 +880,30 @@ contract SimpleMockHook is IHook {
  * @notice Hook that always rejects operations
  */
 contract RejectingHook is IHook {
-    function onBeforeDeposit(
-        address token,
-        address from,
-        uint256 assets,
-        address receiver
-    ) external pure override returns (HookOutput memory) {
+    function onBeforeDeposit(address token, address from, uint256 assets, address receiver)
+        external
+        pure
+        override
+        returns (HookOutput memory)
+    {
         return HookOutput(false, "Deposit rejected");
     }
 
-    function onBeforeWithdraw(
-        address token,
-        address operator,
-        uint256 assets,
-        address receiver,
-        address owner
-    ) external pure override returns (HookOutput memory) {
+    function onBeforeWithdraw(address token, address operator, uint256 assets, address receiver, address owner)
+        external
+        pure
+        override
+        returns (HookOutput memory)
+    {
         return HookOutput(false, "Withdraw rejected");
     }
 
-    function onBeforeTransfer(
-        address token,
-        address from,
-        address to,
-        uint256 amount
-    ) external pure override returns (HookOutput memory) {
+    function onBeforeTransfer(address token, address from, address to, uint256 amount)
+        external
+        pure
+        override
+        returns (HookOutput memory)
+    {
         return HookOutput(false, "Transfer rejected");
     }
 

@@ -366,7 +366,9 @@ contract RoleManagerTest is Test {
         vm.stopPrank();
 
         vm.startPrank(user);
-        vm.expectRevert(abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, user, roleManager.PROTOCOL_ADMIN()));
+        vm.expectRevert(
+            abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, user, roleManager.PROTOCOL_ADMIN())
+        );
         mockRoleManaged.incrementAsProtocolAdmin();
         vm.stopPrank();
     }
@@ -378,7 +380,9 @@ contract RoleManagerTest is Test {
         vm.stopPrank();
 
         vm.startPrank(user);
-        vm.expectRevert(abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, user, roleManager.RULES_ADMIN()));
+        vm.expectRevert(
+            abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, user, roleManager.RULES_ADMIN())
+        );
         mockRoleManaged.incrementAsRulesAdmin();
         vm.stopPrank();
     }
@@ -401,7 +405,13 @@ contract RoleManagerTest is Test {
 
         // Unprivileged user cannot access
         vm.startPrank(unprivileged);
-        vm.expectRevert(abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, unprivileged, roleManager.STRATEGY_ADMIN() | roleManager.STRATEGY_OPERATOR()));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                LibRoleManaged.UnauthorizedRole.selector,
+                unprivileged,
+                roleManager.STRATEGY_ADMIN() | roleManager.STRATEGY_OPERATOR()
+            )
+        );
         mockRoleManaged.incrementAsStrategyRole();
         vm.stopPrank();
     }
@@ -413,7 +423,9 @@ contract RoleManagerTest is Test {
         vm.stopPrank();
 
         vm.startPrank(user);
-        vm.expectRevert(abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, user, roleManager.KYC_OPERATOR()));
+        vm.expectRevert(
+            abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, user, roleManager.KYC_OPERATOR())
+        );
         mockRoleManaged.incrementAsKycOperator();
         vm.stopPrank();
     }
@@ -502,8 +514,14 @@ contract RoleManagerTest is Test {
         assertEq(roleManager.KYC_OPERATOR(), 1 << 5);
 
         // Test composite role constants
-        assertEq(roleManager.STRATEGY_ANY(), roleManager.PROTOCOL_ADMIN() | roleManager.STRATEGY_ADMIN() | roleManager.STRATEGY_OPERATOR());
-        assertEq(roleManager.RULES_ANY(), roleManager.PROTOCOL_ADMIN() | roleManager.RULES_ADMIN() | roleManager.KYC_OPERATOR());
+        assertEq(
+            roleManager.STRATEGY_ANY(),
+            roleManager.PROTOCOL_ADMIN() | roleManager.STRATEGY_ADMIN() | roleManager.STRATEGY_OPERATOR()
+        );
+        assertEq(
+            roleManager.RULES_ANY(),
+            roleManager.PROTOCOL_ADMIN() | roleManager.RULES_ADMIN() | roleManager.KYC_OPERATOR()
+        );
     }
 
     /**
@@ -581,7 +599,6 @@ contract RoleManagerTest is Test {
 
         vm.stopPrank();
     }
-
 
     /**
      * @notice Test setRoleAdmin with PROTOCOL_ADMIN caller (not owner)
@@ -713,5 +730,4 @@ contract RoleManagerTest is Test {
         assertTrue(roleManager.hasAnyRole(user, roleManager.STRATEGY_ADMIN()));
         vm.stopPrank();
     }
-
 }

@@ -65,18 +65,14 @@ contract MockHook is IHook {
      * @param receiver Address of the receiver
      * @return result Result of the hook evaluation
      */
-    function onBeforeDeposit(
-        address token,
-        address user,
-        uint256 assets,
-        address receiver
-    ) external virtual returns (HookOutput memory) {
+    function onBeforeDeposit(address token, address user, uint256 assets, address receiver)
+        external
+        virtual
+        returns (HookOutput memory)
+    {
         emit HookCalled("deposit", token, user, assets, receiver);
 
-        return HookOutput({
-            approved: approveOperations,
-            reason: approveOperations ? "" : rejectReason
-        });
+        return HookOutput({approved: approveOperations, reason: approveOperations ? "" : rejectReason});
     }
 
     /**
@@ -88,19 +84,14 @@ contract MockHook is IHook {
      * @param owner Address of the owner
      * @return result Result of the hook evaluation
      */
-    function onBeforeWithdraw(
-        address token,
-        address by,
-        uint256 assets,
-        address to,
-        address owner
-    ) external virtual returns (HookOutput memory) {
+    function onBeforeWithdraw(address token, address by, uint256 assets, address to, address owner)
+        external
+        virtual
+        returns (HookOutput memory)
+    {
         emit WithdrawHookCalled(token, by, assets, to, owner);
 
-        return HookOutput({
-            approved: approveOperations,
-            reason: approveOperations ? "" : rejectReason
-        });
+        return HookOutput({approved: approveOperations, reason: approveOperations ? "" : rejectReason});
     }
 
     /**
@@ -111,17 +102,13 @@ contract MockHook is IHook {
      * @param amount Amount of assets to transfer
      * @return result Result of the hook evaluation
      */
-    function onBeforeTransfer(
-        address token,
-        address from,
-        address to,
-        uint256 amount
-    ) external virtual returns (HookOutput memory) {
+    function onBeforeTransfer(address token, address from, address to, uint256 amount)
+        external
+        virtual
+        returns (HookOutput memory)
+    {
         emit TransferHookCalled(token, from, to, amount);
 
-        return HookOutput({
-            approved: approveOperations,
-            reason: approveOperations ? "" : rejectReason
-        });
+        return HookOutput({approved: approveOperations, reason: approveOperations ? "" : rejectReason});
     }
 }

@@ -28,7 +28,6 @@ interface IRegistry {
     event Deploy(address indexed strategy, address indexed sToken, address indexed asset);
     event DeployWithController(address indexed strategy, address indexed sToken, address indexed controller);
 
-
     /*//////////////////////////////////////////////////////////////
                             VIEW FUNCTIONS
     //////////////////////////////////////////////////////////////*/

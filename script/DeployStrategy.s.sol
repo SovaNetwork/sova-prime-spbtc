@@ -9,7 +9,6 @@ import {ReportedStrategy} from "../src/strategy/ReportedStrategy.sol";
 import {GatedMintReportedStrategy} from "../src/strategy/GatedMintRWAStrategy.sol";
 import {ManagedWithdrawReportedStrategy} from "../src/strategy/ManagedWithdrawRWAStrategy.sol";
 
-
 contract DeployStrategyScript is Script {
     // Deployed contracts from previous scripts
     Registry public registry;
@@ -93,10 +92,10 @@ contract DeployStrategyScript is Script {
         // Deploy strategy through registry
         (strategy, token) = registry.deploy(
             strategyImplementation,
-            "Fountfi USD Token",      // name
-            "fUSDC",                  // symbol
+            "Fountfi USD Token", // name
+            "fUSDC", // symbol
             address(usdToken),
-            deployer,                 // Manager of the strategy
+            deployer, // Manager of the strategy
             initData
         );
 

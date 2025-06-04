@@ -202,25 +202,19 @@ contract KycRulesTest is BaseFountfiTest {
         kycRules.allow(bob);
 
         // Test transfer between allowed addresses
-        IHook.HookOutput memory result = kycRules.onBeforeTransfer(
-            address(0), alice, bob, 100
-        );
+        IHook.HookOutput memory result = kycRules.onBeforeTransfer(address(0), alice, bob, 100);
 
         assertTrue(result.approved);
         assertEq(result.reason, "");
 
         // Test transfer from denied to allowed
-        result = kycRules.onBeforeTransfer(
-            address(0), charlie, alice, 100
-        );
+        result = kycRules.onBeforeTransfer(address(0), charlie, alice, 100);
 
         assertFalse(result.approved);
         assertEq(result.reason, "KycRules: sender");
 
         // Test transfer from allowed to denied
-        result = kycRules.onBeforeTransfer(
-            address(0), alice, charlie, 100
-        );
+        result = kycRules.onBeforeTransfer(address(0), alice, charlie, 100);
 
         assertFalse(result.approved);
         assertEq(result.reason, "KycRules: receiver");
@@ -235,25 +229,19 @@ contract KycRulesTest is BaseFountfiTest {
         kycRules.allow(alice);
 
         // Test deposit with allowed user and receiver
-        IHook.HookOutput memory result = kycRules.onBeforeDeposit(
-            address(0), alice, 100, alice
-        );
+        IHook.HookOutput memory result = kycRules.onBeforeDeposit(address(0), alice, 100, alice);
 
         assertTrue(result.approved);
         assertEq(result.reason, "");
 
         // Test deposit with denied user
-        result = kycRules.onBeforeDeposit(
-            address(0), charlie, 100, charlie
-        );
+        result = kycRules.onBeforeDeposit(address(0), charlie, 100, charlie);
 
         assertFalse(result.approved);
         assertEq(result.reason, "KycRules: sender");
 
         // Test deposit with denied receiver
-        result = kycRules.onBeforeDeposit(
-            address(0), alice, 100, charlie
-        );
+        result = kycRules.onBeforeDeposit(address(0), alice, 100, charlie);
 
         assertFalse(result.approved);
         assertEq(result.reason, "KycRules: receiver");
@@ -269,33 +257,25 @@ contract KycRulesTest is BaseFountfiTest {
         kycRules.allow(bob);
 
         // Test withdraw with all addresses allowed
-        IHook.HookOutput memory result = kycRules.onBeforeWithdraw(
-            address(0), alice, 100, bob, alice
-        );
+        IHook.HookOutput memory result = kycRules.onBeforeWithdraw(address(0), alice, 100, bob, alice);
 
         assertTrue(result.approved);
         assertEq(result.reason, "");
 
         // Test withdraw with denied user
-        result = kycRules.onBeforeWithdraw(
-            address(0), charlie, 100, bob, alice
-        );
+        result = kycRules.onBeforeWithdraw(address(0), charlie, 100, bob, alice);
 
         assertFalse(result.approved);
         assertEq(result.reason, "KycRules: sender");
 
         // Test withdraw with denied receiver
-        result = kycRules.onBeforeWithdraw(
-            address(0), alice, 100, charlie, alice
-        );
+        result = kycRules.onBeforeWithdraw(address(0), alice, 100, charlie, alice);
 
         assertFalse(result.approved);
         assertEq(result.reason, "KycRules: receiver");
 
         // Test withdraw with denied owner
-        result = kycRules.onBeforeWithdraw(
-            address(0), alice, 100, bob, charlie
-        );
+        result = kycRules.onBeforeWithdraw(address(0), alice, 100, bob, charlie);
 
         assertFalse(result.approved);
         assertEq(result.reason, "KycRules: owner");
@@ -307,28 +287,40 @@ contract KycRulesTest is BaseFountfiTest {
         vm.startPrank(alice); // alice is not an operator
 
         // Test unauthorized allow
-        vm.expectRevert(abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, alice, roleManager.KYC_OPERATOR()));
+        vm.expectRevert(
+            abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, alice, roleManager.KYC_OPERATOR())
+        );
         kycRules.allow(bob);
 
         // Test unauthorized deny
-        vm.expectRevert(abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, alice, roleManager.KYC_OPERATOR()));
+        vm.expectRevert(
+            abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, alice, roleManager.KYC_OPERATOR())
+        );
         kycRules.deny(bob);
 
         // Test unauthorized reset
-        vm.expectRevert(abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, alice, roleManager.KYC_OPERATOR()));
+        vm.expectRevert(
+            abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, alice, roleManager.KYC_OPERATOR())
+        );
         kycRules.reset(bob);
 
         // Test unauthorized batch operations
         address[] memory addresses = new address[](1);
         addresses[0] = bob;
 
-        vm.expectRevert(abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, alice, roleManager.KYC_OPERATOR()));
+        vm.expectRevert(
+            abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, alice, roleManager.KYC_OPERATOR())
+        );
         kycRules.batchAllow(addresses);
 
-        vm.expectRevert(abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, alice, roleManager.KYC_OPERATOR()));
+        vm.expectRevert(
+            abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, alice, roleManager.KYC_OPERATOR())
+        );
         kycRules.batchDeny(addresses);
 
-        vm.expectRevert(abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, alice, roleManager.KYC_OPERATOR()));
+        vm.expectRevert(
+            abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, alice, roleManager.KYC_OPERATOR())
+        );
         kycRules.batchReset(addresses);
 
         vm.stopPrank();
@@ -344,7 +336,7 @@ contract KycRulesTest is BaseFountfiTest {
         // Setup batch with alice (already allowed) and bob (not allowed)
         address[] memory addresses = new address[](2);
         addresses[0] = alice; // already allowed
-        addresses[1] = bob;   // not allowed
+        addresses[1] = bob; // not allowed
 
         // Batch allow should skip alice and allow bob
         kycRules.batchAllow(addresses);
@@ -371,7 +363,7 @@ contract KycRulesTest is BaseFountfiTest {
         // Setup batch with alice (already denied) and bob (allowed)
         address[] memory addresses = new address[](2);
         addresses[0] = alice; // already denied
-        addresses[1] = bob;   // allowed
+        addresses[1] = bob; // allowed
 
         // Batch deny should skip alice and deny bob
         kycRules.batchDeny(addresses);
@@ -400,7 +392,7 @@ contract KycRulesTest is BaseFountfiTest {
         // Setup batch with alice (allowed) and bob (denied)
         address[] memory addresses = new address[](2);
         addresses[0] = alice; // allowed
-        addresses[1] = bob;   // denied
+        addresses[1] = bob; // denied
 
         // Batch reset should reset both
         kycRules.batchReset(addresses);
@@ -487,7 +479,7 @@ contract KycRulesTest is BaseFountfiTest {
         // Setup batch with denied address
         address[] memory addresses = new address[](2);
         addresses[0] = alice; // denied
-        addresses[1] = bob;   // not denied
+        addresses[1] = bob; // not denied
 
         // Batch allow should revert on denied address
         vm.expectRevert(KycRulesHook.AddressAlreadyDenied.selector);
@@ -549,7 +541,11 @@ contract KycRulesTest is BaseFountfiTest {
 
         // Try with an unauthorized user (not KYC_ADMIN or KYC_OPERATOR)
         vm.startPrank(unauthorizedUser);
-        vm.expectRevert(abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, unauthorizedUser, roleManager.KYC_OPERATOR()));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                LibRoleManaged.UnauthorizedRole.selector, unauthorizedUser, roleManager.KYC_OPERATOR()
+            )
+        );
         kycRules.reset(alice);
         vm.stopPrank();
     }
@@ -586,7 +582,11 @@ contract KycRulesTest is BaseFountfiTest {
 
     function test_UnauthorizedAccess_RBAC() public {
         vm.startPrank(unauthorizedUser);
-        vm.expectRevert(abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, unauthorizedUser, roleManager.KYC_OPERATOR()));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                LibRoleManaged.UnauthorizedRole.selector, unauthorizedUser, roleManager.KYC_OPERATOR()
+            )
+        );
         kycRules.allow(alice);
         vm.stopPrank();
     }

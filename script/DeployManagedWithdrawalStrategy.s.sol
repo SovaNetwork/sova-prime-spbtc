@@ -28,7 +28,8 @@ contract DeployManagedWithdrawalStrategyScript is Script {
         // Parse addresses from environment variables or use defaults
         address registryAddress = vm.envOr("REGISTRY_ADDRESS", address(0x9D9f34369AaC65f1506D57a0Ce57757C2821429f));
         address usdTokenAddress = vm.envOr("USD_TOKEN_ADDRESS", address(0x0864c69458072126424029192f0250a123C6a10C));
-        address priceOracleAddress = vm.envOr("PRICE_ORACLE_ADDRESS", address(0x42A54c50e941f438d85bDdf4216666fB6876aB18));
+        address priceOracleAddress =
+            vm.envOr("PRICE_ORACLE_ADDRESS", address(0x42A54c50e941f438d85bDdf4216666fB6876aB18));
 
         // Initialize contract references
         registry = Registry(registryAddress);
@@ -83,14 +84,8 @@ contract DeployManagedWithdrawalStrategyScript is Script {
         console.log("  Manager:", deployer);
 
         // Deploy strategy through registry
-        (strategy, token) = registry.deploy(
-            strategyImplementation,
-            tokenName,
-            tokenSymbol,
-            address(usdToken),
-            deployer,
-            initData
-        );
+        (strategy, token) =
+            registry.deploy(strategyImplementation, tokenName, tokenSymbol, address(usdToken), deployer, initData);
 
         console.log("Strategy successfully deployed");
     }

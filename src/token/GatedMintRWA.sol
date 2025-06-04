@@ -29,19 +29,12 @@ contract GatedMintRWA is tRWA {
     //////////////////////////////////////////////////////////////*/
 
     event DepositPending(
-        bytes32 indexed depositId,
-        address indexed depositor,
-        address indexed recipient,
-        uint256 assets
+        bytes32 indexed depositId, address indexed depositor, address indexed recipient, uint256 assets
     );
 
     event DepositExpirationPeriodUpdated(uint256 oldPeriod, uint256 newPeriod);
 
-    event BatchSharesMinted(
-        bytes32[] depositIds,
-        uint256 totalAssets,
-        uint256 totalShares
-    );
+    event BatchSharesMinted(bytes32[] depositIds, uint256 totalAssets, uint256 totalShares);
 
     /*//////////////////////////////////////////////////////////////
                             STATE
@@ -69,7 +62,6 @@ contract GatedMintRWA is tRWA {
                             CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
-
     /**
      * @notice Constructor
      * @param name_ The name of the token
@@ -78,13 +70,9 @@ contract GatedMintRWA is tRWA {
      * @param assetDecimals_ The decimals of the asset
      * @param strategy_ The address of the strategy
      */
-    constructor(
-        string memory name_,
-        string memory symbol_,
-        address asset_,
-        uint8 assetDecimals_,
-        address strategy_
-    ) tRWA(name_, symbol_, asset_, assetDecimals_, strategy_) {
+    constructor(string memory name_, string memory symbol_, address asset_, uint8 assetDecimals_, address strategy_)
+        tRWA(name_, symbol_, asset_, assetDecimals_, strategy_)
+    {
         // Deploy the GatedMintEscrow contract with this token as the controller
         escrow = address(new GatedMintEscrow(address(this), asset_, strategy_));
     }
@@ -125,7 +113,7 @@ contract GatedMintRWA is tRWA {
     ) internal override nonReentrant {
         // Run hooks (same as in tRWA)
         HookInfo[] storage opHooks = operationHooks[OP_DEPOSIT];
-        for (uint i = 0; i < opHooks.length;) {
+        for (uint256 i = 0; i < opHooks.length;) {
             IHook.HookOutput memory hookOutput = opHooks[i].hook.onBeforeDeposit(address(this), by, assets, to);
             if (!hookOutput.approved) {
                 revert HookCheckFailed(hookOutput.reason);
@@ -139,23 +127,14 @@ contract GatedMintRWA is tRWA {
         }
 
         // Generate a unique deposit ID
-        bytes32 depositId = keccak256(abi.encodePacked(
-            by,
-            to,
-            assets,
-            block.timestamp,
-            address(this),
-            sequenceNum++
-        ));
+        bytes32 depositId = keccak256(abi.encodePacked(by, to, assets, block.timestamp, address(this), sequenceNum++));
 
         // Record the deposit ID for lookup
         depositIds.push(depositId);
         userDepositIds[by].push(depositId);
 
         // Transfer assets to escrow
-        Conduit(
-            IRegistry(RoleManaged(strategy).registry()).conduit()
-        ).collectDeposit(asset(), by, escrow, assets);
+        Conduit(IRegistry(RoleManaged(strategy).registry()).conduit()).collectDeposit(asset(), by, escrow, assets);
 
         // Register the deposit with the escrow
         uint256 expTime = block.timestamp + depositExpirationPeriod;
@@ -250,10 +229,11 @@ contract GatedMintRWA is tRWA {
             bytes32 depositId = userDepositIds[user][i];
 
             // Query the escrow for deposit status
-            (, , , , uint8 state) = getDepositDetails(depositId);
+            (,,,, uint8 state) = getDepositDetails(depositId);
 
             // Only include if state is PENDING (0)
-            if (state == 0) { // 0 = PENDING in the DepositState enum
+            if (state == 0) {
+                // 0 = PENDING in the DepositState enum
                 userDeposits[count] = depositId;
                 count++;
             }
@@ -285,20 +265,12 @@ contract GatedMintRWA is tRWA {
      * @return expirationTime The timestamp after which deposit can be reclaimed
      * @return state The current state of the deposit (0=PENDING, 1=ACCEPTED, 2=REFUNDED)
      */
-    function getDepositDetails(bytes32 depositId) public view returns (
-        address depositor,
-        address recipient,
-        uint256 assetAmount,
-        uint256 expirationTime,
-        uint8 state
-    ) {
+    function getDepositDetails(bytes32 depositId)
+        public
+        view
+        returns (address depositor, address recipient, uint256 assetAmount, uint256 expirationTime, uint8 state)
+    {
         GatedMintEscrow.PendingDeposit memory deposit = GatedMintEscrow(escrow).getPendingDeposit(depositId);
-        return (
-            deposit.depositor,
-            deposit.recipient,
-            deposit.assetAmount,
-            deposit.expirationTime,
-            uint8(deposit.state)
-        );
+        return (deposit.depositor, deposit.recipient, deposit.assetAmount, deposit.expirationTime, uint8(deposit.state));
     }
 }

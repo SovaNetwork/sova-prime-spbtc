@@ -78,19 +78,12 @@ abstract contract BasicStrategy is IStrategy, CloneableRoleManaged {
      * @param asset_ Address of the underlying asset
      * @param assetDecimals_ Decimals of the asset
      */
-    function _deployToken(
-        string calldata name_,
-        string calldata symbol_,
-        address asset_,
-        uint8 assetDecimals_
-    ) internal virtual returns (address) {
-        tRWA newToken = new tRWA(
-            name_,
-            symbol_,
-            asset_,
-            assetDecimals_,
-            address(this)
-        );
+    function _deployToken(string calldata name_, string calldata symbol_, address asset_, uint8 assetDecimals_)
+        internal
+        virtual
+        returns (address)
+    {
+        tRWA newToken = new tRWA(name_, symbol_, asset_, assetDecimals_, address(this));
 
         return address(newToken);
     }
@@ -181,11 +174,11 @@ abstract contract BasicStrategy is IStrategy, CloneableRoleManaged {
      * @return success Whether the call succeeded
      * @return returnData The return data from the call
      */
-    function call(
-        address target,
-        uint256 value,
-        bytes calldata data
-    ) external onlyManager returns (bool success, bytes memory returnData) {
+    function call(address target, uint256 value, bytes calldata data)
+        external
+        onlyManager
+        returns (bool success, bytes memory returnData)
+    {
         if (target == address(0) || target == address(this)) revert InvalidAddress();
         if (target == sToken) revert CannotCallToken();
 

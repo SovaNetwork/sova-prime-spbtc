@@ -11,21 +11,17 @@ import {IHook} from "../hooks/IHook.sol";
 contract WithdrawQueueMockHook is MockHook {
     bool public withdrawalsQueued = false;
 
-    constructor(bool initialApprove, string memory rejectReason)
-        MockHook(initialApprove, rejectReason)
-    {}
+    constructor(bool initialApprove, string memory rejectReason) MockHook(initialApprove, rejectReason) {}
 
     function setWithdrawalsQueued(bool queued) external {
         withdrawalsQueued = queued;
     }
 
-    function onBeforeWithdraw(
-        address token,
-        address by,
-        uint256 assets,
-        address to,
-        address owner
-    ) public override returns (IHook.HookOutput memory) {
+    function onBeforeWithdraw(address token, address by, uint256 assets, address to, address owner)
+        public
+        override
+        returns (IHook.HookOutput memory)
+    {
         emit WithdrawHookCalled(token, by, assets, to, owner);
 
         if (withdrawalsQueued) {
@@ -35,9 +31,6 @@ contract WithdrawQueueMockHook is MockHook {
             });
         }
         // Return parent class result without using super
-        return IHook.HookOutput({
-            approved: approveOperations,
-            reason: approveOperations ? "" : rejectReason
-        });
+        return IHook.HookOutput({approved: approveOperations, reason: approveOperations ? "" : rejectReason});
     }
 }

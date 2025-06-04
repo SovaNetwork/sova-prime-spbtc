@@ -31,7 +31,7 @@ contract Registry is IRegistry, RoleManaged {
     mapping(address => uint8) public override allowedAssets;
 
     /// @notice Deployed strategies
-    address[] internal  _allStrategies;
+    address[] internal _allStrategies;
     mapping(address => bool) public override isStrategy;
 
     /*//////////////////////////////////////////////////////////////
@@ -155,13 +155,7 @@ contract Registry is IRegistry, RoleManaged {
 
         // Initialize the strategy
         IStrategy(strategy).initialize(
-            _name,
-            _symbol,
-            address(roleManager),
-            _manager,
-            _asset,
-            allowedAssets[_asset],
-            _initData
+            _name, _symbol, address(roleManager), _manager, _asset, allowedAssets[_asset], _initData
         );
 
         // Get the token address

@@ -18,7 +18,7 @@ contract GatedMintEscrowTest is BaseFountfiTest {
     MockStrategy internal strategy;
 
     // Test constants
-    uint256 internal constant DEPOSIT_AMOUNT = 1000 * 10**6; // 1000 USDC
+    uint256 internal constant DEPOSIT_AMOUNT = 1000 * 10 ** 6; // 1000 USDC
     uint256 internal constant EXPIRATION_TIME = 7 days;
 
     function setUp() public override {
@@ -28,24 +28,10 @@ contract GatedMintEscrowTest is BaseFountfiTest {
 
         // Deploy strategy
         strategy = new MockStrategy();
-        strategy.initialize(
-            "Gated RWA",
-            "GRWA",
-            owner,
-            manager,
-            address(usdc),
-            6,
-            ""
-        );
+        strategy.initialize("Gated RWA", "GRWA", owner, manager, address(usdc), 6, "");
 
         // Deploy GatedMintRWA token
-        gatedToken = new GatedMintRWA(
-            "Gated RWA",
-            "GRWA",
-            address(usdc),
-            6,
-            address(strategy)
-        );
+        gatedToken = new GatedMintRWA("Gated RWA", "GRWA", address(usdc), 6, address(strategy));
 
         // Get the escrow from the token
         escrow = GatedMintEscrow(gatedToken.escrow());
@@ -62,11 +48,7 @@ contract GatedMintEscrowTest is BaseFountfiTest {
 
     function test_Constructor() public {
         // Test successful construction
-        GatedMintEscrow newEscrow = new GatedMintEscrow(
-            address(gatedToken),
-            address(usdc),
-            address(strategy)
-        );
+        GatedMintEscrow newEscrow = new GatedMintEscrow(address(gatedToken), address(usdc), address(strategy));
 
         assertEq(newEscrow.token(), address(gatedToken));
         assertEq(newEscrow.asset(), address(usdc));
@@ -75,29 +57,17 @@ contract GatedMintEscrowTest is BaseFountfiTest {
 
     function test_Constructor_RevertZeroAddressToken() public {
         vm.expectRevert(GatedMintEscrow.InvalidAddress.selector);
-        new GatedMintEscrow(
-            address(0),
-            address(usdc),
-            address(strategy)
-        );
+        new GatedMintEscrow(address(0), address(usdc), address(strategy));
     }
 
     function test_Constructor_RevertZeroAddressAsset() public {
         vm.expectRevert(GatedMintEscrow.InvalidAddress.selector);
-        new GatedMintEscrow(
-            address(gatedToken),
-            address(0),
-            address(strategy)
-        );
+        new GatedMintEscrow(address(gatedToken), address(0), address(strategy));
     }
 
     function test_Constructor_RevertZeroAddressStrategy() public {
         vm.expectRevert(GatedMintEscrow.InvalidAddress.selector);
-        new GatedMintEscrow(
-            address(gatedToken),
-            address(usdc),
-            address(0)
-        );
+        new GatedMintEscrow(address(gatedToken), address(usdc), address(0));
     }
 
     // ============ Deposit Handling Tests ============
@@ -107,13 +77,7 @@ contract GatedMintEscrowTest is BaseFountfiTest {
         uint256 expirationTime = block.timestamp + EXPIRATION_TIME;
 
         vm.prank(address(gatedToken));
-        escrow.handleDepositReceived(
-            depositId,
-            alice,
-            bob,
-            DEPOSIT_AMOUNT,
-            expirationTime
-        );
+        escrow.handleDepositReceived(depositId, alice, bob, DEPOSIT_AMOUNT, expirationTime);
 
         // Verify deposit was stored
         GatedMintEscrow.PendingDeposit memory deposit = escrow.getPendingDeposit(depositId);
@@ -134,13 +98,7 @@ contract GatedMintEscrowTest is BaseFountfiTest {
 
         vm.prank(alice);
         vm.expectRevert(GatedMintEscrow.Unauthorized.selector);
-        escrow.handleDepositReceived(
-            depositId,
-            alice,
-            bob,
-            DEPOSIT_AMOUNT,
-            expirationTime
-        );
+        escrow.handleDepositReceived(depositId, alice, bob, DEPOSIT_AMOUNT, expirationTime);
     }
 
     function test_HandleDepositReceived_EmitsEvent() public {
@@ -150,14 +108,8 @@ contract GatedMintEscrowTest is BaseFountfiTest {
         vm.prank(address(gatedToken));
         vm.expectEmit(true, true, true, true);
         emit GatedMintEscrow.DepositReceived(depositId, alice, bob, DEPOSIT_AMOUNT, expirationTime);
-        
-        escrow.handleDepositReceived(
-            depositId,
-            alice,
-            bob,
-            DEPOSIT_AMOUNT,
-            expirationTime
-        );
+
+        escrow.handleDepositReceived(depositId, alice, bob, DEPOSIT_AMOUNT, expirationTime);
     }
 
     // ============ Single Deposit Operations ============
@@ -169,7 +121,7 @@ contract GatedMintEscrowTest is BaseFountfiTest {
         vm.prank(address(strategy));
         vm.expectEmit(true, true, true, true);
         emit GatedMintEscrow.DepositAccepted(depositId, bob, DEPOSIT_AMOUNT);
-        
+
         escrow.acceptDeposit(depositId);
 
         // Verify deposit state
@@ -219,7 +171,7 @@ contract GatedMintEscrowTest is BaseFountfiTest {
         vm.prank(address(strategy));
         vm.expectEmit(true, true, true, true);
         emit GatedMintEscrow.DepositRefunded(depositId, alice, DEPOSIT_AMOUNT);
-        
+
         escrow.refundDeposit(depositId);
 
         // Verify deposit state
@@ -274,7 +226,7 @@ contract GatedMintEscrowTest is BaseFountfiTest {
         vm.prank(address(strategy));
         vm.expectEmit(true, true, true, true);
         emit GatedMintEscrow.BatchDepositsAccepted(depositIds, totalExpected);
-        
+
         escrow.batchAcceptDeposits(depositIds);
 
         // Verify all deposits are accepted
@@ -323,7 +275,7 @@ contract GatedMintEscrowTest is BaseFountfiTest {
         vm.prank(address(strategy));
         vm.expectEmit(true, true, true, true);
         emit GatedMintEscrow.BatchDepositsRefunded(depositIds, totalExpected);
-        
+
         escrow.batchRefundDeposits(depositIds);
 
         // Verify all deposits are refunded
@@ -391,7 +343,7 @@ contract GatedMintEscrowTest is BaseFountfiTest {
         vm.prank(alice);
         vm.expectEmit(true, true, true, true);
         emit GatedMintEscrow.DepositReclaimed(depositId, alice, DEPOSIT_AMOUNT);
-        
+
         escrow.reclaimDeposit(depositId);
 
         // Verify deposit state
@@ -556,21 +508,15 @@ contract GatedMintEscrowTest is BaseFountfiTest {
     }
 
     function _createTestDepositWithExpiration(
-        address depositor, 
-        address recipient, 
-        uint256 amount, 
+        address depositor,
+        address recipient,
+        uint256 amount,
         uint256 expirationTime
     ) internal returns (bytes32) {
         bytes32 depositId = keccak256(abi.encodePacked(depositor, recipient, amount, block.timestamp));
 
         vm.prank(address(gatedToken));
-        escrow.handleDepositReceived(
-            depositId,
-            depositor,
-            recipient,
-            amount,
-            expirationTime
-        );
+        escrow.handleDepositReceived(depositId, depositor, recipient, amount, expirationTime);
 
         return depositId;
     }

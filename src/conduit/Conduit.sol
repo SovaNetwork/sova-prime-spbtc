@@ -48,12 +48,7 @@ contract Conduit is RoleManaged {
      * @param to The address to transfer the tokens to (e.g., the tRWA contract or a designated vault).
      * @param amount The amount of tokens to transfer.
      */
-    function collectDeposit(
-        address token,
-        address from,
-        address to,
-        uint256 amount
-    ) external returns (bool) {
+    function collectDeposit(address token, address from, address to, uint256 amount) external returns (bool) {
         if (amount == 0) revert InvalidAmount();
         if (!IRegistry(registry()).isStrategyToken(msg.sender)) revert InvalidDestination();
         if (ItRWA(msg.sender).asset() != token) revert InvalidToken();
@@ -71,11 +66,10 @@ contract Conduit is RoleManaged {
      * @param to The address to transfer the tokens to
      * @param amount The amount of tokens to transfer
      */
-    function rescueERC20(
-        address tokenAddress,
-        address to,
-        uint256 amount
-    ) external onlyRoles(roleManager.PROTOCOL_ADMIN()) {
+    function rescueERC20(address tokenAddress, address to, uint256 amount)
+        external
+        onlyRoles(roleManager.PROTOCOL_ADMIN())
+    {
         tokenAddress.safeTransfer(to, amount);
     }
 }

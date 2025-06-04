@@ -90,13 +90,7 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
      * @param assetDecimals_ Decimals of the asset token
      * @param strategy_ Strategy address
      */
-    constructor(
-        string memory name_,
-        string memory symbol_,
-        address asset_,
-        uint8 assetDecimals_,
-        address strategy_
-    ) {
+    constructor(string memory name_, string memory symbol_, address asset_, uint8 assetDecimals_, address strategy_) {
         // Validate configuration parameters
         if (asset_ == address(0)) revert InvalidAddress();
         if (strategy_ == address(0)) revert InvalidAddress();
@@ -136,7 +130,6 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
     function asset() public view virtual override(ERC4626, ItRWA) returns (address) {
         return _asset;
     }
-
 
     /*//////////////////////////////////////////////////////////////
                     ERC4626 OVERRIDE VIEW FUNCTIONS
@@ -180,7 +173,7 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
      */
     function _deposit(address by, address to, uint256 assets, uint256 shares) internal virtual override nonReentrant {
         HookInfo[] storage opHooks = operationHooks[OP_DEPOSIT];
-        for (uint i = 0; i < opHooks.length;) {
+        for (uint256 i = 0; i < opHooks.length;) {
             IHook.HookOutput memory hookOutput = opHooks[i].hook.onBeforeDeposit(address(this), by, assets, to);
             if (!hookOutput.approved) {
                 revert HookCheckFailed(hookOutput.reason);
@@ -193,9 +186,7 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
             }
         }
 
-        Conduit(
-            IRegistry(RoleManaged(strategy).registry()).conduit()
-        ).collectDeposit(asset(), by, strategy, assets);
+        Conduit(IRegistry(RoleManaged(strategy).registry()).conduit()).collectDeposit(asset(), by, strategy, assets);
 
         _mint(to, shares);
         _afterDeposit(assets, shares);
@@ -211,7 +202,12 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
      * @param assets Amount of assets to withdraw
      * @param shares Amount of shares to withdraw
      */
-    function _withdraw(address by, address to, address owner, uint256 assets, uint256 shares) internal virtual override nonReentrant {
+    function _withdraw(address by, address to, address owner, uint256 assets, uint256 shares)
+        internal
+        virtual
+        override
+        nonReentrant
+    {
         if (by != owner) _spendAllowance(owner, by, shares);
         _beforeWithdraw(assets, shares);
         _burn(owner, shares);
@@ -240,7 +236,6 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
         emit Withdraw(by, to, owner, assets, shares);
     }
 
-
     /*//////////////////////////////////////////////////////////////
                         HOOK MANAGEMENT FUNCTIONS
     //////////////////////////////////////////////////////////////*/
@@ -254,11 +249,8 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
     function addOperationHook(bytes32 operationType, address newHookAddress) external onlyStrategy {
         if (newHookAddress == address(0)) revert HookAddressZero();
 
-        HookInfo memory newHookInfo = HookInfo({
-            hook: IHook(newHookAddress),
-            addedAtBlock: block.number,
-            hasProcessedOperations: false
-        });
+        HookInfo memory newHookInfo =
+            HookInfo({hook: IHook(newHookAddress), addedAtBlock: block.number, hasProcessedOperations: false});
 
         operationHooks[operationType].push(newHookInfo);
         emit HookAdded(operationType, newHookAddress, operationHooks[operationType].length - 1);
@@ -293,7 +285,11 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
      * @param newOrderIndices An array where newOrderIndices[i] specifies the OLD index of the hook
      *                        that should now be at NEW position i.
      */
-    function reorderOperationHooks(bytes32 operationType, uint256[] calldata newOrderIndices) external onlyStrategy nonReentrant {
+    function reorderOperationHooks(bytes32 operationType, uint256[] calldata newOrderIndices)
+        external
+        onlyStrategy
+        nonReentrant
+    {
         HookInfo[] storage opTypeHooks = operationHooks[operationType];
         uint256 numHooks = opTypeHooks.length;
         if (newOrderIndices.length != numHooks) revert ReorderInvalidLength();
@@ -339,7 +335,7 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
     function getHooksForOperation(bytes32 operationType) external view returns (address[] memory) {
         HookInfo[] storage opTypeHooks = operationHooks[operationType];
         address[] memory hookAddresses = new address[](opTypeHooks.length);
-        for (uint i = 0; i < opTypeHooks.length;) {
+        for (uint256 i = 0; i < opTypeHooks.length;) {
             hookAddresses[i] = address(opTypeHooks[i].hook);
 
             unchecked {
@@ -366,16 +362,13 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
      * @dev Hook that is called before any token transfer, including mints and burns.
      * We use this to apply OP_TRANSFER hooks.
      */
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 amount
-    ) internal virtual override {
+    function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual override {
         super._beforeTokenTransfer(from, to, amount); // Call to parent ERC20/ERC4626 _beforeTokenTransfer if it exists
 
         HookInfo[] storage opHooks = operationHooks[OP_TRANSFER];
-        if (opHooks.length > 0) { // Optimization to save gas if no hooks registered for OP_TRANSFER
-            for (uint i = 0; i < opHooks.length;) {
+        if (opHooks.length > 0) {
+            // Optimization to save gas if no hooks registered for OP_TRANSFER
+            for (uint256 i = 0; i < opHooks.length;) {
                 IHook.HookOutput memory hookOutput = opHooks[i].hook.onBeforeTransfer(address(this), from, to, amount);
                 if (!hookOutput.approved) {
                     revert HookCheckFailed(hookOutput.reason);

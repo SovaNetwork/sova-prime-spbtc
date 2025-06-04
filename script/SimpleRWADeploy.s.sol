@@ -130,10 +130,10 @@ contract SimpleRWADeployScript is Script {
         // Deploy strategy through registry
         (strategy, token) = registry.deploy(
             address(strategyImplementation),
-            "Fountfi USD Token",      // name
-            "fUSDC",                  // symbol
+            "Fountfi USD Token", // name
+            "fUSDC", // symbol
             address(usdToken),
-            deployer,                 // Manager of the strategy
+            deployer, // Manager of the strategy
             initData
         );
     }

@@ -83,18 +83,12 @@ contract BasicStrategyTest is BaseFountfiTest {
         bytes32 opWithdraw = keccak256("WITHDRAW_OPERATION");
         bytes32 opTransfer = keccak256("TRANSFER_OPERATION");
 
-        strategy.callStrategyToken(
-            abi.encodeCall(tRWA.addOperationHook, (opDeposit, address(strategyHook)))
-        );
-        strategy.callStrategyToken(
-            abi.encodeCall(tRWA.addOperationHook, (opWithdraw, address(strategyHook)))
-        );
-        strategy.callStrategyToken(
-            abi.encodeCall(tRWA.addOperationHook, (opTransfer, address(strategyHook)))
-        );
+        strategy.callStrategyToken(abi.encodeCall(tRWA.addOperationHook, (opDeposit, address(strategyHook))));
+        strategy.callStrategyToken(abi.encodeCall(tRWA.addOperationHook, (opWithdraw, address(strategyHook))));
+        strategy.callStrategyToken(abi.encodeCall(tRWA.addOperationHook, (opTransfer, address(strategyHook))));
 
         // Fund the strategy with some DAI
-        daiToken.mint(address(strategy), 1000 * 10**18);
+        daiToken.mint(address(strategy), 1000 * 10 ** 18);
 
         vm.stopPrank();
     }
@@ -118,15 +112,7 @@ contract BasicStrategyTest is BaseFountfiTest {
 
         // Attempting to reinitialize should revert
         vm.expectRevert(IStrategy.AlreadyInitialized.selector);
-        strategy.initialize(
-            "New Name",
-            "NEW",
-            address(roleManager),
-            alice,
-            address(daiToken),
-            18,
-            ""
-        );
+        strategy.initialize("New Name", "NEW", address(roleManager), alice, address(daiToken), 18, "");
 
         vm.stopPrank();
     }
@@ -139,27 +125,11 @@ contract BasicStrategyTest is BaseFountfiTest {
 
         // Test zero address for manager
         vm.expectRevert(IStrategy.InvalidAddress.selector);
-        newStrategy.initialize(
-            TOKEN_NAME,
-            TOKEN_SYMBOL,
-            address(roleManager),
-            address(0),
-            address(daiToken),
-            18,
-            ""
-        );
+        newStrategy.initialize(TOKEN_NAME, TOKEN_SYMBOL, address(roleManager), address(0), address(daiToken), 18, "");
 
         // Test zero address for asset
         vm.expectRevert(IStrategy.InvalidAddress.selector);
-        newStrategy.initialize(
-            TOKEN_NAME,
-            TOKEN_SYMBOL,
-            address(roleManager),
-            manager,
-            address(0),
-            18,
-            ""
-        );
+        newStrategy.initialize(TOKEN_NAME, TOKEN_SYMBOL, address(roleManager), manager, address(0), 18, "");
 
         // Test zero address for roleManager (covers CloneableRoleManaged branch)
         TestableBasicStrategy newStrategy2 = new TestableBasicStrategy();
@@ -167,7 +137,7 @@ contract BasicStrategyTest is BaseFountfiTest {
         newStrategy2.initialize(
             TOKEN_NAME,
             TOKEN_SYMBOL,
-            address(0),  // Zero address roleManager
+            address(0), // Zero address roleManager
             manager,
             address(daiToken),
             18,
@@ -200,7 +170,9 @@ contract BasicStrategyTest is BaseFountfiTest {
         vm.startPrank(alice);
 
         // Alice is not authorized to change the manager
-        vm.expectRevert(abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, alice, roleManager.STRATEGY_ADMIN()));
+        vm.expectRevert(
+            abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, alice, roleManager.STRATEGY_ADMIN())
+        );
         strategy.setManager(bob);
 
         vm.stopPrank();
@@ -208,7 +180,7 @@ contract BasicStrategyTest is BaseFountfiTest {
 
     function test_Balance() public view {
         uint256 bal = strategy.balance();
-        assertEq(bal, 1000 * 10**18, "Balance should match minted amount");
+        assertEq(bal, 1000 * 10 ** 18, "Balance should match minted amount");
     }
 
     function test_SendETH() public {
@@ -243,7 +215,7 @@ contract BasicStrategyTest is BaseFountfiTest {
     function test_SendToken() public {
         // Deploy a new token
         MockERC20 newToken = new MockERC20("New Token", "NEW", 18);
-        newToken.mint(address(strategy), 500 * 10**18);
+        newToken.mint(address(strategy), 500 * 10 ** 18);
 
         vm.startPrank(manager);
 
@@ -251,10 +223,12 @@ contract BasicStrategyTest is BaseFountfiTest {
         uint256 initialStrategy = newToken.balanceOf(address(strategy));
 
         // Send 200 tokens to bob
-        strategy.sendToken(address(newToken), bob, 200 * 10**18);
+        strategy.sendToken(address(newToken), bob, 200 * 10 ** 18);
 
-        assertEq(newToken.balanceOf(bob), initialBob + 200 * 10**18, "Bob should receive 200 tokens");
-        assertEq(newToken.balanceOf(address(strategy)), initialStrategy - 200 * 10**18, "Strategy should send 200 tokens");
+        assertEq(newToken.balanceOf(bob), initialBob + 200 * 10 ** 18, "Bob should receive 200 tokens");
+        assertEq(
+            newToken.balanceOf(address(strategy)), initialStrategy - 200 * 10 ** 18, "Strategy should send 200 tokens"
+        );
 
         vm.stopPrank();
     }
@@ -264,7 +238,7 @@ contract BasicStrategyTest is BaseFountfiTest {
 
         // Alice is not the manager
         vm.expectRevert(IStrategy.Unauthorized.selector);
-        strategy.sendToken(address(daiToken), bob, 100 * 10**18);
+        strategy.sendToken(address(daiToken), bob, 100 * 10 ** 18);
 
         vm.stopPrank();
     }
@@ -272,11 +246,11 @@ contract BasicStrategyTest is BaseFountfiTest {
     function test_PullToken() public {
         vm.startPrank(owner);
         // Mint some tokens to charlie
-        daiToken.mint(charlie, 300 * 10**18);
+        daiToken.mint(charlie, 300 * 10 ** 18);
         vm.stopPrank();
 
         vm.startPrank(charlie);
-        daiToken.approve(address(strategy), 300 * 10**18);
+        daiToken.approve(address(strategy), 300 * 10 ** 18);
         vm.stopPrank();
 
         vm.startPrank(manager);
@@ -285,10 +259,12 @@ contract BasicStrategyTest is BaseFountfiTest {
         uint256 initialStrategy = daiToken.balanceOf(address(strategy));
 
         // Pull 200 tokens from charlie
-        strategy.pullToken(address(daiToken), charlie, 200 * 10**18);
+        strategy.pullToken(address(daiToken), charlie, 200 * 10 ** 18);
 
-        assertEq(daiToken.balanceOf(charlie), initialCharlie - 200 * 10**18, "Charlie should lose 200 tokens");
-        assertEq(daiToken.balanceOf(address(strategy)), initialStrategy + 200 * 10**18, "Strategy should gain 200 tokens");
+        assertEq(daiToken.balanceOf(charlie), initialCharlie - 200 * 10 ** 18, "Charlie should lose 200 tokens");
+        assertEq(
+            daiToken.balanceOf(address(strategy)), initialStrategy + 200 * 10 ** 18, "Strategy should gain 200 tokens"
+        );
 
         vm.stopPrank();
     }
@@ -298,7 +274,7 @@ contract BasicStrategyTest is BaseFountfiTest {
 
         // Alice is not the manager
         vm.expectRevert(IStrategy.Unauthorized.selector);
-        strategy.pullToken(address(daiToken), charlie, 100 * 10**18);
+        strategy.pullToken(address(daiToken), charlie, 100 * 10 ** 18);
 
         vm.stopPrank();
     }
@@ -310,9 +286,9 @@ contract BasicStrategyTest is BaseFountfiTest {
         assertEq(daiToken.allowance(address(strategy), alice), 0, "Initial allowance should be 0");
 
         // Set allowance to 500 tokens
-        strategy.setAllowance(address(daiToken), alice, 500 * 10**18);
+        strategy.setAllowance(address(daiToken), alice, 500 * 10 ** 18);
 
-        assertEq(daiToken.allowance(address(strategy), alice), 500 * 10**18, "Allowance should be 500 tokens");
+        assertEq(daiToken.allowance(address(strategy), alice), 500 * 10 ** 18, "Allowance should be 500 tokens");
 
         vm.stopPrank();
     }
@@ -322,7 +298,7 @@ contract BasicStrategyTest is BaseFountfiTest {
 
         // Alice is not the manager
         vm.expectRevert(IStrategy.Unauthorized.selector);
-        strategy.setAllowance(address(daiToken), bob, 100 * 10**18);
+        strategy.setAllowance(address(daiToken), bob, 100 * 10 ** 18);
 
         vm.stopPrank();
     }
@@ -331,11 +307,7 @@ contract BasicStrategyTest is BaseFountfiTest {
         vm.startPrank(manager);
 
         // Setup a call to the token transfer function
-        bytes memory callData = abi.encodeWithSignature(
-            "transfer(address,uint256)",
-            bob,
-            100 * 10**18
-        );
+        bytes memory callData = abi.encodeWithSignature("transfer(address,uint256)", bob, 100 * 10 ** 18);
 
         uint256 initialBob = daiToken.balanceOf(bob);
 
@@ -344,7 +316,7 @@ contract BasicStrategyTest is BaseFountfiTest {
 
         assertTrue(success, "Call should succeed");
         assertEq(abi.decode(returnData, (bool)), true, "Transfer should return true");
-        assertEq(daiToken.balanceOf(bob), initialBob + 100 * 10**18, "Bob should receive 100 tokens");
+        assertEq(daiToken.balanceOf(bob), initialBob + 100 * 10 ** 18, "Bob should receive 100 tokens");
 
         vm.stopPrank();
     }
@@ -359,7 +331,7 @@ contract BasicStrategyTest is BaseFountfiTest {
         vm.startPrank(manager);
 
         // Call the contract with 1 ETH
-        (bool success, ) = strategy.call(address(payable_contract), 1 ether, "");
+        (bool success,) = strategy.call(address(payable_contract), 1 ether, "");
 
         assertTrue(success, "Call should succeed");
         assertEq(address(payable_contract).balance, 1 ether, "Contract should receive 1 ETH");
@@ -424,9 +396,7 @@ contract BasicStrategyTest is BaseFountfiTest {
 
         // Call the token through the strategy (this should work now with the role)
         bytes32 opDeposit = keccak256("DEPOSIT_OPERATION");
-        strategy.callStrategyToken(
-            abi.encodeCall(tRWA.addOperationHook, (opDeposit, address(newHook)))
-        );
+        strategy.callStrategyToken(abi.encodeCall(tRWA.addOperationHook, (opDeposit, address(newHook))));
 
         // Verify hook was added - one way to test is to check if the operation succeeds
         // If the hook was not added correctly, the operation would fail
@@ -443,9 +413,7 @@ contract BasicStrategyTest is BaseFountfiTest {
         uint256 initialBalance = token.totalAssets();
 
         // Call a safe known function on the token
-        strategy.callStrategyToken(
-            abi.encodeCall(token.name, ())
-        );
+        strategy.callStrategyToken(abi.encodeCall(token.name, ()));
 
         // Verify state is unchanged
         assertEq(token.totalAssets(), initialBalance, "Token balance should be unchanged");
@@ -475,12 +443,8 @@ contract BasicStrategyTest is BaseFountfiTest {
     function test_CallStrategyToken_RevertsWithData() public {
         // Create calldata that will fail with a specific error
         // Try to transfer from the strategy without approval
-        bytes memory invalidCalldata = abi.encodeWithSignature(
-            "transferFrom(address,address,uint256)",
-            address(strategy),
-            alice,
-            100e18
-        );
+        bytes memory invalidCalldata =
+            abi.encodeWithSignature("transferFrom(address,address,uint256)", address(strategy), alice, 100e18);
 
         // Attempt the call as admin
         vm.prank(owner);

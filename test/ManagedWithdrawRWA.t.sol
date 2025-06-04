@@ -26,8 +26,8 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
     RoleManager internal roleManager;
 
     // Test constants
-    uint256 internal constant INITIAL_SUPPLY = 10000 * 10**6; // 10,000 USDC
-    uint256 internal constant REDEEM_AMOUNT = 1000 * 10**6; // 1,000 USDC
+    uint256 internal constant INITIAL_SUPPLY = 10000 * 10 ** 6; // 10,000 USDC
+    uint256 internal constant REDEEM_AMOUNT = 1000 * 10 ** 6; // 1,000 USDC
 
     // Hook operation types
     bytes32 public constant OP_WITHDRAW = keccak256("WITHDRAW_OPERATION");
@@ -49,24 +49,10 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
 
         // Deploy strategy
         strategy = new MockManagedStrategy();
-        strategy.initialize(
-            "Managed RWA",
-            "MRWA",
-            address(roleManager),
-            manager,
-            address(usdc),
-            6,
-            ""
-        );
+        strategy.initialize("Managed RWA", "MRWA", address(roleManager), manager, address(usdc), 6, "");
 
         // Deploy ManagedWithdrawRWA token
-        managedToken = new ManagedWithdrawRWA(
-            "Managed RWA",
-            "MRWA",
-            address(usdc),
-            6,
-            address(strategy)
-        );
+        managedToken = new ManagedWithdrawRWA("Managed RWA", "MRWA", address(usdc), 6, address(strategy));
 
         // Set the token in the strategy
         strategy.setSToken(address(managedToken));
@@ -147,23 +133,10 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
     function test_Constructor() public {
         // Create a new strategy for this test
         MockManagedStrategy newStrategy = new MockManagedStrategy();
-        newStrategy.initialize(
-            "Test Token",
-            "TEST",
-            address(roleManager),
-            manager,
-            address(usdc),
-            6,
-            ""
-        );
+        newStrategy.initialize("Test Token", "TEST", address(roleManager), manager, address(usdc), 6, "");
 
-        ManagedWithdrawRWA newToken = new ManagedWithdrawRWA(
-            "Test Token",
-            "TEST",
-            address(usdc),
-            6,
-            address(newStrategy)
-        );
+        ManagedWithdrawRWA newToken =
+            new ManagedWithdrawRWA("Test Token", "TEST", address(usdc), 6, address(newStrategy));
 
         // Set the token in the strategy
         newStrategy.setSToken(address(newToken));
@@ -178,7 +151,7 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
     // ============ Withdrawal Restriction Tests ============
 
     function test_Withdraw_AlwaysReverts() public {
-        uint256 assets = 1000 * 10**6;
+        uint256 assets = 1000 * 10 ** 6;
 
         vm.prank(address(strategy));
         vm.expectRevert(ManagedWithdrawRWA.UseRedeem.selector);
@@ -186,7 +159,7 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
     }
 
     function test_Withdraw_AlwaysRevertsWithDifferentParams() public {
-        uint256 assets = 500 * 10**6;
+        uint256 assets = 500 * 10 ** 6;
 
         vm.prank(address(strategy));
         vm.expectRevert(ManagedWithdrawRWA.UseRedeem.selector);
@@ -777,22 +750,20 @@ contract TrackingHook is IHook {
     address public lastWithdrawReceiver;
     address public lastWithdrawOwner;
 
-    function onBeforeDeposit(
-        address token,
-        address from,
-        uint256 assets,
-        address receiver
-    ) external pure override returns (HookOutput memory) {
+    function onBeforeDeposit(address token, address from, uint256 assets, address receiver)
+        external
+        pure
+        override
+        returns (HookOutput memory)
+    {
         return HookOutput(true, "");
     }
 
-    function onBeforeWithdraw(
-        address token,
-        address operator,
-        uint256 assets,
-        address receiver,
-        address owner
-    ) external override returns (HookOutput memory) {
+    function onBeforeWithdraw(address token, address operator, uint256 assets, address receiver, address owner)
+        external
+        override
+        returns (HookOutput memory)
+    {
         wasWithdrawCalled = true;
         lastWithdrawToken = token;
         lastWithdrawOperator = operator;
@@ -802,12 +773,12 @@ contract TrackingHook is IHook {
         return HookOutput(true, "");
     }
 
-    function onBeforeTransfer(
-        address token,
-        address from,
-        address to,
-        uint256 amount
-    ) external pure override returns (HookOutput memory) {
+    function onBeforeTransfer(address token, address from, address to, uint256 amount)
+        external
+        pure
+        override
+        returns (HookOutput memory)
+    {
         return HookOutput(true, "");
     }
 

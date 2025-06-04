@@ -51,12 +51,9 @@ interface IHook {
      * @param receiver Address of the receiver
      * @return HookOutput Result of the hook evaluation
      */
-    function onBeforeDeposit(
-        address token,
-        address user,
-        uint256 assets,
-        address receiver
-    ) external returns (HookOutput memory);
+    function onBeforeDeposit(address token, address user, uint256 assets, address receiver)
+        external
+        returns (HookOutput memory);
 
     /**
      * @notice Called before a withdraw operation
@@ -67,13 +64,9 @@ interface IHook {
      * @param owner Address of the owner
      * @return HookOutput Result of the hook evaluation
      */
-    function onBeforeWithdraw(
-        address token,
-        address by,
-        uint256 assets,
-        address to,
-        address owner
-    ) external returns (HookOutput memory);
+    function onBeforeWithdraw(address token, address by, uint256 assets, address to, address owner)
+        external
+        returns (HookOutput memory);
 
     /**
      * @notice Called before a transfer operation
@@ -83,10 +76,7 @@ interface IHook {
      * @param amount Amount of assets to transfer
      * @return HookOutput Result of the hook evaluation
      */
-    function onBeforeTransfer(
-        address token,
-        address from,
-        address to,
-        uint256 amount
-    ) external returns (HookOutput memory);
+    function onBeforeTransfer(address token, address from, address to, uint256 amount)
+        external
+        returns (HookOutput memory);
 }

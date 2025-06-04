@@ -10,7 +10,6 @@ import {ReportedStrategy} from "./ReportedStrategy.sol";
  * @notice Extension of ReportedStrategy that deploys and configures ManagedWithdrawRWA tokens
  */
 contract ManagedWithdrawReportedStrategy is ReportedStrategy {
-
     /*//////////////////////////////////////////////////////////////
                             ERRORS
     //////////////////////////////////////////////////////////////*/
@@ -38,9 +37,8 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
     }
 
     // EIP-712 Type Hash Constants
-    bytes32 private constant EIP712_DOMAIN_TYPEHASH = keccak256(
-        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
-    );
+    bytes32 private constant EIP712_DOMAIN_TYPEHASH =
+        keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
 
     bytes32 private constant WITHDRAWAL_REQUEST_TYPEHASH = keccak256(
         "WithdrawalRequest(address owner,address to,uint256 shares,uint256 minAssets,uint96 nonce,uint96 expirationTime)"
@@ -110,19 +108,13 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
      * @param asset_ Address of the underlying asset
      * @param assetDecimals_ Decimals of the asset
      */
-    function _deployToken(
-        string calldata name_,
-        string calldata symbol_,
-        address asset_,
-        uint8 assetDecimals_
-    ) internal virtual override returns (address) {
-        ManagedWithdrawRWA newToken = new ManagedWithdrawRWA(
-            name_,
-            symbol_,
-            asset_,
-            assetDecimals_,
-            address(this)
-        );
+    function _deployToken(string calldata name_, string calldata symbol_, address asset_, uint8 assetDecimals_)
+        internal
+        virtual
+        override
+        returns (address)
+    {
+        ManagedWithdrawRWA newToken = new ManagedWithdrawRWA(name_, symbol_, asset_, assetDecimals_, address(this));
 
         return address(newToken);
     }
@@ -137,10 +129,11 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
      * @param userSig The signature of the request
      * @return assets The amount of assets received
      */
-    function redeem(
-        WithdrawalRequest calldata request,
-        Signature calldata userSig
-    ) external onlyManager returns (uint256 assets) {
+    function redeem(WithdrawalRequest calldata request, Signature calldata userSig)
+        external
+        onlyManager
+        returns (uint256 assets)
+    {
         _validateRedeem(request);
 
         // Verify signature
@@ -159,10 +152,11 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
      * @param signatures The signatures of the requests
      * @return assets The amount of assets received
      */
-    function batchRedeem(
-        WithdrawalRequest[] calldata requests,
-        Signature[] calldata signatures
-    ) external onlyManager returns (uint256[] memory assets) {
+    function batchRedeem(WithdrawalRequest[] calldata requests, Signature[] calldata signatures)
+        external
+        onlyManager
+        returns (uint256[] memory assets)
+    {
         if (requests.length != signatures.length) revert InvalidArrayLengths();
 
         uint256[] memory shares = new uint256[](requests.length);
@@ -221,13 +215,7 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
             )
         );
 
-        bytes32 digest = keccak256(
-            abi.encodePacked(
-                "\x19\x01",
-                DOMAIN_SEPARATOR,
-                structHash
-            )
-        );
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR, structHash));
 
         // Recover signer address from signature
         address signer = ECDSA.recover(digest, signature.v, signature.r, signature.s);

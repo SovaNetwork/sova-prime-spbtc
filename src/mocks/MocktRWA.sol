@@ -8,13 +8,9 @@ import {tRWA} from "../token/tRWA.sol";
  * @notice Mock tRWA token that implements burn for testing
  */
 contract MocktRWA is tRWA {
-    constructor(
-        string memory name_,
-        string memory symbol_,
-        address asset_,
-        uint8 assetDecimals_,
-        address strategy_
-    ) tRWA(name_, symbol_, asset_, assetDecimals_, strategy_) {}
+    constructor(string memory name_, string memory symbol_, address asset_, uint8 assetDecimals_, address strategy_)
+        tRWA(name_, symbol_, asset_, assetDecimals_, strategy_)
+    {}
 
     /**
      * @notice Utility function to burn tokens - ONLY FOR TESTING

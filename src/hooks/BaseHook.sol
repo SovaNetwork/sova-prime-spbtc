@@ -50,12 +50,12 @@ abstract contract BaseHook is IHook {
      * @notice Called before a deposit operation
      * @return HookOutput Result of the hook evaluation
      */
-    function onBeforeDeposit(
-        address, /*token*/
-        address, /*user*/
-        uint256, /*assets*/
-        address  /*receiver*/
-    ) public virtual override returns (IHook.HookOutput memory) {
+    function onBeforeDeposit(address, /*token*/ address, /*user*/ uint256, /*assets*/ address /*receiver*/ )
+        public
+        virtual
+        override
+        returns (IHook.HookOutput memory)
+    {
         return IHook.HookOutput({approved: true, reason: ""});
     }
 
@@ -63,13 +63,12 @@ abstract contract BaseHook is IHook {
      * @notice Called before a withdraw operation
      * @return HookOutput Result of the hook evaluation
      */
-    function onBeforeWithdraw(
-        address, /*token*/
-        address, /*by*/
-        uint256, /*assets*/
-        address, /*to*/
-        address  /*owner*/
-    ) public virtual override returns (IHook.HookOutput memory) {
+    function onBeforeWithdraw(address, /*token*/ address, /*by*/ uint256, /*assets*/ address, /*to*/ address /*owner*/ )
+        public
+        virtual
+        override
+        returns (IHook.HookOutput memory)
+    {
         return IHook.HookOutput({approved: true, reason: ""});
     }
 
@@ -77,12 +76,12 @@ abstract contract BaseHook is IHook {
      * @notice Called before a transfer operation
      * @return HookOutput Result of the hook evaluation
      */
-    function onBeforeTransfer(
-        address, /*token*/
-        address, /*from*/
-        address, /*to*/
-        uint256  /*amount*/
-    ) public virtual override returns (IHook.HookOutput memory) {
+    function onBeforeTransfer(address, /*token*/ address, /*from*/ address, /*to*/ uint256 /*amount*/ )
+        public
+        virtual
+        override
+        returns (IHook.HookOutput memory)
+    {
         return IHook.HookOutput({approved: true, reason: ""});
     }
 }

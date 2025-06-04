@@ -26,12 +26,7 @@ contract GatedMintRWAStrategyTest is BaseFountfiTest {
         // by creating a test contract that exposes it
         TestGatedMintRWAStrategy testStrategy = new TestGatedMintRWAStrategy();
 
-        address tokenAddress = testStrategy.deployTokenPublic(
-            "Test Gated RWA",
-            "TGRWA",
-            address(usdc),
-            6
-        );
+        address tokenAddress = testStrategy.deployTokenPublic("Test Gated RWA", "TGRWA", address(usdc), 6);
 
         // Verify the token was deployed correctly
         GatedMintRWA token = GatedMintRWA(tokenAddress);
@@ -39,7 +34,7 @@ contract GatedMintRWAStrategyTest is BaseFountfiTest {
         assertEq(token.symbol(), "TGRWA");
         assertEq(token.asset(), address(usdc));
         assertEq(token.strategy(), address(testStrategy));
-        
+
         // Verify escrow was deployed
         assertTrue(token.escrow() != address(0));
     }
@@ -50,12 +45,10 @@ contract GatedMintRWAStrategyTest is BaseFountfiTest {
  * @notice Test contract to expose internal _deployToken function
  */
 contract TestGatedMintRWAStrategy is GatedMintReportedStrategy {
-    function deployTokenPublic(
-        string calldata name_,
-        string calldata symbol_,
-        address asset_,
-        uint8 assetDecimals_
-    ) external returns (address) {
+    function deployTokenPublic(string calldata name_, string calldata symbol_, address asset_, uint8 assetDecimals_)
+        external
+        returns (address)
+    {
         return _deployToken(name_, symbol_, asset_, assetDecimals_);
     }
 }

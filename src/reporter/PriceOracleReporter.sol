@@ -22,7 +22,6 @@ contract PriceOracleReporter is BaseReporter, Ownable {
     event PricePerShareUpdated(uint256 roundNumber, uint256 pricePerShare, string source);
     event SetUpdater(address indexed updater, bool isAuthorized);
 
-
     /*//////////////////////////////////////////////////////////////
                                 STATE
     //////////////////////////////////////////////////////////////*/
@@ -38,7 +37,6 @@ contract PriceOracleReporter is BaseReporter, Ownable {
 
     /// @notice Mapping of authorized updaters
     mapping(address => bool) public authorizedUpdaters;
-
 
     /*//////////////////////////////////////////////////////////////
                                CONSTRUCTOR
@@ -77,7 +75,6 @@ contract PriceOracleReporter is BaseReporter, Ownable {
 
         emit PricePerShareUpdated(currentRound, pricePerShare, source_);
     }
-
 
     /**
      * @notice Report the current price per share

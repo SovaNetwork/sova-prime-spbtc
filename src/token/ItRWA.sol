@@ -8,7 +8,6 @@ pragma solidity 0.8.25;
  *      This is an extension interface (does not duplicate ERC4626 methods)
  */
 interface ItRWA {
-
     /*//////////////////////////////////////////////////////////////
                             ERRORS
     //////////////////////////////////////////////////////////////*/

@@ -52,7 +52,7 @@ contract MockRoleManager {
     function hasRole(address user, uint256 role) external view returns (bool) {
         return roles[user][role];
     }
-    
+
     // Check if a user has any role bits (for compatibility with RoleManager)
     function hasAnyRole(address user, uint256 role) external view returns (bool) {
         // Check for any of the role bits

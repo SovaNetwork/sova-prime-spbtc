@@ -13,12 +13,7 @@ contract MockConduit {
     /**
      * @notice Simulates collecting deposits, just transfers tokens directly
      */
-    function collectDeposit(
-        address token,
-        address from,
-        address to,
-        uint256 amount
-    ) external returns (bool) {
+    function collectDeposit(address token, address from, address to, uint256 amount) external returns (bool) {
         token.safeTransferFrom(from, to, amount);
         return true;
     }

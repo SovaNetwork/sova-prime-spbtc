@@ -31,7 +31,6 @@ contract RulesEngine is BaseHook, RoleManaged {
     event HookEnabled(bytes32 indexed hookId);
     event HookDisabled(bytes32 indexed hookId);
 
-
     /*//////////////////////////////////////////////////////////////
                             STATE
     //////////////////////////////////////////////////////////////*/
@@ -69,7 +68,12 @@ contract RulesEngine is BaseHook, RoleManaged {
      * @param priority Priority of the hook (lower numbers execute first)
      * @return hookId Identifier of the added hook
      */
-    function addHook(address hookAddress, uint256 priority) external onlyRoles(roleManager.RULES_ADMIN()) returns (bytes32) { // Assuming RULES_ADMIN is appropriate
+    function addHook(address hookAddress, uint256 priority)
+        external
+        onlyRoles(roleManager.RULES_ADMIN())
+        returns (bytes32)
+    {
+        // Assuming RULES_ADMIN is appropriate
         if (hookAddress == address(0)) revert InvalidHookAddress();
 
         // Get hook ID from the hook contract (namehash of its name and version)
@@ -77,11 +81,7 @@ contract RulesEngine is BaseHook, RoleManaged {
 
         if (_hooks[id].hookAddress != address(0)) revert HookAlreadyExists(id);
 
-        _hooks[id] = HookInfo({
-            hookAddress: hookAddress,
-            priority: priority,
-            active: true
-        });
+        _hooks[id] = HookInfo({hookAddress: hookAddress, priority: priority, active: true});
 
         _hookIds.push(id);
         // TODO: Consider sorting _hookIds here or when retrieving if performance is an issue for many hooks.
@@ -202,12 +202,11 @@ contract RulesEngine is BaseHook, RoleManaged {
     /**
      * @notice Evaluate transfer operation against registered hooks
      */
-    function onBeforeTransfer(
-        address token,
-        address from,
-        address to,
-        uint256 amount
-    ) public override returns (HookOutput memory) {
+    function onBeforeTransfer(address token, address from, address to, uint256 amount)
+        public
+        override
+        returns (HookOutput memory)
+    {
         bytes memory callData = abi.encodeCall(IHook.onBeforeTransfer, (token, from, to, amount));
         return _evaluateSubHooks(callData);
     }
@@ -215,12 +214,11 @@ contract RulesEngine is BaseHook, RoleManaged {
     /**
      * @notice Evaluate deposit operation against registered hooks
      */
-    function onBeforeDeposit(
-        address token,
-        address user,
-        uint256 assets,
-        address receiver
-    ) public override returns (HookOutput memory) {
+    function onBeforeDeposit(address token, address user, uint256 assets, address receiver)
+        public
+        override
+        returns (HookOutput memory)
+    {
         bytes memory callData = abi.encodeCall(IHook.onBeforeDeposit, (token, user, assets, receiver));
         return _evaluateSubHooks(callData);
     }
@@ -228,13 +226,11 @@ contract RulesEngine is BaseHook, RoleManaged {
     /**
      * @notice Evaluate withdraw operation against registered hooks
      */
-    function onBeforeWithdraw(
-        address token,
-        address user,
-        uint256 assets,
-        address receiver,
-        address owner
-    ) public override returns (HookOutput memory) {
+    function onBeforeWithdraw(address token, address user, uint256 assets, address receiver, address owner)
+        public
+        override
+        returns (HookOutput memory)
+    {
         bytes memory callData = abi.encodeCall(IHook.onBeforeWithdraw, (token, user, assets, receiver, owner));
         return _evaluateSubHooks(callData);
     }
@@ -285,10 +281,7 @@ contract RulesEngine is BaseHook, RoleManaged {
         }
 
         // If we made it through all hooks, operation is allowed
-        return IHook.HookOutput({
-            approved: true,
-            reason: ""
-        });
+        return IHook.HookOutput({approved: true, reason: ""});
     }
 
     /**
@@ -319,8 +312,8 @@ contract RulesEngine is BaseHook, RoleManaged {
             uint256 keyPriority = _hooks[key].priority;
             uint256 j = i;
 
-            while (j > 0 && _hooks[sortedActiveIds[j-1]].priority > keyPriority) {
-                sortedActiveIds[j] = sortedActiveIds[j-1];
+            while (j > 0 && _hooks[sortedActiveIds[j - 1]].priority > keyPriority) {
+                sortedActiveIds[j] = sortedActiveIds[j - 1];
                 j--;
             }
             sortedActiveIds[j] = key;

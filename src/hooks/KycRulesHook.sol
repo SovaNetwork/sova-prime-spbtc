@@ -46,10 +46,7 @@ contract KycRulesHook is BaseHook, RoleManaged {
      * @notice Constructor
      * @param _roleManager Address of the role manager contract
      */
-    constructor(address _roleManager)
-        BaseHook("KycRulesHook-1.0")
-        RoleManaged(_roleManager)
-    {}
+    constructor(address _roleManager) BaseHook("KycRulesHook-1.0") RoleManaged(_roleManager) {}
 
     /*//////////////////////////////////////////////////////////////
                             WHITELIST MANAGEMENT
@@ -238,10 +235,7 @@ contract KycRulesHook is BaseHook, RoleManaged {
     ) public view override returns (IHook.HookOutput memory) {
         // Check if the owner is allowed
         if (!isAllowed(owner)) {
-            return IHook.HookOutput({
-                approved: false,
-                reason: "KycRules: owner"
-            });
+            return IHook.HookOutput({approved: false, reason: "KycRules: owner"});
         }
 
         return _checkSenderAndReceiver(user, receiver);
@@ -255,22 +249,13 @@ contract KycRulesHook is BaseHook, RoleManaged {
      */
     function _checkSenderAndReceiver(address from, address to) internal view returns (IHook.HookOutput memory) {
         if (from != address(0) && !isAllowed(from)) {
-            return IHook.HookOutput({
-                approved: false,
-                reason: "KycRules: sender"
-            });
+            return IHook.HookOutput({approved: false, reason: "KycRules: sender"});
         }
 
         if (to != address(0) && !isAllowed(to)) {
-            return IHook.HookOutput({
-                approved: false,
-                reason: "KycRules: receiver"
-            });
+            return IHook.HookOutput({approved: false, reason: "KycRules: receiver"});
         }
 
-        return IHook.HookOutput({
-            approved: true,
-            reason: ""
-        });
+        return IHook.HookOutput({approved: true, reason: ""});
     }
 }

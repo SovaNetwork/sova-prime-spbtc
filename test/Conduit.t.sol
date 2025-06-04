@@ -27,7 +27,7 @@ contract ConduitTest is BaseFountfiTest {
     tRWA public trwaToken;
 
     // Test constants
-    uint256 public constant DEPOSIT_AMOUNT = 1000 * 10**6;
+    uint256 public constant DEPOSIT_AMOUNT = 1000 * 10 ** 6;
 
     function setUp() public override {
         super.setUp();
@@ -46,18 +46,12 @@ contract ConduitTest is BaseFountfiTest {
 
         // Registry is already initialized, so we'll mock the registry() call
         vm.mockCall(
-            address(conduitRoleManager),
-            abi.encodeWithSignature("registry()"),
-            abi.encode(address(conduitRegistry))
+            address(conduitRoleManager), abi.encodeWithSignature("registry()"), abi.encode(address(conduitRegistry))
         );
 
         // For the registry to track the conduit, we need to set it properly
         // Since we can't directly set the conduit in Registry, we'll use VM mocking
-        vm.mockCall(
-            address(conduitRegistry),
-            abi.encodeWithSignature("conduit()"),
-            abi.encode(address(conduit))
-        );
+        vm.mockCall(address(conduitRegistry), abi.encodeWithSignature("conduit()"), abi.encode(address(conduit)));
 
         // Create test token
         testToken = new MockERC20("Test Token", "TEST", 6);
@@ -67,15 +61,7 @@ contract ConduitTest is BaseFountfiTest {
 
         // Deploy a strategy
         strategy = new MockStrategy();
-        strategy.initialize(
-            "Test Strategy",
-            "TEST",
-            address(conduitRoleManager),
-            manager,
-            address(testToken),
-            6,
-            ""
-        );
+        strategy.initialize("Test Strategy", "TEST", address(conduitRoleManager), manager, address(testToken), 6, "");
 
         // Register strategy in registry
         conduitRegistry.setStrategy(address(strategy), true);
@@ -91,11 +77,7 @@ contract ConduitTest is BaseFountfiTest {
         );
 
         // Mock the trwaToken's asset function to return testToken
-        vm.mockCall(
-            address(trwaToken),
-            abi.encodeWithSignature("asset()"),
-            abi.encode(address(testToken))
-        );
+        vm.mockCall(address(trwaToken), abi.encodeWithSignature("asset()"), abi.encode(address(testToken)));
 
         // Mint tokens to test accounts
         testToken.mint(alice, DEPOSIT_AMOUNT * 10);
@@ -134,25 +116,14 @@ contract ConduitTest is BaseFountfiTest {
         uint256 initialAliceBalance = testToken.balanceOf(alice);
 
         // Call collect deposit
-        bool success = conduit.collectDeposit(
-            address(testToken),
-            alice,
-            strategy,
-            DEPOSIT_AMOUNT
-        );
+        bool success = conduit.collectDeposit(address(testToken), alice, strategy, DEPOSIT_AMOUNT);
 
         // Verify transfer happened
         assertTrue(success, "Collect deposit should return true");
         assertEq(
-            testToken.balanceOf(strategy),
-            initialTRWABalance + DEPOSIT_AMOUNT,
-            "strategy should receive the tokens"
+            testToken.balanceOf(strategy), initialTRWABalance + DEPOSIT_AMOUNT, "strategy should receive the tokens"
         );
-        assertEq(
-            testToken.balanceOf(alice),
-            initialAliceBalance - DEPOSIT_AMOUNT,
-            "Alice's balance should decrease"
-        );
+        assertEq(testToken.balanceOf(alice), initialAliceBalance - DEPOSIT_AMOUNT, "Alice's balance should decrease");
 
         vm.stopPrank();
     }
@@ -162,12 +133,7 @@ contract ConduitTest is BaseFountfiTest {
         vm.startPrank(address(trwaToken));
 
         vm.expectRevert(Conduit.InvalidAmount.selector);
-        conduit.collectDeposit(
-            address(testToken),
-            alice,
-            address(trwaToken),
-            0
-        );
+        conduit.collectDeposit(address(testToken), alice, address(trwaToken), 0);
 
         vm.stopPrank();
     }
@@ -179,12 +145,7 @@ contract ConduitTest is BaseFountfiTest {
         vm.startPrank(address(trwaToken));
 
         vm.expectRevert(Conduit.InvalidToken.selector);
-        conduit.collectDeposit(
-            address(invalidToken),
-            alice,
-            address(trwaToken),
-            DEPOSIT_AMOUNT
-        );
+        conduit.collectDeposit(address(invalidToken), alice, address(trwaToken), DEPOSIT_AMOUNT);
 
         vm.stopPrank();
     }
@@ -195,18 +156,11 @@ contract ConduitTest is BaseFountfiTest {
 
         // First we need to update our mock to return false for alice
         vm.mockCall(
-            address(conduitRegistry),
-            abi.encodeWithSignature("isStrategyToken(address)", alice),
-            abi.encode(false)
+            address(conduitRegistry), abi.encodeWithSignature("isStrategyToken(address)", alice), abi.encode(false)
         );
 
         vm.expectRevert(Conduit.InvalidDestination.selector);
-        conduit.collectDeposit(
-            address(testToken),
-            alice,
-            address(trwaToken),
-            DEPOSIT_AMOUNT
-        );
+        conduit.collectDeposit(address(testToken), alice, address(trwaToken), DEPOSIT_AMOUNT);
 
         vm.stopPrank();
     }
@@ -221,12 +175,7 @@ contract ConduitTest is BaseFountfiTest {
         vm.startPrank(address(trwaToken));
 
         vm.expectRevert(Conduit.InvalidToken.selector);
-        conduit.collectDeposit(
-            address(differentToken),
-            alice,
-            address(trwaToken),
-            DEPOSIT_AMOUNT
-        );
+        conduit.collectDeposit(address(differentToken), alice, address(trwaToken), DEPOSIT_AMOUNT);
 
         vm.stopPrank();
     }
@@ -244,12 +193,7 @@ contract ConduitTest is BaseFountfiTest {
 
         // Should revert with the underlying SafeTransferLib error
         vm.expectRevert(abi.encodeWithSelector(SafeTransferLib.TransferFromFailed.selector));
-        conduit.collectDeposit(
-            address(testToken),
-            alice,
-            strategy,
-            DEPOSIT_AMOUNT
-        );
+        conduit.collectDeposit(address(testToken), alice, strategy, DEPOSIT_AMOUNT);
 
         vm.stopPrank();
     }
@@ -265,22 +209,12 @@ contract ConduitTest is BaseFountfiTest {
 
         // Call rescue as protocol admin
         vm.prank(owner);
-        conduit.rescueERC20(
-            address(testToken),
-            bob,
-            initialConduitBalance
-        );
+        conduit.rescueERC20(address(testToken), bob, initialConduitBalance);
 
         // Verify the transfer
+        assertEq(testToken.balanceOf(address(conduit)), 0, "Conduit should have 0 tokens left");
         assertEq(
-            testToken.balanceOf(address(conduit)),
-            0,
-            "Conduit should have 0 tokens left"
-        );
-        assertEq(
-            testToken.balanceOf(bob),
-            initialBobBalance + initialConduitBalance,
-            "Bob should receive the rescued tokens"
+            testToken.balanceOf(bob), initialBobBalance + initialConduitBalance, "Bob should receive the rescued tokens"
         );
     }
 
@@ -288,12 +222,10 @@ contract ConduitTest is BaseFountfiTest {
         // Try to call rescue as non-admin
         vm.startPrank(alice);
 
-        vm.expectRevert(abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, alice, conduitRoleManager.PROTOCOL_ADMIN())); // Will revert with UnauthorizedRole
-        conduit.rescueERC20(
-            address(testToken),
-            bob,
-            DEPOSIT_AMOUNT
-        );
+        vm.expectRevert(
+            abi.encodeWithSelector(LibRoleManaged.UnauthorizedRole.selector, alice, conduitRoleManager.PROTOCOL_ADMIN())
+        ); // Will revert with UnauthorizedRole
+        conduit.rescueERC20(address(testToken), bob, DEPOSIT_AMOUNT);
 
         vm.stopPrank();
     }
@@ -306,11 +238,7 @@ contract ConduitTest is BaseFountfiTest {
 
         // Should revert with the underlying SafeTransferLib error
         vm.expectRevert(abi.encodeWithSelector(SafeTransferLib.TransferFailed.selector));
-        conduit.rescueERC20(
-            address(testToken),
-            bob,
-            excessiveAmount
-        );
+        conduit.rescueERC20(address(testToken), bob, excessiveAmount);
 
         vm.stopPrank();
     }
@@ -325,7 +253,7 @@ contract ConduitTest is BaseFountfiTest {
         conduit.collectDeposit(
             address(testToken),
             alice,
-            wrongDestination,  // This doesn't match trwaToken.strategy()
+            wrongDestination, // This doesn't match trwaToken.strategy()
             DEPOSIT_AMOUNT
         );
 

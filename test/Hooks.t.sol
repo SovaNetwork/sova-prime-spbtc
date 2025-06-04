@@ -49,7 +49,7 @@ contract HooksTest is BaseFountfiTest {
         kycRules = new KycRulesHook(address(roleManager));
 
         subHook = new MockSubscriptionHook(owner, true, true);
-        cappedHook = new MockCappedSubscriptionHook(10_000 * 10**6, true, "Test rejection");
+        cappedHook = new MockCappedSubscriptionHook(10_000 * 10 ** 6, true, "Test rejection");
 
         // Set up additional infrastructure for hook removal tests
         removalTestRoleManager = new RoleManager();
@@ -68,12 +68,7 @@ contract HooksTest is BaseFountfiTest {
         // Deploy strategy and token through registry
         bytes memory initData = abi.encode(address(reporter));
         (address strategyAddr, address tokenAddr) = removalTestRegistry.deploy(
-            address(strategyImpl),
-            "Test Token",
-            "TEST",
-            address(removalTestAsset),
-            manager,
-            initData
+            address(strategyImpl), "Test Token", "TEST", address(removalTestAsset), manager, initData
         );
 
         removalTestStrategy = ReportedStrategy(payable(strategyAddr));
@@ -122,9 +117,7 @@ contract HooksTest is BaseFountfiTest {
         vm.stopPrank();
 
         // Test transfer between allowed addresses
-        IHook.HookOutput memory result = kycRules.onBeforeTransfer(
-            address(0), alice, bob, 100
-        );
+        IHook.HookOutput memory result = kycRules.onBeforeTransfer(address(0), alice, bob, 100);
 
         assertTrue(result.approved);
         assertEq(result.reason, "");
@@ -134,17 +127,13 @@ contract HooksTest is BaseFountfiTest {
         kycRules.deny(charlie);
 
         // Test transfer to denied address
-        result = kycRules.onBeforeTransfer(
-            address(0), alice, charlie, 100
-        );
+        result = kycRules.onBeforeTransfer(address(0), alice, charlie, 100);
 
         assertFalse(result.approved);
         assertEq(result.reason, "KycRules: receiver");
 
         // Test transfer from denied address
-        result = kycRules.onBeforeTransfer(
-            address(0), charlie, alice, 100
-        );
+        result = kycRules.onBeforeTransfer(address(0), charlie, alice, 100);
 
         assertFalse(result.approved);
         assertEq(result.reason, "KycRules: sender");
@@ -154,9 +143,7 @@ contract HooksTest is BaseFountfiTest {
 
     function test_SubscriptionHook_Approval() public {
         // Test initial state
-        IHook.HookOutput memory result = subHook.onBeforeDeposit(
-            address(0), alice, 100, alice
-        );
+        IHook.HookOutput memory result = subHook.onBeforeDeposit(address(0), alice, 100, alice);
 
         // Should fail because alice is not approved
         assertFalse(result.approved);
@@ -167,9 +154,7 @@ contract HooksTest is BaseFountfiTest {
         subHook.setSubscriber(alice, true);
 
         // Try deposit again
-        result = subHook.onBeforeDeposit(
-            address(0), alice, 100, alice
-        );
+        result = subHook.onBeforeDeposit(address(0), alice, 100, alice);
 
         // Should succeed now
         assertTrue(result.approved);
@@ -179,9 +164,7 @@ contract HooksTest is BaseFountfiTest {
         subHook.setSubscriptionStatus(false);
 
         // Try deposit again
-        result = subHook.onBeforeDeposit(
-            address(0), alice, 100, alice
-        );
+        result = subHook.onBeforeDeposit(address(0), alice, 100, alice);
 
         // Should fail because subscriptions closed
         assertFalse(result.approved);
@@ -194,9 +177,7 @@ contract HooksTest is BaseFountfiTest {
         vm.stopPrank();
 
         // Try with unapproved user
-        result = subHook.onBeforeDeposit(
-            address(0), bob, 100, bob
-        );
+        result = subHook.onBeforeDeposit(address(0), bob, 100, bob);
 
         // Should succeed because enforcement is off
         assertTrue(result.approved);
@@ -231,38 +212,34 @@ contract HooksTest is BaseFountfiTest {
         // For the MockCappedSubscriptionHook, we'll test the basic cap management functions
 
         // Initial cap should be 10_000 * 10**6
-        assertEq(cappedHook.maxSubscriptionSize(), 10_000 * 10**6);
+        assertEq(cappedHook.maxSubscriptionSize(), 10_000 * 10 ** 6);
 
         // Update cap
-        cappedHook.setMaxSubscriptionSize(20_000 * 10**6);
+        cappedHook.setMaxSubscriptionSize(20_000 * 10 ** 6);
 
         // Verify cap was updated
-        assertEq(cappedHook.maxSubscriptionSize(), 20_000 * 10**6);
+        assertEq(cappedHook.maxSubscriptionSize(), 20_000 * 10 ** 6);
     }
 
     function test_CappedHook_Deposit() public {
         // Initial cap is 10_000 * 10**6
 
         // Test deposit within cap
-        IHook.HookOutput memory result = cappedHook.onBeforeDeposit(
-            address(0), bob, 5_000 * 10**6, bob
-        );
+        IHook.HookOutput memory result = cappedHook.onBeforeDeposit(address(0), bob, 5_000 * 10 ** 6, bob);
 
         assertTrue(result.approved);
 
         // Check used cap
-        assertEq(cappedHook.totalSubscriptions(), 5_000 * 10**6);
+        assertEq(cappedHook.totalSubscriptions(), 5_000 * 10 ** 6);
 
         // Test deposit that exceeds cap
-        result = cappedHook.onBeforeDeposit(
-            address(0), bob, 6_000 * 10**6, bob
-        );
+        result = cappedHook.onBeforeDeposit(address(0), bob, 6_000 * 10 ** 6, bob);
 
         assertFalse(result.approved);
         assertEq(result.reason, "Subscription would exceed maximum capacity");
 
         // Total subscriptions should be unchanged
-        assertEq(cappedHook.totalSubscriptions(), 5_000 * 10**6);
+        assertEq(cappedHook.totalSubscriptions(), 5_000 * 10 ** 6);
     }
 
     // === Rules Engine Tests ===
@@ -342,9 +319,7 @@ contract HooksTest is BaseFountfiTest {
         rulesEngine.addHook(address(subMockHook), 1);
 
         // Test evaluation for alice (should pass both hooks)
-        IHook.HookOutput memory result = rulesEngine.onBeforeDeposit(
-            address(0), alice, 100, alice
-        );
+        IHook.HookOutput memory result = rulesEngine.onBeforeDeposit(address(0), alice, 100, alice);
         assertTrue(result.approved, "Alice should pass both hooks");
 
         // Now set the second hook to reject
@@ -352,9 +327,7 @@ contract HooksTest is BaseFountfiTest {
         subMockHook.setApproveStatus(false, "Sub hook rejects bob");
 
         // Test evaluation (should now fail due to second hook)
-        result = rulesEngine.onBeforeDeposit(
-            address(0), bob, 100, bob
-        );
+        result = rulesEngine.onBeforeDeposit(address(0), bob, 100, bob);
         assertFalse(result.approved, "Should fail when a hook rejects");
         assertTrue(bytes(result.reason).length > 0, "Reason should be provided");
     }

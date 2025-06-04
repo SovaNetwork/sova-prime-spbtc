@@ -65,14 +65,8 @@ contract ReportedStrategyTest is BaseFountfiTest {
 
         // Deploy strategy and token through the registry
         bytes memory initData = abi.encode(address(reporter));
-        (address strategyAddr, address tokenAddr) = registry.deploy(
-            address(strategyImpl),
-            TOKEN_NAME,
-            TOKEN_SYMBOL,
-            address(daiToken),
-            manager,
-            initData
-        );
+        (address strategyAddr, address tokenAddr) =
+            registry.deploy(address(strategyImpl), TOKEN_NAME, TOKEN_SYMBOL, address(daiToken), manager, initData);
 
         strategy = ReportedStrategy(payable(strategyAddr));
         token = tRWA(tokenAddr);
@@ -80,7 +74,7 @@ contract ReportedStrategyTest is BaseFountfiTest {
         vm.stopPrank();
         vm.startPrank(owner);
         // Fund the strategy with some DAI
-        daiToken.mint(address(strategy), 1000 * 10**18);
+        daiToken.mint(address(strategy), 1000 * 10 ** 18);
 
         vm.stopPrank();
     }
@@ -114,13 +108,7 @@ contract ReportedStrategyTest is BaseFountfiTest {
         // Test zero address for reporter
         vm.expectRevert(ReportedStrategy.InvalidReporter.selector);
         newStrategy.initialize(
-            TOKEN_NAME,
-            TOKEN_SYMBOL,
-            address(roleManager),
-            manager,
-            address(daiToken),
-            18,
-            invalidInitData
+            TOKEN_NAME, TOKEN_SYMBOL, address(roleManager), manager, address(daiToken), 18, invalidInitData
         );
 
         vm.stopPrank();
@@ -138,7 +126,6 @@ contract ReportedStrategyTest is BaseFountfiTest {
         daiToken.approve(registry.conduit(), 1000e18);
         token.deposit(1000e18, alice); // This will mint tokens
         vm.stopPrank();
-
 
         // Now balance should be pricePerShare * totalSupply = 1e18 * 1000e18 / 1e18 = 1000e18
         bal = strategy.balance();
@@ -173,7 +160,6 @@ contract ReportedStrategyTest is BaseFountfiTest {
         token.deposit(1000e18, alice);
         vm.stopPrank();
         vm.startPrank(manager);
-
 
         // Check that the balance reflects the new reporter's price per share
         // 5e18 * 1000e18 / 1e18 = 5000e18
@@ -228,7 +214,6 @@ contract ReportedStrategyTest is BaseFountfiTest {
         token.deposit(500e18, alice);
         vm.stopPrank();
 
-
         // Calculate expected total assets: 1e18 * 500e18 / 1e18 = 500e18
         totalAssets = strategy.balance();
         assertEq(totalAssets, 500e18, "Total assets should equal price per share * total supply");
@@ -238,8 +223,6 @@ contract ReportedStrategyTest is BaseFountfiTest {
         totalAssets = strategy.balance();
         assertEq(totalAssets, 1500e18, "Total assets should reflect new price per share");
     }
-
-
 
     function test_DepositWithdrawFlow() public {
         // Setup: Give Alice some DAI to deposit
@@ -259,7 +242,6 @@ contract ReportedStrategyTest is BaseFountfiTest {
         // With price per share = 1e18, she should get 1000 shares
         assertEq(shares1, 1000e18, "Should get 1000 shares for 1000 DAI at 1:1 ratio");
         assertEq(token.totalSupply(), 1000e18, "Total supply should be 1000");
-
 
         assertEq(token.totalAssets(), 1000e18, "Total assets should be 1000 (1e18 * 1000e18 / 1e18)");
 
@@ -281,12 +263,13 @@ contract ReportedStrategyTest is BaseFountfiTest {
 
         uint256 totalSupplyAfter = token.totalSupply();
 
-
         uint256 totalAssetsAfter = token.totalAssets();
 
         // Total assets should be approximately 2500 (1.5 * new total supply)
         uint256 expectedAssets = (1.5e18 * totalSupplyAfter) / 1e18;
-        assertApproxEqRel(totalAssetsAfter, expectedAssets, 0.01e18, "Total assets should match price per share calculation");
+        assertApproxEqRel(
+            totalAssetsAfter, expectedAssets, 0.01e18, "Total assets should match price per share calculation"
+        );
 
         vm.stopPrank();
     }

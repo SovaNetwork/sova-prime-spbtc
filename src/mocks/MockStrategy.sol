@@ -113,5 +113,4 @@ contract MockStrategy is IStrategy {
         if (msg.sender != manager) revert Unauthorized();
         IERC20(tokenAddr).approve(spender, amount);
     }
-
 }

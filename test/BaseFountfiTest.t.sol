@@ -62,13 +62,13 @@ abstract contract BaseFountfiTest is Test {
         usdc = new MockERC20("USD Coin", "USDC", 6);
 
         // Mint tokens to test accounts (10,000 USDC each)
-        usdc.mint(alice, 10_000 * 10**6);
-        usdc.mint(bob, 10_000 * 10**6);
-        usdc.mint(charlie, 10_000 * 10**6);
+        usdc.mint(alice, 10_000 * 10 ** 6);
+        usdc.mint(bob, 10_000 * 10 ** 6);
+        usdc.mint(charlie, 10_000 * 10 ** 6);
 
         // Deploy mocks
         mockHook = new MockHook(true, "Mock rejection");
-        mockReporter = new MockReporter(1000 * 10**6); // 1000 USDC initial value
+        mockReporter = new MockReporter(1000 * 10 ** 6); // 1000 USDC initial value
         mockStrategy = new MockStrategy();
 
         // Deploy Registry with the owner as role manager
@@ -77,10 +77,7 @@ abstract contract BaseFountfiTest is Test {
     }
 
     // Helper to deploy a complete tRWA setup with mocks
-    function deployMockTRWA(
-        string memory name,
-        string memory symbol
-    ) internal returns (MockStrategy, tRWA) {
+    function deployMockTRWA(string memory name, string memory symbol) internal returns (MockStrategy, tRWA) {
         // Create a fresh MockHook and ensure it's initialized to allow by default
         vm.prank(owner);
         MockHook mockHookLocal = new MockHook(true, "Test rejection");
@@ -118,17 +115,11 @@ abstract contract BaseFountfiTest is Test {
         bytes32 opTransfer = keccak256("TRANSFER_OPERATION");
 
         vm.prank(owner);
-        strategy.callStrategyToken(
-            abi.encodeCall(tRWA.addOperationHook, (opDeposit, address(mockHookLocal)))
-        );
+        strategy.callStrategyToken(abi.encodeCall(tRWA.addOperationHook, (opDeposit, address(mockHookLocal))));
         vm.prank(owner);
-        strategy.callStrategyToken(
-            abi.encodeCall(tRWA.addOperationHook, (opWithdraw, address(mockHookLocal)))
-        );
+        strategy.callStrategyToken(abi.encodeCall(tRWA.addOperationHook, (opWithdraw, address(mockHookLocal))));
         vm.prank(owner);
-        strategy.callStrategyToken(
-            abi.encodeCall(tRWA.addOperationHook, (opTransfer, address(mockHookLocal)))
-        );
+        strategy.callStrategyToken(abi.encodeCall(tRWA.addOperationHook, (opTransfer, address(mockHookLocal))));
 
         return (strategy, token);
     }
@@ -143,12 +134,10 @@ abstract contract BaseFountfiTest is Test {
     }
 
     // Helper to create a complete test deployment via Registry
-    function deployThroughRegistry() internal returns (
-        address strategyAddr,
-        address tokenAddr,
-        KycRulesHook kycRules,
-        MockReporter reporter
-    ) {
+    function deployThroughRegistry()
+        internal
+        returns (address strategyAddr, address tokenAddr, KycRulesHook kycRules, MockReporter reporter)
+    {
         vm.startPrank(owner);
 
         // Setup Registry
@@ -172,21 +161,15 @@ abstract contract BaseFountfiTest is Test {
         hookAddresses[0] = address(kycRules);
 
         // Create reporter
-        reporter = new MockReporter(1000 * 10**6);
+        reporter = new MockReporter(1000 * 10 ** 6);
 
         // Setup an implementation of MockStrategy
         MockStrategy strategyImpl = new MockStrategy();
         registry.setStrategy(address(strategyImpl), true);
 
         // Deploy via registry
-        (strategyAddr, tokenAddr) = registry.deploy(
-            address(strategyImpl),
-            "Test RWA",
-            "TRWA",
-            address(usdc),
-            manager,
-            ""
-        );
+        (strategyAddr, tokenAddr) =
+            registry.deploy(address(strategyImpl), "Test RWA", "TRWA", address(usdc), manager, "");
 
         vm.stopPrank();
     }

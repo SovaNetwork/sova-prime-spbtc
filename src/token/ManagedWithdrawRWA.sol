@@ -31,14 +31,9 @@ contract ManagedWithdrawRWA is tRWA {
      * @param assetDecimals_ Decimals of the asset token
      * @param strategy_ Strategy address
      */
-    constructor(
-        string memory name_,
-        string memory symbol_,
-        address asset_,
-        uint8 assetDecimals_,
-        address strategy_
-    ) tRWA(name_, symbol_, asset_, assetDecimals_, strategy_) {}
-
+    constructor(string memory name_, string memory symbol_, address asset_, uint8 assetDecimals_, address strategy_)
+        tRWA(name_, symbol_, asset_, assetDecimals_, strategy_)
+    {}
 
     /*//////////////////////////////////////////////////////////////
                             REDEMPTION FUNCTIONS
@@ -52,7 +47,11 @@ contract ManagedWithdrawRWA is tRWA {
      * @param minAssets The minimum amount of assets to receive
      * @return assets The amount of assets received
      */
-    function redeem(uint256 shares, address to, address owner, uint256 minAssets) public onlyStrategy returns (uint256 assets) {
+    function redeem(uint256 shares, address to, address owner, uint256 minAssets)
+        public
+        onlyStrategy
+        returns (uint256 assets)
+    {
         if (shares > maxRedeem(owner)) revert RedeemMoreThanMax();
         assets = previewRedeem(shares);
 
@@ -115,13 +114,8 @@ contract ManagedWithdrawRWA is tRWA {
 
             // Call hooks (same logic as in _withdraw)
             for (uint256 j; j < opHooks.length; ++j) {
-                IHook.HookOutput memory hookOut = opHooks[j].hook.onBeforeWithdraw(
-                    address(this),
-                    strategy,
-                    userAssets,
-                    recipient,
-                    shareOwner
-                );
+                IHook.HookOutput memory hookOut =
+                    opHooks[j].hook.onBeforeWithdraw(address(this), strategy, userAssets, recipient, shareOwner);
                 if (!hookOut.approved) revert HookCheckFailed(hookOut.reason);
                 opHooks[j].hasProcessedOperations = true;
             }
@@ -146,7 +140,7 @@ contract ManagedWithdrawRWA is tRWA {
      * @return shares The amount of shares burned
      */
     function withdraw(uint256, address, address) public view override onlyStrategy returns (uint256) {
-       revert UseRedeem();
+        revert UseRedeem();
     }
 
     /**
@@ -175,7 +169,11 @@ contract ManagedWithdrawRWA is tRWA {
      * @param assets Amount of assets to withdraw
      * @param shares Amount of shares to burn
      */
-    function _withdraw(address by, address to, address owner, uint256 assets, uint256 shares) internal override nonReentrant {
+    function _withdraw(address by, address to, address owner, uint256 assets, uint256 shares)
+        internal
+        override
+        nonReentrant
+    {
         if (by != owner) _spendAllowance(owner, by, shares);
         _beforeWithdraw(assets, shares);
         _burn(owner, shares);

@@ -31,7 +31,6 @@ interface IStrategy {
     event StrategyInitialized(address indexed admin, address indexed manager, address indexed asset, address sToken);
     event ControllerConfigured(address indexed controller);
 
-
     /*//////////////////////////////////////////////////////////////
                             INITIALIZATION
     //////////////////////////////////////////////////////////////*/

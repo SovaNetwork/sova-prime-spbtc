@@ -40,7 +40,6 @@ contract ReporterTest is BaseFountfiTest {
         assertEq(reportedPrice, newPrice);
     }
 
-
     function test_UpdaterManagement() public {
         address newUpdater = makeAddr("newUpdater");
 
@@ -51,7 +50,7 @@ contract ReporterTest is BaseFountfiTest {
         vm.prank(newUpdater);
         bytes4 unauthorizedSelector = bytes4(keccak256("Unauthorized()"));
         vm.expectRevert(unauthorizedSelector);
-        reporter.update(1100 * 10**6, "Test Source");
+        reporter.update(1100 * 10 ** 6, "Test Source");
 
         // Add new updater
         vm.prank(owner);

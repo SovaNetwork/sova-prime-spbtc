@@ -66,12 +66,7 @@ contract ManagedWithdrawReportedStrategyTest is BaseFountfiTest {
         );
 
         // Deploy token
-        address tokenAddress = strategy.deployTokenPublic(
-            "Test Token",
-            "TT",
-            address(usdc),
-            6
-        );
+        address tokenAddress = strategy.deployTokenPublic("Test Token", "TT", address(usdc), 6);
         token = ManagedWithdrawRWA(tokenAddress);
 
         // Set up token in strategy
@@ -89,10 +84,10 @@ contract ManagedWithdrawReportedStrategyTest is BaseFountfiTest {
         );
 
         // Fund strategy with USDC for redemptions (strategy needs funds to transfer to token)
-        deal(address(usdc), address(strategy), 1000000 * 10**6);
+        deal(address(usdc), address(strategy), 1000000 * 10 ** 6);
 
         // Give user some shares
-        deal(address(token), user, 10000 * 10**18);
+        deal(address(token), user, 10000 * 10 ** 18);
 
         // Approve strategy to spend USDC (for _collect function in token)
         vm.prank(address(strategy));
@@ -103,15 +98,7 @@ contract ManagedWithdrawReportedStrategyTest is BaseFountfiTest {
         TestManagedWithdrawReportedStrategy newStrategy = new TestManagedWithdrawReportedStrategy();
         bytes memory initData = abi.encode(address(mockReporter));
 
-        newStrategy.initialize(
-            "Managed RWA",
-            "MRWA",
-            address(mockRoleManager),
-            manager,
-            address(usdc),
-            6,
-            initData
-        );
+        newStrategy.initialize("Managed RWA", "MRWA", address(mockRoleManager), manager, address(usdc), 6, initData);
 
         assertEq(newStrategy.manager(), manager);
         assertEq(newStrategy.asset(), address(usdc));
@@ -122,12 +109,7 @@ contract ManagedWithdrawReportedStrategyTest is BaseFountfiTest {
         bytes memory initData = abi.encode(address(mockReporter));
         newStrategy.initialize("Test", "TST", address(mockRoleManager), manager, address(usdc), 6, initData);
 
-        address tokenAddress = newStrategy.deployTokenPublic(
-            "Test Managed RWA",
-            "TMRWA",
-            address(usdc),
-            6
-        );
+        address tokenAddress = newStrategy.deployTokenPublic("Test Managed RWA", "TMRWA", address(usdc), 6);
 
         // Verify the token was deployed correctly
         ManagedWithdrawRWA deployedToken = ManagedWithdrawRWA(tokenAddress);
@@ -145,9 +127,10 @@ contract ManagedWithdrawReportedStrategyTest is BaseFountfiTest {
         assertEq(user, vm.addr(USER_PRIVATE_KEY), "User address mismatch");
 
         // Create a withdrawal request
-        ManagedWithdrawReportedStrategy.WithdrawalRequest memory request = ManagedWithdrawReportedStrategy.WithdrawalRequest({
-            shares: 1000 * 10**18,
-            minAssets: 900 * 10**6,
+        ManagedWithdrawReportedStrategy.WithdrawalRequest memory request = ManagedWithdrawReportedStrategy
+            .WithdrawalRequest({
+            shares: 1000 * 10 ** 18,
+            minAssets: 900 * 10 ** 6,
             owner: user,
             nonce: 1,
             to: user,
@@ -167,21 +150,12 @@ contract ManagedWithdrawReportedStrategyTest is BaseFountfiTest {
             )
         );
 
-        bytes32 digest = keccak256(
-            abi.encodePacked(
-                "\x19\x01",
-                DOMAIN_SEPARATOR,
-                structHash
-            )
-        );
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR, structHash));
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(USER_PRIVATE_KEY, digest);
 
-        ManagedWithdrawReportedStrategy.Signature memory signature = ManagedWithdrawReportedStrategy.Signature({
-            v: v,
-            r: r,
-            s: s
-        });
+        ManagedWithdrawReportedStrategy.Signature memory signature =
+            ManagedWithdrawReportedStrategy.Signature({v: v, r: r, s: s});
 
         // User needs to approve strategy to spend their shares
         vm.prank(user);
@@ -214,8 +188,8 @@ contract ManagedWithdrawReportedStrategyTest is BaseFountfiTest {
 
         // First request - ensure amounts are reasonable
         requests[0] = ManagedWithdrawReportedStrategy.WithdrawalRequest({
-            shares: 500 * 10**18,
-            minAssets: 400 * 10**6, // Reduced min to ensure it passes
+            shares: 500 * 10 ** 18,
+            minAssets: 400 * 10 ** 6, // Reduced min to ensure it passes
             owner: user,
             nonce: 1,
             to: user,
@@ -224,8 +198,8 @@ contract ManagedWithdrawReportedStrategyTest is BaseFountfiTest {
 
         // Second request
         requests[1] = ManagedWithdrawReportedStrategy.WithdrawalRequest({
-            shares: 300 * 10**18,
-            minAssets: 200 * 10**6, // Reduced min to ensure it passes
+            shares: 300 * 10 ** 18,
+            minAssets: 200 * 10 ** 6, // Reduced min to ensure it passes
             owner: user,
             nonce: 2,
             to: user,
@@ -246,21 +220,11 @@ contract ManagedWithdrawReportedStrategyTest is BaseFountfiTest {
                 )
             );
 
-            bytes32 digest = keccak256(
-                abi.encodePacked(
-                    "\x19\x01",
-                    DOMAIN_SEPARATOR,
-                    structHash
-                )
-            );
+            bytes32 digest = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR, structHash));
 
             (uint8 v, bytes32 r, bytes32 s) = vm.sign(USER_PRIVATE_KEY, digest);
 
-            signatures[i] = ManagedWithdrawReportedStrategy.Signature({
-                v: v,
-                r: r,
-                s: s
-            });
+            signatures[i] = ManagedWithdrawReportedStrategy.Signature({v: v, r: r, s: s});
         }
 
         // User needs to approve strategy to spend their shares
@@ -273,11 +237,7 @@ contract ManagedWithdrawReportedStrategyTest is BaseFountfiTest {
         // Use low-level call to ensure we're calling the right function
         vm.prank(manager);
         (bool success, bytes memory data) = address(strategy).call(
-            abi.encodeWithSelector(
-                ManagedWithdrawReportedStrategy.batchRedeem.selector,
-                requests,
-                signatures
-            )
+            abi.encodeWithSelector(ManagedWithdrawReportedStrategy.batchRedeem.selector, requests, signatures)
         );
         require(success, "Batch redeem call failed");
 
@@ -303,7 +263,8 @@ contract ManagedWithdrawReportedStrategyTest is BaseFountfiTest {
     }
 
     function test_RedeemUnauthorized() public {
-        ManagedWithdrawReportedStrategy.WithdrawalRequest memory request = ManagedWithdrawReportedStrategy.WithdrawalRequest({
+        ManagedWithdrawReportedStrategy.WithdrawalRequest memory request = ManagedWithdrawReportedStrategy
+            .WithdrawalRequest({
             shares: 1000,
             minAssets: 900,
             owner: user,
@@ -312,11 +273,8 @@ contract ManagedWithdrawReportedStrategyTest is BaseFountfiTest {
             expirationTime: uint96(block.timestamp + 1 hours)
         });
 
-        ManagedWithdrawReportedStrategy.Signature memory signature = ManagedWithdrawReportedStrategy.Signature({
-            v: 27,
-            r: bytes32(uint256(1)),
-            s: bytes32(uint256(2))
-        });
+        ManagedWithdrawReportedStrategy.Signature memory signature =
+            ManagedWithdrawReportedStrategy.Signature({v: 27, r: bytes32(uint256(1)), s: bytes32(uint256(2))});
 
         vm.prank(alice); // Not manager
         vm.expectRevert(abi.encodeWithSelector(IStrategy.Unauthorized.selector));
@@ -324,7 +282,8 @@ contract ManagedWithdrawReportedStrategyTest is BaseFountfiTest {
     }
 
     function test_ValidateRedeemExpired() public {
-        ManagedWithdrawReportedStrategy.WithdrawalRequest memory request = ManagedWithdrawReportedStrategy.WithdrawalRequest({
+        ManagedWithdrawReportedStrategy.WithdrawalRequest memory request = ManagedWithdrawReportedStrategy
+            .WithdrawalRequest({
             shares: 1000,
             minAssets: 900,
             owner: user,
@@ -333,11 +292,8 @@ contract ManagedWithdrawReportedStrategyTest is BaseFountfiTest {
             expirationTime: uint96(block.timestamp - 1) // Expired
         });
 
-        ManagedWithdrawReportedStrategy.Signature memory signature = ManagedWithdrawReportedStrategy.Signature({
-            v: 27,
-            r: bytes32(uint256(1)),
-            s: bytes32(uint256(2))
-        });
+        ManagedWithdrawReportedStrategy.Signature memory signature =
+            ManagedWithdrawReportedStrategy.Signature({v: 27, r: bytes32(uint256(1)), s: bytes32(uint256(2))});
 
         vm.prank(manager);
         vm.expectRevert(ManagedWithdrawReportedStrategy.WithdrawalRequestExpired.selector);
@@ -346,9 +302,10 @@ contract ManagedWithdrawReportedStrategyTest is BaseFountfiTest {
 
     function test_ValidateRedeemNonceReuse() public {
         // Create a valid withdrawal request
-        ManagedWithdrawReportedStrategy.WithdrawalRequest memory request = ManagedWithdrawReportedStrategy.WithdrawalRequest({
-            shares: 1000 * 10**18,
-            minAssets: 900 * 10**6,
+        ManagedWithdrawReportedStrategy.WithdrawalRequest memory request = ManagedWithdrawReportedStrategy
+            .WithdrawalRequest({
+            shares: 1000 * 10 ** 18,
+            minAssets: 900 * 10 ** 6,
             owner: user,
             nonce: 1,
             to: user,
@@ -368,21 +325,12 @@ contract ManagedWithdrawReportedStrategyTest is BaseFountfiTest {
             )
         );
 
-        bytes32 digest = keccak256(
-            abi.encodePacked(
-                "\x19\x01",
-                DOMAIN_SEPARATOR,
-                structHash
-            )
-        );
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR, structHash));
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(USER_PRIVATE_KEY, digest);
 
-        ManagedWithdrawReportedStrategy.Signature memory signature = ManagedWithdrawReportedStrategy.Signature({
-            v: v,
-            r: r,
-            s: s
-        });
+        ManagedWithdrawReportedStrategy.Signature memory signature =
+            ManagedWithdrawReportedStrategy.Signature({v: v, r: r, s: s});
 
         // User needs to approve strategy to spend their shares
         vm.prank(user);
@@ -400,9 +348,10 @@ contract ManagedWithdrawReportedStrategyTest is BaseFountfiTest {
 
     function test_VerifySignatureInvalid() public {
         // Create a withdrawal request
-        ManagedWithdrawReportedStrategy.WithdrawalRequest memory request = ManagedWithdrawReportedStrategy.WithdrawalRequest({
-            shares: 1000 * 10**18,
-            minAssets: 900 * 10**6,
+        ManagedWithdrawReportedStrategy.WithdrawalRequest memory request = ManagedWithdrawReportedStrategy
+            .WithdrawalRequest({
+            shares: 1000 * 10 ** 18,
+            minAssets: 900 * 10 ** 6,
             owner: user,
             nonce: 1,
             to: user,
@@ -424,21 +373,12 @@ contract ManagedWithdrawReportedStrategyTest is BaseFountfiTest {
             )
         );
 
-        bytes32 digest = keccak256(
-            abi.encodePacked(
-                "\x19\x01",
-                DOMAIN_SEPARATOR,
-                structHash
-            )
-        );
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR, structHash));
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(wrongPrivateKey, digest);
 
-        ManagedWithdrawReportedStrategy.Signature memory signature = ManagedWithdrawReportedStrategy.Signature({
-            v: v,
-            r: r,
-            s: s
-        });
+        ManagedWithdrawReportedStrategy.Signature memory signature =
+            ManagedWithdrawReportedStrategy.Signature({v: v, r: r, s: s});
 
         // Execute redeem as manager - should fail due to invalid signature
         vm.prank(manager);
@@ -452,12 +392,10 @@ contract ManagedWithdrawReportedStrategyTest is BaseFountfiTest {
  * @notice Test contract to expose internal functions and add test helpers
  */
 contract TestManagedWithdrawReportedStrategy is ManagedWithdrawReportedStrategy {
-    function deployTokenPublic(
-        string calldata name_,
-        string calldata symbol_,
-        address asset_,
-        uint8 assetDecimals_
-    ) external returns (address) {
+    function deployTokenPublic(string calldata name_, string calldata symbol_, address asset_, uint8 assetDecimals_)
+        external
+        returns (address)
+    {
         return _deployToken(name_, symbol_, asset_, assetDecimals_);
     }
 
