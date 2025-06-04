@@ -11,23 +11,26 @@ import {ReportedStrategy} from "./ReportedStrategy.sol";
  */
 contract ManagedWithdrawReportedStrategy is ReportedStrategy {
 
-    // Custom errors
+    /*//////////////////////////////////////////////////////////////
+                            ERRORS
+    //////////////////////////////////////////////////////////////*/
+
     error WithdrawalRequestExpired();
     error WithdrawNonceReuse();
     error WithdrawInvalidSignature();
     error InvalidArrayLengths();
 
+    /*//////////////////////////////////////////////////////////////
+                            EVENTS
+    //////////////////////////////////////////////////////////////*/
+
     event WithdrawalNonceUsed(address indexed owner, uint96 nonce);
 
-    struct WithdrawalRequest {
-        uint256 shares;
-        uint256 minAssets;
-        address owner;
-        uint96 nonce;
-        address to;
-        uint96 expirationTime;
-    }
+    /*//////////////////////////////////////////////////////////////
+                            EIP-712 DATA
+    //////////////////////////////////////////////////////////////*/
 
+    /// @notice Signature argument struct
     struct Signature {
         uint8 v;
         bytes32 r;
@@ -46,8 +49,26 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
     // Domain separator for signatures
     bytes32 private DOMAIN_SEPARATOR;
 
+    /*//////////////////////////////////////////////////////////////
+                            STATE
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Struct to track withdrawal requests
+    struct WithdrawalRequest {
+        uint256 shares;
+        uint256 minAssets;
+        address owner;
+        uint96 nonce;
+        address to;
+        uint96 expirationTime;
+    }
+
     // Tracking of used nonces
     mapping(address => mapping(uint96 => bool)) public usedNonces;
+
+    /*//////////////////////////////////////////////////////////////
+                            INITIALIZATION
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Initialize the strategy with ManagedWithdrawRWA token
@@ -105,6 +126,10 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
 
         return address(newToken);
     }
+
+    /*//////////////////////////////////////////////////////////////
+                            REDEMPTION LOGIC
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Process a user-requested withdrawal
@@ -164,6 +189,14 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
         assets = ManagedWithdrawRWA(sToken).batchRedeemShares(shares, recipients, owners, minAssets);
     }
 
+    /*//////////////////////////////////////////////////////////////
+                            INTERNAL FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Validate a withdrawal request's arguments
+     * @param request The withdrawal request
+     */
     function _validateRedeem(WithdrawalRequest calldata request) internal view {
         if (request.expirationTime < block.timestamp) revert WithdrawalRequestExpired();
         if (usedNonces[request.owner][request.nonce]) revert WithdrawNonceReuse();

@@ -8,6 +8,10 @@ import {ReportedStrategy} from "./ReportedStrategy.sol";
  * @notice Extension of ReportedStrategy that deploys and configures GatedMintRWA tokens
  */
 contract GatedMintReportedStrategy is ReportedStrategy {
+    /*//////////////////////////////////////////////////////////////
+                            INITIALIZATION
+    //////////////////////////////////////////////////////////////*/
+
     /**
      * @notice Deploy a new GatedMintRWA token
      * @param name_ Name of the token

@@ -18,18 +18,18 @@ abstract contract BasicStrategy is IStrategy, CloneableRoleManaged {
     using SafeTransferLib for address;
 
     /*//////////////////////////////////////////////////////////////
-                            STATE
+                                STATE
     //////////////////////////////////////////////////////////////*/
 
-    // The registry field is inherited from CloneableRoleManaged
+    /// @notice The manager of the strategy
     address public manager;
+    /// @notice The asset of the strategy
     address public asset;
+    /// @notice The sToken of the strategy
     address public sToken;
-    address public controller;
 
-    // Initialization flags to prevent re-initialization
+    /// @notice Initialization flags to prevent re-initialization
     bool internal _initialized;
-    bool private _controllerConfigured;
 
     /*//////////////////////////////////////////////////////////////
                             INITIALIZATION

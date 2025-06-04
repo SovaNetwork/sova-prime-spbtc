@@ -7,7 +7,10 @@ pragma solidity 0.8.25;
  * @dev Defines the interface for strategies that manage tRWA token assets
  */
 interface IStrategy {
-    // Errors
+    /*//////////////////////////////////////////////////////////////
+                            ERRORS
+    //////////////////////////////////////////////////////////////*/
+
     error InvalidAddress();
     error InvalidRules();
     error Unauthorized();
@@ -16,7 +19,10 @@ interface IStrategy {
     error TokenAlreadyDeployed();
     error CannotCallToken();
 
-    // Events
+    /*//////////////////////////////////////////////////////////////
+                            EVENTS
+    //////////////////////////////////////////////////////////////*/
+
     event PendingAdminChange(address indexed oldAdmin, address indexed newAdmin);
     event AdminChange(address indexed oldAdmin, address indexed newAdmin);
     event NoAdminChange(address indexed oldAdmin, address indexed cancelledAdmin);
@@ -25,7 +31,11 @@ interface IStrategy {
     event StrategyInitialized(address indexed admin, address indexed manager, address indexed asset, address sToken);
     event ControllerConfigured(address indexed controller);
 
-    // Initialization
+
+    /*//////////////////////////////////////////////////////////////
+                            INITIALIZATION
+    //////////////////////////////////////////////////////////////*/
+
     function initialize(
         string calldata name,
         string calldata symbol,
@@ -36,11 +46,17 @@ interface IStrategy {
         bytes memory initData
     ) external;
 
-    // Role Management
+    /*//////////////////////////////////////////////////////////////
+                             MANAGEMENT
+    //////////////////////////////////////////////////////////////*/
+
     function manager() external view returns (address);
     function setManager(address newManager) external;
 
-    // Asset Management
+    /*//////////////////////////////////////////////////////////////
+                            VIEW FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
     function asset() external view returns (address);
     function sToken() external view returns (address);
     function balance() external view returns (uint256);

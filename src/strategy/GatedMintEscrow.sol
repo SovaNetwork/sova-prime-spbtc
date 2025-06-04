@@ -10,7 +10,10 @@ import {GatedMintRWA} from "../token/GatedMintRWA.sol";
  * @dev Deployed alongside each GatedMintRWA token to manage pending deposits
  */
 contract GatedMintEscrow {
-    // Custom errors
+    /*//////////////////////////////////////////////////////////////
+                            ERRORS
+    //////////////////////////////////////////////////////////////*/
+
     error Unauthorized();
     error DepositNotFound();
     error DepositNotPending();
@@ -18,38 +21,10 @@ contract GatedMintEscrow {
     error InvalidArrayLengths();
     error BatchFailed();
 
-    // Enum to track the deposit state
-    enum DepositState {
-        PENDING,
-        ACCEPTED,
-        REFUNDED
-    }
+    /*//////////////////////////////////////////////////////////////
+                            EVENTS
+    //////////////////////////////////////////////////////////////*/
 
-    struct PendingDeposit {
-        address depositor;      // Address that initiated the deposit
-        address recipient;      // Address that will receive shares if approved
-        uint256 assetAmount;    // Amount of assets deposited
-        uint96 expirationTime; // Timestamp after which deposit can be reclaimed
-        uint96 atRound;         // Round number at which the deposit was received
-        DepositState state;     // Current state of the deposit
-    }
-
-    // Immutable contract references
-    address public immutable token;     // The GatedMintRWA token
-    address public immutable asset;     // The underlying asset (e.g. USDC)
-    address public immutable strategy;  // The strategy contract
-
-    // Storage for deposits
-    mapping(bytes32 => PendingDeposit) public pendingDeposits;
-
-    // Accounting for total amounts
-    uint256 public totalPendingAssets;
-    mapping(address => uint256) public userPendingAssets;
-
-    // Tracking of batch acceptances
-    uint96 public currentRound;
-
-    // Events
     event DepositReceived(
         bytes32 indexed depositId,
         address indexed depositor,
@@ -63,6 +38,50 @@ contract GatedMintEscrow {
     event DepositReclaimed(bytes32 indexed depositId, address indexed depositor, uint256 assets);
     event BatchDepositsAccepted(bytes32[] depositIds, uint256 totalAssets);
     event BatchDepositsRefunded(bytes32[] depositIds, uint256 totalAssets);
+
+    /*//////////////////////////////////////////////////////////////
+                            STATE
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Enum to track the deposit state
+    enum DepositState {
+        PENDING,
+        ACCEPTED,
+        REFUNDED
+    }
+
+    /// @notice Struct to track pending deposit information
+    struct PendingDeposit {
+        address depositor;      // Address that initiated the deposit
+        address recipient;      // Address that will receive shares if approved
+        uint256 assetAmount;    // Amount of assets deposited
+        uint96 expirationTime; // Timestamp after which deposit can be reclaimed
+        uint96 atRound;         // Round number at which the deposit was received
+        DepositState state;     // Current state of the deposit
+    }
+
+
+    /// @notice The GatedMintRWA token address
+    address public immutable token;
+    /// @notice The underlying asset address
+    address public immutable asset;
+    /// @notice The strategy contract address
+    address public immutable strategy;
+
+    /// @notice Storage for deposits
+    mapping(bytes32 => PendingDeposit) public pendingDeposits;
+
+    /// @notice Accounting for total amounts
+    uint256 public totalPendingAssets;
+    /// @notice Accounting for user pending assets
+    mapping(address => uint256) public userPendingAssets;
+
+    /// @notice Tracking of batch acceptances
+    uint96 public currentRound;
+
+    /*//////////////////////////////////////////////////////////////
+                            CONSTRUCTOR
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Constructor
@@ -83,6 +102,10 @@ contract GatedMintEscrow {
         asset = _asset;
         strategy = _strategy;
     }
+
+    /*//////////////////////////////////////////////////////////////
+                            DEPOSIT FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Receive a deposit from the GatedMintRWA token
@@ -307,6 +330,10 @@ contract GatedMintEscrow {
 
         emit DepositReclaimed(depositId, deposit.depositor, deposit.assetAmount);
     }
+
+    /*//////////////////////////////////////////////////////////////
+                            VIEW FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Get the details of a pending deposit

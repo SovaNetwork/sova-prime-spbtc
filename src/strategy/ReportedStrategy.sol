@@ -12,27 +12,26 @@ import {FixedPointMathLib} from "solady/utils/FixedPointMathLib.sol";
  */
 contract ReportedStrategy is BasicStrategy {
     using FixedPointMathLib for uint256;
+
+    /*//////////////////////////////////////////////////////////////
+                            ERRORS
+    //////////////////////////////////////////////////////////////*/
+
+    error InvalidReporter();
+
+
+    /*//////////////////////////////////////////////////////////////
+                            EVENTS
+    //////////////////////////////////////////////////////////////*/
+
+    event SetReporter(address indexed reporter);
+
     /*//////////////////////////////////////////////////////////////
                             STATE
     //////////////////////////////////////////////////////////////*/
 
-    // Optional cache for the last reported balance
-    uint256 public lastReportedBalance;
-    uint256 public lastReportTimestamp;
-
-    // The reporter contract
+    /// @notice The reporter contract
     BaseReporter public reporter;
-
-
-    /*//////////////////////////////////////////////////////////////
-                            EVENTS & ERRORS
-    //////////////////////////////////////////////////////////////*/
-
-    // Errors
-    error InvalidReporter();
-
-    // Events
-    event SetReporter(address indexed reporter);
 
     /*//////////////////////////////////////////////////////////////
                             INITIALIZATION
@@ -66,6 +65,10 @@ contract ReportedStrategy is BasicStrategy {
         emit SetReporter(reporter_);
     }
 
+    /*//////////////////////////////////////////////////////////////
+                            ASSET MANAGEMENT
+    //////////////////////////////////////////////////////////////*/
+
     /**
      * @notice Get the balance of the strategy
      * @return The balance of the strategy in the underlying asset
@@ -86,6 +89,10 @@ contract ReportedStrategy is BasicStrategy {
         return abi.decode(reporter.report(), (uint256));
     }
 
+    /*//////////////////////////////////////////////////////////////
+                          REPORTING MANAGEMENT
+    //////////////////////////////////////////////////////////////*/
+
     /**
      * @notice Set the reporter contract
      * @param _reporter The new reporter contract
@@ -97,6 +104,4 @@ contract ReportedStrategy is BasicStrategy {
 
         emit SetReporter(_reporter);
     }
-
-
 }
