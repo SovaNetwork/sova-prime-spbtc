@@ -6,14 +6,28 @@ import {RoleManaged} from "../auth/RoleManaged.sol";
 import {ItRWA} from "../token/ItRWA.sol";
 import {IRegistry} from "../registry/IRegistry.sol";
 
+/**
+ * @title Conduit
+ * @notice Contract to collect deposits on behalf of tRWA contracts
+ * @dev This contract is used to collect deposits from users, and transfer them
+ *      to strategy contracts. This allows users to make single global approvals
+ *      to the Conduit contract, and then deposit into any strategy.
+ */
 contract Conduit is RoleManaged {
     using SafeTransferLib for address;
 
-    // Custom errors
+    /*//////////////////////////////////////////////////////////////
+                               ERRORS
+    //////////////////////////////////////////////////////////////*/
+
     error InvalidAmount();
     error InvalidToken();
     error InvalidDestination();
     error UnsupportedAsset();
+
+    /*//////////////////////////////////////////////////////////////
+                            INITIALIZATION
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Constructor
@@ -22,10 +36,14 @@ contract Conduit is RoleManaged {
      */
     constructor(address _roleManager) RoleManaged(_roleManager) {}
 
+    /*//////////////////////////////////////////////////////////////
+                               FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
     /**
-     * @dev Executes a token transfer on behalf of an approved tRWA contract.
-     * The user (`_from`) must have approved this Conduit contract to spend `_amount` of `_token`.
-     * Only callable by an `approvedTRWAContracts`.
+     * @notice Executes a token transfer on behalf of an approved tRWA contract.
+     * @dev The user (`_from`) must have approved this Conduit contract to spend `_amount` of `_token`.
+     *      Only callable by an `approvedTRWAContracts`.
      * @param token The address of the ERC20 token to transfer.
      * @param from The address of the user whose tokens are being transferred.
      * @param to The address to transfer the tokens to (e.g., the tRWA contract or a designated vault).
@@ -38,15 +56,11 @@ contract Conduit is RoleManaged {
         uint256 amount
     ) external returns (bool) {
         if (amount == 0) revert InvalidAmount();
-        if (IRegistry(registry()).allowedAssets(token) == 0) revert InvalidToken();
         if (!IRegistry(registry()).isStrategyToken(msg.sender)) revert InvalidDestination();
         if (ItRWA(msg.sender).asset() != token) revert UnsupportedAsset();
+        if (ItRWA(msg.sender).strategy() != to) revert InvalidDestination();
 
-        // The core logic: transfer tokens from 'from' to 'to'.
-        // This relies on the user ('from') having previously called approve() on the 'token'
-        // contract, granting this Conduit contract an allowance.
-
-        // Perform the transfer using SafeTransferLib
+        // Transfer tokens from the user to specific destination
         token.safeTransferFrom(from, to, amount);
 
         return true;
