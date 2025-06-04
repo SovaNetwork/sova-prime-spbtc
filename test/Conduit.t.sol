@@ -314,4 +314,21 @@ contract ConduitTest is BaseFountfiTest {
 
         vm.stopPrank();
     }
+
+    function test_CollectDeposit_InvalidDestination_WrongStrategy() public {
+        // Test case where the 'to' address doesn't match the strategy of the calling token
+        address wrongDestination = address(0x999);
+
+        vm.startPrank(address(trwaToken));
+
+        vm.expectRevert(Conduit.InvalidDestination.selector);
+        conduit.collectDeposit(
+            address(testToken),
+            alice,
+            wrongDestination,  // This doesn't match trwaToken.strategy()
+            DEPOSIT_AMOUNT
+        );
+
+        vm.stopPrank();
+    }
 }
