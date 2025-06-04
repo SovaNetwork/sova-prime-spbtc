@@ -12,20 +12,15 @@ contract RoleManager is OwnableRoles, IRoleManager {
     // --- Hierarchical Role Definitions ---
 
     // Define unique "flag" bits for roles that can manage others
-    uint256 internal constant FLAG_PROTOCOL_ADMIN = 1 << 0; // Bit 0 = Protocol Admin Authority
-    uint256 internal constant FLAG_STRATEGY_ADMIN = 1 << 1; // Bit 1 = Strategy Admin Authority
-    uint256 internal constant FLAG_RULES_ADMIN    = 1 << 2; // Bit 2 = Rules Admin Authority
+    uint256 public constant PROTOCOL_ADMIN          = 1 << 0; // Bit 0 = Protocol Admin Authority
+    uint256 public constant STRATEGY_ADMIN          = 1 << 1; // Bit 1 = Strategy Admin Authority
+    uint256 public constant RULES_ADMIN             = 1 << 2; // Bit 2 = Rules Admin Authority
 
-    // Operational Roles (just their base permission bit)
-    uint256 public constant STRATEGY_OPERATOR = 1 << 8; // Value: 1 << 8
-    uint256 public constant KYC_OPERATOR      = 1 << 9;      // Value: 1 << 9
+    uint256 public constant STRATEGY_OPERATOR       = 1 << 3; // Bit 3 = Strategy Operator Authority
+    uint256 public constant KYC_OPERATOR            = 1 << 4; // Bit 4 = KYC Operator Authority
 
-    // Domain Admin Roles (include their own flag + the base permissions they manage)
-    uint256 public constant STRATEGY_ADMIN = FLAG_STRATEGY_ADMIN | STRATEGY_OPERATOR; // Value: (1<<1) | (1<<8)
-    uint256 public constant RULES_ADMIN    = FLAG_RULES_ADMIN    | KYC_OPERATOR;      // Value: (1<<2) | (1<<9)
-
-    // Protocol Admin Role (includes its flag + the admin roles it manages)
-    uint256 public constant PROTOCOL_ADMIN = FLAG_PROTOCOL_ADMIN | STRATEGY_ADMIN | RULES_ADMIN;
+    uint256 public constant STRATEGY_ANY            = PROTOCOL_ADMIN | STRATEGY_ADMIN | STRATEGY_OPERATOR;
+    uint256 public constant RULES_ANY               = PROTOCOL_ADMIN | RULES_ADMIN | KYC_OPERATOR;
 
     // --- Management Hierarchy State ---
 
