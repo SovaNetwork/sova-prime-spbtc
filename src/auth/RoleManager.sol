@@ -9,31 +9,7 @@ import {IRoleManager} from "./IRoleManager.sol";
 /// @dev Uses hierarchical bitmasks for core roles. Owner/PROTOCOL_ADMIN have override.
 contract RoleManager is OwnableRoles, IRoleManager {
 
-    // --- Hierarchical Role Definitions ---
-
-    // Define unique "flag" bits for roles that can manage others
-    uint256 public constant PROTOCOL_ADMIN          = 1 << 0; // Bit 0 = Protocol Admin Authority
-    uint256 public constant STRATEGY_ADMIN          = 1 << 1; // Bit 1 = Strategy Admin Authority
-    uint256 public constant RULES_ADMIN             = 1 << 2; // Bit 2 = Rules Admin Authority
-
-    uint256 public constant STRATEGY_OPERATOR       = 1 << 3; // Bit 3 = Strategy Operator Authority
-    uint256 public constant KYC_OPERATOR            = 1 << 4; // Bit 4 = KYC Operator Authority
-
-    uint256 public constant STRATEGY_ANY            = PROTOCOL_ADMIN | STRATEGY_ADMIN | STRATEGY_OPERATOR;
-    uint256 public constant RULES_ANY               = PROTOCOL_ADMIN | RULES_ADMIN | KYC_OPERATOR;
-
-    // --- Management Hierarchy State ---
-
-    /// @notice Mapping from a target role to the specific (admin) role required to manage it.
-    /// @dev If a role maps to 0, only owner or PROTOCOL_ADMIN can manage it.
-    mapping(uint256 => uint256) public roleAdminRole;
-
-    // --- Registry ---
-
-    address public registry;
-
-    // Custom errors
-    error InvalidRole();
+    // --- Events ---
 
     /// @notice Emitted when a role is granted to a user
     /// @param user The address of the user
@@ -53,30 +29,56 @@ contract RoleManager is OwnableRoles, IRoleManager {
     /// @param sender The address that performed the change.
     event RoleAdminSet(uint256 indexed targetRole, uint256 indexed adminRole, address indexed sender);
 
+    // --- Custom Errors ---
+
+    /// @notice Emitted for 0 role in arguments
+    error InvalidRole();
+
+    // --- Hierarchical Role Definitions ---
+
+    // Define unique "flag" bits for roles that can manage others
+    uint256 public constant PROTOCOL_ADMIN          = 1 << 1; // Bit 1 = Protocol Admin Authority
+    uint256 public constant STRATEGY_ADMIN          = 1 << 2; // Bit 2 = Strategy Admin Authority
+    uint256 public constant RULES_ADMIN             = 1 << 3; // Bit 3 = Rules Admin Authority
+
+    uint256 public constant STRATEGY_OPERATOR       = 1 << 4; // Bit 4 = Strategy Operator Authority
+    uint256 public constant KYC_OPERATOR            = 1 << 5; // Bit 5 = KYC Operator Authority
+
+    uint256 public constant STRATEGY_ANY            = PROTOCOL_ADMIN | STRATEGY_ADMIN | STRATEGY_OPERATOR;
+    uint256 public constant RULES_ANY               = PROTOCOL_ADMIN | RULES_ADMIN | KYC_OPERATOR;
+
+    // --- Management Hierarchy State ---
+
+    /// @notice Mapping from a target role to the specific (admin) role required to manage it.
+    /// @dev If a role maps to 0, only owner or PROTOCOL_ADMIN can manage it.
+    mapping(uint256 => uint256) public roleAdminRole;
+
+    // --- Registry ---
+
+    address public registry;
+
     /// @notice Constructor that sets up the initial roles
     /// @dev Initializes the owner and grants PROTOCOL_ADMIN role to the deployer
     constructor() {
-        if (msg.sender == address(0)) revert InvalidRole();
-
         _initializeOwner(msg.sender);
-        // Grant PROTOCOL_ADMIN (which includes sub-admin/operator bits) to deployer
-        _grantRoles(msg.sender, PROTOCOL_ADMIN);
+
+        // Grant all roles to deployer
+        uint256 rolesAll = PROTOCOL_ADMIN | STRATEGY_ANY | RULES_ANY;
+        _grantRoles(msg.sender, rolesAll);
 
         // Emit event for easier off-chain tracking
-        emit RoleGranted(msg.sender, PROTOCOL_ADMIN, address(0));
+        emit RoleGranted(msg.sender, rolesAll, address(0));
 
         // --- Set initial management hierarchy ---
         // Use internal helper or direct writes + emits
         _setInitialAdminRole(STRATEGY_OPERATOR, STRATEGY_ADMIN);
         _setInitialAdminRole(KYC_OPERATOR, RULES_ADMIN);
-        // Add initial setup for other roles if needed (e.g., DATA_PROVIDER managed by REPORTER_ADMIN)
-        // _setInitialAdminRole(DATA_PROVIDER, REPORTER_ADMIN);
+        _setInitialAdminRole(STRATEGY_ADMIN, PROTOCOL_ADMIN);
+        _setInitialAdminRole(RULES_ADMIN, PROTOCOL_ADMIN);
     }
 
-    /**
-     * @notice Initialize the role manager
-     * @param _registry The address of the registry
-     */
+    /// @notice Initialize the role manager
+    /// @param _registry The address of the registry
     function initializeRegistry(address _registry) external {
         if (msg.sender != owner()) revert Unauthorized();
         if (registry != address(0)) revert AlreadyInitialized();
@@ -164,7 +166,6 @@ contract RoleManager is OwnableRoles, IRoleManager {
 
         // Prevent managing PROTOCOL_ADMIN itself via this mechanism or setting role 0
         if (targetRole == 0 || targetRole == PROTOCOL_ADMIN) revert InvalidRole();
-        // Optional: Add validation for adminRole format if desired
 
         roleAdminRole[targetRole] = adminRole;
 
