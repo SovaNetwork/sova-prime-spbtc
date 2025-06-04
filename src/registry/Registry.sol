@@ -16,28 +16,40 @@ import {IRegistry} from "./IRegistry.sol";
 contract Registry is IRegistry, RoleManaged {
     using LibClone for address;
 
-    // Singleton contracts
-    address public immutable conduit;
+    /*//////////////////////////////////////////////////////////////
+                            STATE
+    //////////////////////////////////////////////////////////////*/
 
-    // Registry mappings
+    /// @notice Singleton contracts
+    address public immutable override conduit;
+
+    /// @notice Registry mappings
     mapping(address => bool) public override allowedStrategies;
     mapping(address => bool) public override allowedHooks;
 
     /// @notice asset => decimals (0 if not allowed)
     mapping(address => uint8) public override allowedAssets;
 
-    // Deployed contracts registry
-    address[] private _allStrategies;
+    /// @notice Deployed contracts registry
+    address[] public override allStrategies;
     mapping(address => bool) public override isStrategy;
+
+    /*//////////////////////////////////////////////////////////////
+                            CONSTRUCTOR
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Constructor
      * @param _roleManager Address of the role manager - singleton contract for managing protocol roles
      */
     constructor(address _roleManager) RoleManaged(_roleManager) {
-        // Initialize the conduit with the registry address
+        // Initialize the conduit with the role manager address
         conduit = address(new Conduit(_roleManager));
     }
+
+    /*//////////////////////////////////////////////////////////////
+                        REGISTRATION FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Register a strategy implementation template
@@ -72,7 +84,43 @@ contract Registry is IRegistry, RoleManaged {
         emit SetAsset(asset, decimals);
     }
 
-     /**
+    /*//////////////////////////////////////////////////////////////
+                            VIEW FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Check if a token is a tRWA token
+     * @param token Address of the token
+     * @return bool True if the token is a tRWA token, false otherwise
+     */
+    function isStrategyToken(address token) external view override returns (bool) {
+        ItRWA tokenContract = ItRWA(token);
+        address strategy = address(tokenContract.strategy());
+
+        return isStrategy[strategy];
+    }
+
+    /**
+     * @notice Get all tRWA tokens
+     * @return tokens Array of tRWA token addresses
+     */
+    function allStrategyTokens() external view override returns (address[] memory tokens) {
+        tokens = new address[](_allStrategies.length);
+
+        for (uint256 i = 0; i < _allStrategies.length;) {
+            tokens[i] = IStrategy(_allStrategies[i]).sToken();
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                            DEPLOYMENT FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
+    /**
      * @notice Deploy a new strategy and its associated tRWA token
      * @param _strategyImpl Address of the strategy implementation
      * @param _name Token name
@@ -116,41 +164,5 @@ contract Registry is IRegistry, RoleManaged {
         isStrategy[strategy] = true;
 
         emit Deploy(strategy, token, _asset);
-    }
-
-    /**
-     * @notice Check if a token is a tRWA token
-     * @param token Address of the token
-     * @return bool True if the token is a tRWA token, false otherwise
-     */
-    function isStrategyToken(address token) external view override returns (bool) {
-        ItRWA tokenContract = ItRWA(token);
-        address strategy = address(tokenContract.strategy());
-
-        return isStrategy[strategy];
-    }
-
-    /**
-     * @notice Get all tRWA tokens
-     * @return tokens Array of tRWA token addresses
-     */
-    function allStrategyTokens() external view override returns (address[] memory tokens) {
-        tokens = new address[](_allStrategies.length);
-
-        for (uint256 i = 0; i < _allStrategies.length;) {
-            tokens[i] = IStrategy(_allStrategies[i]).sToken();
-
-            unchecked {
-                ++i;
-            }
-        }
-    }
-
-    /**
-     * @notice Get all strategies
-     * @return strategies Array of strategy addresses
-     */
-    function allStrategies() external view override returns (address[] memory strategies) {
-        return _allStrategies;
     }
 }

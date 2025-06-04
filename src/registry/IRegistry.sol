@@ -1,20 +1,37 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
+/**
+ * @title IRegistry
+ * @notice Interface for the Registry contract
+ * @dev The Registry contract is used to register strategies, hooks, and assets
+ *      and to deploy new strategies and tokens.
+ */
 interface IRegistry {
-    // Events
+    /*//////////////////////////////////////////////////////////////
+                               ERRORS
+    //////////////////////////////////////////////////////////////*/
+
+    error ZeroAddress();
+    error UnauthorizedStrategy();
+    error UnauthorizedHook();
+    error UnauthorizedAsset();
+    error InvalidInitialization();
+
+    /*//////////////////////////////////////////////////////////////
+                                EVENTS
+    //////////////////////////////////////////////////////////////*/
+
     event SetStrategy(address indexed implementation, bool allowed);
     event SetHook(address indexed implementation, bool allowed);
     event SetAsset(address indexed asset, uint8 decimals);
     event Deploy(address indexed strategy, address indexed sToken, address indexed asset);
     event DeployWithController(address indexed strategy, address indexed sToken, address indexed controller);
 
-    // Errors
-    error ZeroAddress();
-    error UnauthorizedStrategy();
-    error UnauthorizedHook();
-    error UnauthorizedAsset();
-    error InvalidInitialization();
+
+    /*//////////////////////////////////////////////////////////////
+                            VIEW FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
 
     function conduit() external view returns (address);
 
@@ -26,6 +43,10 @@ interface IRegistry {
     function allStrategies() external view returns (address[] memory);
     function isStrategyToken(address token) external view returns (bool);
     function allStrategyTokens() external view returns (address[] memory tokens);
+
+    /*//////////////////////////////////////////////////////////////
+                            DEPLOYMENT
+    //////////////////////////////////////////////////////////////*/
 
     function deploy(
         address _implementation,
