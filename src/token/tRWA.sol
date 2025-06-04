@@ -31,6 +31,7 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
     error ReorderDuplicateIndex();
     error HookHasProcessedOperations();
     error HookIndexOutOfBounds();
+    error InvalidDecimals();
 
     // Operation type identifiers
     bytes32 public constant OP_DEPOSIT = keccak256("DEPOSIT_OPERATION");
@@ -78,6 +79,7 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
         // Validate configuration parameters
         if (asset_ == address(0)) revert InvalidAddress();
         if (strategy_ == address(0)) revert InvalidAddress();
+        if (assetDecimals_ > 18) revert InvalidDecimals();
 
         _name = name_;
         _symbol = symbol_;
