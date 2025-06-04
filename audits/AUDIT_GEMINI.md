@@ -158,7 +158,7 @@ Severity levels are assigned based on potential impact and likelihood:
     *   If essential for upgradability, it must be restricted to specific, audited target contracts (e.g., via a whitelist controlled by a higher authority like `PROTOCOL_ADMIN` or a DAO with a timelock) and should not be generally available to the strategy `manager`.
     *   For strategies intended as base contracts, providing open `delegatecall` is extremely dangerous.
 *   **How to Trigger:** A malicious or compromised `manager` calls `delegateCall(malicious_contract_address, malicious_calldata)`.
-* **Resolution:** Fixed in `9094f99562e20528315fe482570c3d7ba0809909`.
+*   **Resolution:** Fixed in `9094f99562e20528315fe482570c3d7ba0809909`.
 
 #### RS-1: Manager can unilaterally change the reporter in `ReportedStrategy`
 *   **Contract:** `src/strategy/ReportedStrategy.sol`
@@ -174,7 +174,7 @@ Severity levels are assigned based on potential impact and likelihood:
     *   This function should be protected by a higher authority (e.g., `PROTOCOL_ADMIN` from `RoleManager`) or be subject to a timelock and governance approval process.
     *   Ideally, the reporter for a deployed strategy should be immutable or governed by a robust, decentralized mechanism.
 *   **How to Trigger:** The `manager` calls `setReporter(malicious_reporter_address)`. The `malicious_reporter_address` then reports a manipulated `pricePerShare`.
-* **Resolution:** Acknowledged, this is by design, strategies are designed to be centralized.
+*   **Resolution:** Acknowledged, this is by design, strategies are designed to be centralized.
 
 #### CON-1: `Conduit` receives `Registry` address instead of `RoleManager` address
 *   **Contract:** `src/registry/Registry.sol` (constructor, line 31) and `src/conduit/Conduit.sol` (constructor, line 21)
@@ -190,7 +190,7 @@ Severity levels are assigned based on potential impact and likelihood:
       conduit = address(new Conduit(roleManager));    // NEW (roleManager is the state var from RoleManaged)
       ```
 *   **How to Trigger:** This is a configuration error at deployment. Any call to `Conduit.collectDeposit` will likely revert. `Conduit.rescueERC20` will not have its intended role-based protection.
-* **Resolution**:
+*   **Resolution**: Fixed in `7a00f384e3d2645994e90ad868a6d216d5ee9981`.
 
 ### High Severity Findings
 
@@ -206,7 +206,7 @@ Severity levels are assigned based on potential impact and likelihood:
         *   Consider a timelock mechanism for price changes exceeding certain thresholds.
     *   These measures would make the reporter more robust against errors and malicious manipulation by an authorized updater.
 *   **How to Trigger:** An `authorizedUpdater` calls `update(manipulated_price, "some_source")`.
-* **Resolution:** Acknowledged, this is by design, oracles tied to strategies are designed to be centralized.
+*   **Resolution:** Acknowledged, this is by design, oracles tied to strategies are designed to be centralized.
 
 
 ### Medium Severity Findings
@@ -220,6 +220,7 @@ Severity levels are assigned based on potential impact and likelihood:
     *   Refactor `batchRedeemShares` to call the overridden `_withdraw(strategy, to[i], owner[i], assets[i], shares[i]);` for each redemption in the loop. The `_collect(totalAssets)` call should still happen once at the beginning of `batchRedeemShares`. This would ensure that withdrawal hooks are consistently applied.
     *   Alternatively, if bypassing hooks in batch operations is intentional, this should be very clearly documented and the security implications understood. Given the pattern in single `redeem`, consistent hook execution is likely intended.
 *   **How to Trigger:** The `strategy` calls `ManagedWithdrawRWA(sToken).batchRedeemShares(...)`. Any `OP_WITHDRAW` hooks registered on the token will not be executed for these redemptions.
+*   **Resolution:** Fixed in `6448af12ca66d609031cb70a4e65ac92299542ed`.
 
 #### REG-1: Privilege Escalation via `onlyRoles` in `Registry` Admin Functions
 *   **Contract:** `src/registry/Registry.sol` and `src/auth/LibRoleManaged.sol`
@@ -266,18 +267,21 @@ Severity levels are assigned based on potential impact and likelihood:
 *   **Line:** 9
 *   **Description:** The event `TRWAContractApprovalChanged(address indexed trwaContract, bool isApproved)` is defined but never emitted in the `Conduit` contract. The authorization logic in `collectDeposit` relies on `IRegistry.isStrategyToken()`.
 *   **Recommendation:** Remove the unused event if it's not part of a future planned feature.
+*   **Resolution**: Fixed in `bfd899b5c6187b47433279054160a9bfee951afb`.
 
 #### MWRS-1: `DOMAIN_SEPARATOR` calculation in `ManagedWithdrawRWAStrategy`
 *   **Contract:** `src/strategy/ManagedWithdrawRWAStrategy.sol`
 *   **Lines:** 58-66 (`initialize` function)
 *   **Description:** The EIP-712 `DOMAIN_SEPARATOR` is calculated in the `initialize` function, which is appropriate for cloned contracts. It correctly includes `block.chainid` and `address(this)`.
 *   **Consideration:** If the strategy bytecode were to be used across different chains or cloned without re-initialization (which is not the pattern here), `DOMAIN_SEPARATOR` would become invalid. For the current deployment pattern (clone then initialize), this is secure. Making it `immutable` isn't directly possible if `block.chainid` is used from initializer context.
+*   **Resolution**: None needed.
 
 #### MWRS-2: `WithdrawalNonceUsed` event not emitted in `ManagedWithdrawRWAStrategy.batchRedeem`
 *   **Contract:** `src/strategy/ManagedWithdrawRWAStrategy.sol`
 *   **Lines:** 125 (inside loop of `batchRedeem`)
 *   **Description:** The `batchRedeem` function marks nonces as used (`usedNonces[requests[i].owner][requests[i].nonce] = true;`) but does not emit the `WithdrawalNonceUsed` event for each nonce, unlike the single `redeem` function.
 *   **Recommendation:** For consistency in off-chain monitoring and tracing, consider emitting `WithdrawalNonceUsed(requests[i].owner, requests[i].nonce)` within the loop of `batchRedeem`.
+*   **Resolution**: Fixed in `99bfc45f32592f9b5404633f4a5d7b8dc88b1a68`.
 
 #### KYCH-1: Behavior for mints/burns (address(0)) in `KycRulesHook`
 *   **Contract:** `src/hooks/KycRulesHook.sol`
@@ -285,60 +289,74 @@ Severity levels are assigned based on potential impact and likelihood:
 *   **Description:** The `isAllowed()` logic defaults to `false` for addresses not explicitly allowed. If `onBeforeTransfer` is active (e.g. for `OP_TRANSFER` hooks), it will check `isAllowed(address(0))`. This means mints (`from == address(0)`) and burns (`to == address(0)`) would be blocked unless `address(0)` is explicitly allowed or handled.
 *   **Consideration:** This is often desired behavior for KYC hooks to prevent anonymous circumvention. However, if `OP_DEPOSIT` and `OP_WITHDRAW` hooks are already handling the relevant parties for mints/burns, this might be redundant or overly restrictive for the generic `OP_TRANSFER`. The current design seems to favor explicit allowance for all parties, including for the zero address if it were to be part of a transfer.
 *   **Recommendation:** No change needed if this restrictive behavior for `address(0)` in general transfers is intended. If mints/burns via `OP_TRANSFER` hooks should specifically bypass sender/receiver checks for `address(0)` (while still checking the actual user in `onBeforeDeposit`/`onBeforeWithdraw`), then `_checkSenderAndReceiver` could add conditions like `if (from == address(0) || to == address(0)) return IHook.HookOutput({approved: true, reason: ""});`.
+*   **Resolution**: Fixed in `2bde5d99988ddb92c46e4c786420d596550873ba`.
 
 #### Linter Errors: Solady Imports
 *   **Files:** `test/ManagedWithdrawRWA.t.sol`, `src/token/tRWA.sol`
 *   **Description:** Both files show linter errors like `Source "solady/tokens/ERC4626.sol" not found`.
 *   **Consideration:** This is a development environment configuration issue (e.g., missing remappings in `foundry.toml` or `remappings.txt`) and not a contract bug. However, it hinders local development and testing.
 *   **Recommendation:** Ensure Solady imports are correctly resolved in the development environment (e.g., `solady/=node_modules/solady/src/` or similar remapping).
+*   **Resolution**: Acknowledged, irrelevant.
 
 #### Gas Considerations for Loops and External Calls
 *   **Contracts:** Various (e.g., `KycRulesHook` batch functions, `Registry.allStrategyTokens`, `GatedMintRWA.getUserPendingDeposits`, hook processing loops in `tRWA`).
 *   **Description:** Several functions iterate over arrays or make multiple external calls within a loop.
 *   **Consideration:** These can lead to high gas costs or exceed block gas limits if array sizes are very large. This is a common trade-off for batch functionality or comprehensive checks.
 *   **Recommendation:** Document gas implications. For user-facing functions that might iterate, consider pagination or limiting array lengths if feasible. For admin functions, gas limits are usually less of a concern.
+*   **Resolution:** Acknowleged.
 
 #### Centralization of Roles
 *   **Contracts:** `RoleManager`, `Registry`, `ReportedStrategy`, `PriceOracleReporter`, `KycRulesHook`, `GatedMintEscrow`.
 *   **Description:** The system relies on several privileged roles (`PROTOCOL_ADMIN`, `STRATEGY_ADMIN`, `RULES_ADMIN`, `KYC_OPERATOR`, strategy `manager`, `PriceOracleReporter` `owner`).
 *   **Consideration:** The security of the protocol is heavily dependent on the security of the accounts holding these roles and the processes for managing them (e.g., multi-sigs, timelocks, DAOs).
 *   **Recommendation:** Implement robust operational security for all privileged accounts. Clearly document the powers of each role.
+*   **Resolution:** Acknowledged, operational security is considered.
 
 #### Trust in `strategy` for `GatedMintEscrow` decisions
 *   **Contract:** `src/strategy/GatedMintEscrow.sol`
 *   **Description:** The `strategy` contract has the sole authority to accept or refund deposits held in the `GatedMintEscrow`.
 *   **Consideration:** This is a core design choice for "gated" minting. Users must trust the entity or mechanism controlling the `strategy`'s decisions.
 *   **Recommendation:** The governance and control mechanisms for the `strategy`'s actions regarding deposit approval/rejection should be transparent and secure.
+*   **Resolution:** Acknowledged, this is by design.
 
 #### Unused Error: `NotManager()` in `ManagedWithdrawRWA`
 *   **Contract:** `src/token/ManagedWithdrawRWA.sol`
 *   **Line:** 13
 *   **Description:** The error `NotManager()` is defined but not used. Access control uses `onlyStrategy` from `tRWA`, which reverts with `NotStrategyAdmin()`.
 *   **Recommendation:** Remove the unused error.
+*   **Resolution:** Fixed in `bfd899b5c6187b47433279054160a9bfee951afb`.
 
 #### Unused Error: `OwnerCannotRenounceAdmin()` in `RoleManager`
 *   **Contract:** `src/auth/RoleManager.sol`
 *   **Line:** 37
 *   **Description:** The error `OwnerCannotRenounceAdmin()` is defined but not used.
 *   **Recommendation:** Remove the unused error.
+*   **Resolution:** Fixed in `bfd899b5c6187b47433279054160a9bfee951afb`.
+
 
 #### `view` on Reverting `ManagedWithdrawRWA.withdraw`
 *   **Contract:** `src/token/ManagedWithdrawRWA.sol`
 *   **Lines:** 32-34
 *   **Description:** The overridden `withdraw` function is marked `view` but its only purpose is to `revert UseRedeem()`. While not functionally incorrect, `view` is unconventional for a function that would normally modify state and is overriding a state-changing function.
 *   **Recommendation:** Consider removing `view`. It doesn't save gas as it reverts. The `onlyStrategy` modifier is also present; if the intent is no one can call it, simply reverting is sufficient.
+*   **Resolution:** Acknowledged.
+
 
 #### Precision/Dust in Batch Operations
 *   **Contracts:** `ManagedWithdrawRWA.batchRedeemShares`, `GatedMintRWA.batchMintShares`
 *   **Description:** Proportional distribution of assets/shares in batch operations using integer division (`(a * b) / c`) can lead to dust amounts if `b` is not perfectly divisible by `c` after multiplication by `a`. The sum of distributed amounts might be slightly less than the total.
 *   **Consideration:** This is a common and usually acceptable behavior. The dust amounts remain in the contract (e.g., `ManagedWithdrawRWA` for `batchRedeemShares` if dust assets are left from `_collect`, or unminted dust shares for `batchMintShares`).
 *   **Recommendation:** This is generally acceptable. Ensure this behavior is understood.
+*   **Resolution:** Acknowleged.
+
 
 #### tRWA `_decimalsOffset()` Precision and `AssetDecimalsTooHigh` Error
 *   **Contract:** `src/token/tRWA.sol`
 *   **Lines:** 25, 127-130
 *   **Description:** `_decimalsOffset` calculation could underflow if `_assetDecimals > 18` and `_DEFAULT_UNDERLYING_DECIMALS` (18) is the minuend. Solady's ERC4626 has a `_MAX_DECIMALS` check (30), but the specific interaction with `_decimalsOffset` assuming shares are always 18 decimals wasn't fully clear. The `AssetDecimalsTooHigh` error is unused.
 *   **Recommendation:** Verify that Solady's ERC4626 handles `_assetDecimals > 18` gracefully such that `_decimalsOffset` remains safe and conversions are correct, or add an explicit check in `tRWA` constructor like `require(_assetDecimals <= 18, "Asset decimals > share decimals (18)")`.
+*   **Resolution:** Fixed in `bfa427cab0cad7c80d941d907d625dcacdb37fc6`.
+
 
 #### tRWA Hook Processing and Reentrancy Considerations
 *   **Contract:** `src/token/tRWA.sol`
@@ -346,6 +364,7 @@ Severity levels are assigned based on potential impact and likelihood:
 *   **Description:** Hooks are processed sequentially. `hasProcessedOperations` is set after hook execution.
 *   **Consideration:** While the pattern seems generally robust, external calls within a hook before `hasProcessedOperations` is set could pose reentrancy risks if not carefully designed. The atomicity of setting `hasProcessedOperations` (not set if hook reverts) is likely correct.
 *   **Recommendation:** Emphasize careful design and auditing of any hook contracts, especially those making external calls.
+*   **Resolution:** Acknowledged, re-entrancy eliminated in `0de35041e802f5b7ab878905162fcd12f38d2e85`.
 
 #### tRWA `_beforeTokenTransfer` Hook Logic with `OP_DEPOSIT`/`OP_WITHDRAW`
 *   **Contract:** `src/token/tRWA.sol`
@@ -353,17 +372,20 @@ Severity levels are assigned based on potential impact and likelihood:
 *   **Description:** `OP_TRANSFER` hooks run via `_beforeTokenTransfer` for all transfers, including mints (deposits) and burns (withdrawals). This means they run *in addition* to `OP_DEPOSIT` or `OP_WITHDRAW` hooks.
 *   **Consideration:** This could be redundant or lead to unexpected interactions if hooks are not designed for this dual execution.
 *   **Recommendation:** Ensure hook designers are aware of this behavior. Hooks for `OP_TRANSFER` should be idempotent or carefully consider their actions during mint/burn events.
+*   **Resolution:** Acknowledged, currently designed use cases are transfer-only.
 
 #### tRWA `_name` and `_symbol` Immutability
 *   **Contract:** `src/token/tRWA.sol`
 *   **Description:** Token `_name` and `_symbol` are private but not immutable, set in the constructor.
 *   **Recommendation:** If not intended to change, making them `immutable` offers stronger guarantees and minor gas savings.
+*   **Resolution:** Disputed, non-primitive types cannot be immutable.
 
 #### RoleManager `registry` Address Usage
 *   **Contract:** `src/auth/RoleManager.sol`
 *   **Line:** 34 (`registry` address)
 *   **Description:** The `RoleManager` stores a `registry` address set via `initializeRegistry`. This address is not used directly within `RoleManager.sol` itself.
 *   **Clarification:** It is exposed via `LibRoleManaged.registry()`, which calls `roleManager.registry()`. This makes it available to contracts inheriting `RoleManaged`. This is a clear and useful pattern.
+*   **Resolution:** None needed.
 
 ## 6. Conclusion
 
