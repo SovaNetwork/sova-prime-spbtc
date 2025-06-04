@@ -235,6 +235,7 @@ Severity levels are assigned based on potential impact and likelihood:
     *   Update `Registry.sol` admin functions to use this `onlyAllRoles` modifier with the appropriate admin roles (e.g., `onlyAllRoles(roleManager.PROTOCOL_ADMIN())` for `setAsset`).
     *   Alternatively, for roles like `PROTOCOL_ADMIN`, check for the specific top-level flag (e.g., `FLAG_PROTOCOL_ADMIN`) directly using `hasAllRoles`.
 *   **How to Trigger:** A user with a partial, lower-level permission that is part of a composite admin role (e.g., `STRATEGY_OPERATOR` when `PROTOCOL_ADMIN` is required) calls a protected admin function in `Registry`.
+*   **Resolution:** Fixed in `5c6e77282ae0a23f9fe411a19c5d1b9c21f241a2`.
 
 ### Low Severity Findings
 
@@ -245,6 +246,7 @@ Severity levels are assigned based on potential impact and likelihood:
 *   **Impact:** While highly unlikely for legitimate user interactions, this could theoretically lead to the second identical deposit in the same block either being rejected by the escrow (if it checks for duplicate active IDs) or causing tracking issues. The `depositIds` array in the token would also store duplicate IDs.
 *   **Recommendation:** For enhanced robustness, consider including a user-provided nonce or a contract-incremented sequence number per user in the `depositId` hash. However, given the inclusion of `block.timestamp` and other parameters, the practical risk of collision is very low.
 *   **How to Trigger:** A user (or multiple users coordinated) submits two or more identical deposit requests (same token, recipient, amount) that are processed in the same block.
+*   **Resolution:** Fixed in `9d9a9a55d6f05207cf4b12a2873b94f3dab2a4fc`.
 
 ### Informational Findings & Other Considerations
 
@@ -254,6 +256,7 @@ Severity levels are assigned based on potential impact and likelihood:
 *   **Description:** The primary modifier `onlyRoles` uses `hasAnyRole`. This means if a composite role (e.g., `STRATEGY_ADMIN` which is `FLAG_STRATEGY_ADMIN | STRATEGY_OPERATOR`) is passed, a user possessing *any* of the underlying bits will pass.
 *   **Consideration:** This choice has widespread implications. If the intent for functions guarded by, for example, `onlyRoles(roleManager.STRATEGY_ADMIN())` is that the caller must be a "full" Strategy Admin, then `hasAllRoles` is more appropriate. If `hasAnyRole` is intentional (requiring just one of the permissions in the bundle), this should be clearly documented and roles designed accordingly. This was raised as Medium severity in REG-1 where it has direct security impact. Here, it's noted as a general design point for other uses.
 *   **Recommendation:** Evaluate all uses of `onlyRoles`. Consider providing both `onlyHasAnyRole` and `onlyHasAllRoles` modifiers in `LibRoleManaged` for clarity and flexibility.
+*   **Resolution:** Fixed in `5c6e77282ae0a23f9fe411a19c5d1b9c21f241a2`.
 
 #### CON-2: `Conduit.rescueERC20` permission check issues
 *   **Contract:** `src/conduit/Conduit.sol`
@@ -261,6 +264,7 @@ Severity levels are assigned based on potential impact and likelihood:
 *   **Description:** The `rescueERC20` function is affected by CON-1 (misconfigured `roleManager`). Assuming CON-1 is fixed, this function uses `onlyRoles(roleManager.PROTOCOL_ADMIN())`. Due to LIBRM-1, this will use `hasAnyRole`.
 *   **Impact:** If CON-1 is fixed, a user with only partial `PROTOCOL_ADMIN` permissions might be able to call `rescueERC20`.
 *   **Recommendation:** After fixing CON-1, ensure `rescueERC20` uses a strict check for full `PROTOCOL_ADMIN` privileges (e.g., using an `onlyAllRoles` modifier as suggested in REG-1).
+*   **Resolution:** Fixed in `5c6e77282ae0a23f9fe411a19c5d1b9c21f241a2`.
 
 #### CON-3: Unused event `TRWAContractApprovalChanged` in `Conduit`
 *   **Contract:** `src/conduit/Conduit.sol`
