@@ -3,7 +3,7 @@ pragma solidity 0.8.25;
 
 import {BaseHook} from "./BaseHook.sol";
 import {RoleManaged} from "../auth/RoleManaged.sol";
-import {IHook} from "./IHook.sol"; // Added for HOOK_SUCCESS etc.
+import {IHook} from "./IHook.sol";
 
 /**
  * @title KycRulesHook
@@ -11,22 +11,36 @@ import {IHook} from "./IHook.sol"; // Added for HOOK_SUCCESS etc.
  * @dev Uses allow/deny lists to determine if transfers are permitted
  */
 contract KycRulesHook is BaseHook, RoleManaged {
-    // Errors
+    /*//////////////////////////////////////////////////////////////
+                                ERRORS
+    //////////////////////////////////////////////////////////////*/
+
     error ZeroAddress();
     error AddressAlreadyDenied();
     error InvalidArrayLength();
 
-    // Allow and deny lists
-    mapping(address => bool) public isAddressAllowed;
-    mapping(address => bool) public isAddressDenied;
+    /*//////////////////////////////////////////////////////////////
+                                EVENTS
+    //////////////////////////////////////////////////////////////*/
 
-    // Events
     event AddressAllowed(address indexed account, address indexed operator);
     event AddressDenied(address indexed account, address indexed operator);
     event AddressRestrictionRemoved(address indexed account, address indexed operator);
     event BatchAddressAllowed(uint256 count, address indexed operator);
     event BatchAddressDenied(uint256 count, address indexed operator);
     event BatchAddressRestrictionRemoved(uint256 count, address indexed operator);
+
+    /*//////////////////////////////////////////////////////////////
+                                STATE
+    //////////////////////////////////////////////////////////////*/
+
+    // Allow and deny lists
+    mapping(address => bool) public isAddressAllowed;
+    mapping(address => bool) public isAddressDenied;
+
+    /*//////////////////////////////////////////////////////////////
+                              CONSTRUCTOR
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Constructor
@@ -36,6 +50,10 @@ contract KycRulesHook is BaseHook, RoleManaged {
         BaseHook("KycRulesHook-1.0")
         RoleManaged(_roleManager)
     {}
+
+    /*//////////////////////////////////////////////////////////////
+                            WHITELIST MANAGEMENT
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Allow an address to transfer/receive tokens
@@ -151,6 +169,10 @@ contract KycRulesHook is BaseHook, RoleManaged {
         emit BatchAddressRestrictionRemoved(length, msg.sender);
     }
 
+    /*//////////////////////////////////////////////////////////////
+                            VIEW FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
     /**
      * @notice Check if an address is allowed to transfer/receive tokens
      * @param account Address to check
@@ -165,6 +187,10 @@ contract KycRulesHook is BaseHook, RoleManaged {
         // If explicitly allowed, return true
         return true;
     }
+
+    /*//////////////////////////////////////////////////////////////
+                            HOOK LOGIC
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Hook executed before a transfer operation
@@ -221,6 +247,12 @@ contract KycRulesHook is BaseHook, RoleManaged {
         return _checkSenderAndReceiver(user, receiver);
     }
 
+    /**
+     * @notice Internal function to check if both sender and receiver are allowed
+     * @param from Address sending tokens
+     * @param to Address receiving tokens
+     * @return IHook.HookOutput Result of the check
+     */
     function _checkSenderAndReceiver(address from, address to) internal view returns (IHook.HookOutput memory) {
         if (from != address(0) && !isAllowed(from)) {
             return IHook.HookOutput({

@@ -4,9 +4,11 @@ pragma solidity 0.8.25;
 import {OwnableRoles} from "solady/auth/OwnableRoles.sol";
 import {IRoleManager} from "./IRoleManager.sol";
 
-/// @title RoleManager
-/// @notice Central role management contract for the Fountfi protocol
-/// @dev Uses hierarchical bitmasks for core roles. Owner/PROTOCOL_ADMIN have override.
+/**
+ * @title RoleManager
+ * @notice Central role management contract for the Fountfi protocol
+ * @dev Uses hierarchical bitmasks for core roles. Owner/PROTOCOL_ADMIN have override.
+ */
 contract RoleManager is OwnableRoles, IRoleManager {
     /*//////////////////////////////////////////////////////////////
                             ERRORS
@@ -106,7 +108,7 @@ contract RoleManager is OwnableRoles, IRoleManager {
     }
 
     /*//////////////////////////////////////////////////////////////
-                            FUNCTIONS
+                            PUBLIC FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
     /**
@@ -150,6 +152,31 @@ contract RoleManager is OwnableRoles, IRoleManager {
     }
 
     /**
+     * @notice Sets the specific role required to manage a target role
+     * @dev Requires the caller to have the PROTOCOL_ADMIN role or be the owner
+     * @param targetRole The role whose admin role is to be set
+     * @param adminRole The role that will be required to manage the targetRole
+     */
+    function setRoleAdmin(uint256 targetRole, uint256 adminRole) external virtual {
+        // Authorization: Only Owner or PROTOCOL_ADMIN
+        // Use hasAllRoles for the strict check against the composite PROTOCOL_ADMIN role
+        if (msg.sender != owner() && !hasAllRoles(msg.sender, PROTOCOL_ADMIN)) {
+             revert Unauthorized();
+        }
+
+        // Prevent managing PROTOCOL_ADMIN itself via this mechanism or setting role 0
+        if (targetRole == 0 || targetRole == PROTOCOL_ADMIN) revert InvalidRole();
+
+        roleAdminRole[targetRole] = adminRole;
+
+        emit RoleAdminSet(targetRole, adminRole, msg.sender);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                            INTERNAL FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
+    /**
      * @notice Internal function to check if an address can manage a specific role
      * @dev Leverages hierarchical bitmasks. Manager must possess all target role bits plus additional bits.
      * @param manager The address to check for management permission
@@ -180,27 +207,6 @@ contract RoleManager is OwnableRoles, IRoleManager {
         // management is denied (as owner/PROTOCOL_ADMIN cases were handled).
         // This covers roles not explicitly configured or roles whose admin was set to 0.
         return false;
-    }
-
-    /**
-     * @notice Sets the specific role required to manage a target role
-     * @dev Requires the caller to have the PROTOCOL_ADMIN role or be the owner
-     * @param targetRole The role whose admin role is to be set
-     * @param adminRole The role that will be required to manage the targetRole
-     */
-    function setRoleAdmin(uint256 targetRole, uint256 adminRole) external virtual {
-        // Authorization: Only Owner or PROTOCOL_ADMIN
-        // Use hasAllRoles for the strict check against the composite PROTOCOL_ADMIN role
-        if (msg.sender != owner() && !hasAllRoles(msg.sender, PROTOCOL_ADMIN)) {
-             revert Unauthorized();
-        }
-
-        // Prevent managing PROTOCOL_ADMIN itself via this mechanism or setting role 0
-        if (targetRole == 0 || targetRole == PROTOCOL_ADMIN) revert InvalidRole();
-
-        roleAdminRole[targetRole] = adminRole;
-
-        emit RoleAdminSet(targetRole, adminRole, msg.sender);
     }
 
     /**

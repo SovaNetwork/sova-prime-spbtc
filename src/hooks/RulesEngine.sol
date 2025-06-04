@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
+
 import {RoleManaged} from "../auth/RoleManaged.sol";
 import {BaseHook} from "./BaseHook.sol";
 import {IHook} from "./IHook.sol";
+
 /**
  * @title RulesEngine
  * @notice Implementation of a hook that manages and evaluates a collection of sub-hooks
@@ -10,11 +12,17 @@ import {IHook} from "./IHook.sol";
  */
 contract RulesEngine is BaseHook, RoleManaged {
     /*//////////////////////////////////////////////////////////////
-                            STATE
+                            ERRORS
     //////////////////////////////////////////////////////////////*/
 
-    // Role for managing hooks
-    // uint256 public constant HOOK_ADMIN_ROLE = 1 << 0; // This might conflict with BaseHook or RoleManaged roles. Let's use existing admin roles.
+    error InvalidHookAddress();
+    error HookAlreadyExists(bytes32 hookId);
+    error HookNotFound(bytes32 hookId);
+    error HookEvaluationFailed(bytes32 hookId, bytes4 reasonSelector);
+
+    /*//////////////////////////////////////////////////////////////
+                            EVENTS
+    //////////////////////////////////////////////////////////////*/
 
     // Events
     event HookAdded(bytes32 indexed hookId, address indexed hookAddress, uint256 priority);
@@ -23,24 +31,23 @@ contract RulesEngine is BaseHook, RoleManaged {
     event HookEnabled(bytes32 indexed hookId);
     event HookDisabled(bytes32 indexed hookId);
 
-    // Errors
-    error InvalidHookAddress();
-    error HookAlreadyExists(bytes32 hookId);
-    error HookNotFound(bytes32 hookId);
-    // error EmptyHook(); // Hooks are evaluated per implemented function, so appliesTo is not strictly needed here.
-    error HookEvaluationFailed(bytes32 hookId, bytes4 reasonSelector);
 
+    /*//////////////////////////////////////////////////////////////
+                            STATE
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Hook information
     struct HookInfo {
-        address hookAddress; // Renamed from 'rule'
+        address hookAddress;
         uint256 priority;
         bool active;
     }
 
-    // All hooks by ID
-    mapping(bytes32 => HookInfo) private _hooks; // Renamed from _rules
+    /// @notice All hooks by ID
+    mapping(bytes32 => HookInfo) private _hooks;
 
-    // All hook IDs
-    bytes32[] private _hookIds; // Renamed from _ruleIds
+    /// @notice All hook IDs
+    bytes32[] private _hookIds;
 
     /*//////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -158,7 +165,7 @@ contract RulesEngine is BaseHook, RoleManaged {
      * @notice Get all registered hook identifiers
      * @return Array of hook identifiers
      */
-    function getAllHookIds() external view returns (bytes32[] memory) { // Renamed from getAllRules
+    function getAllHookIds() external view returns (bytes32[] memory) {
         return _hookIds;
     }
 
@@ -175,7 +182,7 @@ contract RulesEngine is BaseHook, RoleManaged {
      * @param hookId Identifier of the hook
      * @return Hook contract address
      */
-    function getHookAddress(bytes32 hookId) external view returns (address) { // Renamed from getRuleAddress
+    function getHookAddress(bytes32 hookId) external view returns (address) {
         return _hooks[hookId].hookAddress;
     }
 
@@ -184,7 +191,7 @@ contract RulesEngine is BaseHook, RoleManaged {
      * @param hookId Identifier of the hook
      * @return Priority value
      */
-    function getHookPriority(bytes32 hookId) external view returns (uint256) { // Renamed from getRulePriority
+    function getHookPriority(bytes32 hookId) external view returns (uint256) {
         return _hooks[hookId].priority;
     }
 

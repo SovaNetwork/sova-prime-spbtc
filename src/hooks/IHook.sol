@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-
 /**
  * @title IHook
  * @notice Interface for operation hooks in the tRWA system
@@ -9,6 +8,10 @@ pragma solidity 0.8.25;
  * and can approve or reject the operation with a reason
  */
 interface IHook {
+    /*//////////////////////////////////////////////////////////////
+                            DATA STRUCTS
+    //////////////////////////////////////////////////////////////*/
+
     /**
      * @title HookOutput
      * @notice Structure representing the result of a hook evaluation
@@ -20,6 +23,10 @@ interface IHook {
         string reason;
     }
 
+    /*//////////////////////////////////////////////////////////////
+                            VIEW FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
     /**
      * @notice Returns the unique identifier for this hook
      * @return Hook identifier
@@ -30,7 +37,11 @@ interface IHook {
      * @notice Returns the human readable name of this hook
      * @return Hook name
      */
-    function hookName() external view returns (string memory);
+    function name() external view returns (string memory);
+
+    /*//////////////////////////////////////////////////////////////
+                            HOOK LOGIC
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Called before a deposit operation

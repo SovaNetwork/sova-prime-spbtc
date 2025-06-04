@@ -5,7 +5,8 @@ import {RoleManager} from "./RoleManager.sol";
 
 /**
  * @title LibRoleManaged
- * @notice Library for role-managed contracts
+ * @notice Logical library for role-managed contracts. Can be inherited by
+ *          both deployable and cloneable versions of RoleManaged.
  */
 abstract contract LibRoleManaged {
     /*//////////////////////////////////////////////////////////////
@@ -13,12 +14,6 @@ abstract contract LibRoleManaged {
     //////////////////////////////////////////////////////////////*/
 
     error UnauthorizedRole(address caller, uint256 roleRequired);
-
-    /*//////////////////////////////////////////////////////////////
-                              EVENTS
-    //////////////////////////////////////////////////////////////*/
-
-    event RoleCheckPassed(address indexed user, uint256 indexed role);
 
     /*//////////////////////////////////////////////////////////////
                               STATE
@@ -48,7 +43,6 @@ abstract contract LibRoleManaged {
             revert UnauthorizedRole(msg.sender, role);
         }
 
-        emit RoleCheckPassed(msg.sender, role);
         _;
     }
 }

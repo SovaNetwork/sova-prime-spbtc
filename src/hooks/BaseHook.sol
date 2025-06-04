@@ -3,8 +3,24 @@ pragma solidity 0.8.25;
 
 import {IHook} from "./IHook.sol";
 
+/**
+ * @title BaseHook
+ * @notice Base contract for all hooks
+ * @dev This contract is used to implement the IHook interface
+ *      and provides a base implementation for all hooks.
+ *      It is not meant to be used as a standalone contract.
+ */
 abstract contract BaseHook is IHook {
-    string public name;
+    /*//////////////////////////////////////////////////////////////
+                            STATE
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Human readable name of the hook
+    string public override name;
+
+    /*//////////////////////////////////////////////////////////////
+                            INITIALIZATION
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Constructor
@@ -14,21 +30,21 @@ abstract contract BaseHook is IHook {
         name = _name;
     }
 
+    /*//////////////////////////////////////////////////////////////
+                            VIEW FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
     /**
      * @notice Returns the unique identifier for this hook
      * @return Hook identifier
      */
-    function hookId() external view returns (bytes32) {
-        return keccak256(abi.encodePacked(name));
+    function hookId() external view override returns (bytes32) {
+        return keccak256(abi.encodePacked(name, address(this)));
     }
 
-    /**
-     * @notice Returns the human readable name of this hook
-     * @return Hook name
-     */
-    function hookName() external view returns (string memory) {
-        return name;
-    }
+    /*//////////////////////////////////////////////////////////////
+                            HOOK LOGIC
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Called before a deposit operation
