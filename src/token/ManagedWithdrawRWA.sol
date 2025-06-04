@@ -93,43 +93,61 @@ contract ManagedWithdrawRWA is tRWA {
         address[] calldata to,
         address[] calldata owner,
         uint256[] calldata minAssets
-    ) external onlyStrategy returns (uint256[] memory assets) {
-        // Validate array lengths match
-        if (shares.length != to.length || to.length != owner.length || owner.length != minAssets.length) {
+    ) external onlyStrategy nonReentrant returns (uint256[] memory assets) {
+        // Validate array lengths
+        uint256 len = shares.length;
+        if (len != to.length || len != owner.length || len != minAssets.length) {
             revert InvalidArrayLengths();
         }
 
-        // Calculate total assets based on the sum of all shares in the batch
-        uint256 totalAssets = 0;
-        uint256 totalShares = 0;
-        for (uint256 i = 0; i < shares.length; i++) {
-            totalAssets += previewRedeem(shares[i]);
-            totalShares += shares[i];
+        // Prepare memory array and accumulate total assets required
+        assets = new uint256[](len);
+        uint256 totalAssets;
+
+        for (uint256 i; i < len; ++i) {
+            // Validate share amount for each owner
+            if (shares[i] > maxRedeem(owner[i])) revert RedeemMoreThanMax();
+
+            uint256 amt = previewRedeem(shares[i]);
+            if (amt < minAssets[i]) revert InsufficientOutputAssets();
+
+            assets[i] = amt;
+            totalAssets += amt;
         }
 
-        // Collect assets from strategy
+        // Pull all assets from the strategy in a single transfer
         _collect(totalAssets);
 
-        assets = new uint256[](shares.length);
+        // Cache the OP_WITHDRAW hooks once to save gas / avoid stack depth issues
+        HookInfo[] storage opHooks = operationHooks[OP_WITHDRAW];
 
-        // Process each withdrawal, based on prorated assets
-        // First pass: burn all shares (EFFECTS)
-        for (uint256 i = 0; i < shares.length; i++) {
+        // Execute each individual withdrawal (includes hooks)
+        for (uint256 i; i < len; ++i) {
             uint256 userShares = shares[i];
-            address userOwner = owner[i];
-            // Use higher precision calculation to minimize rounding errors
-            uint256 scaledAssets = totalAssets * ONE;
-            uint256 recipientAssets = (userShares * scaledAssets / totalShares) / ONE;
-            assets[i] = recipientAssets;
+            uint256 userAssets = assets[i];
+            address recipient = to[i];
+            address shareOwner = owner[i];
 
-            if (recipientAssets < minAssets[i]) revert InsufficientOutputAssets();
+            // Call hooks (same logic as in _withdraw)
+            for (uint256 j; j < opHooks.length; ++j) {
+                IHook.HookOutput memory hookOut = opHooks[j].hook.onBeforeWithdraw(
+                    address(this),
+                    strategy,
+                    userAssets,
+                    recipient,
+                    shareOwner
+                );
+                if (!hookOut.approved) revert HookCheckFailed(hookOut.reason);
+                opHooks[j].hasProcessedOperations = true;
+            }
 
-            if (strategy != userOwner) _spendAllowance(userOwner, strategy, userShares);
-            _beforeWithdraw(recipientAssets, userShares);
-            _burn(userOwner, userShares);
+            // Accounting and transfers (mirrors _withdraw logic sans nonReentrant)
+            if (strategy != shareOwner) _spendAllowance(shareOwner, strategy, userShares);
+            _beforeWithdraw(userAssets, userShares);
+            _burn(shareOwner, userShares);
 
-            SafeTransferLib.safeTransfer(asset(), to[i], recipientAssets);
-            emit Withdraw(strategy, to[i], userOwner, recipientAssets, userShares);
+            SafeTransferLib.safeTransfer(asset(), recipient, userAssets);
+            emit Withdraw(strategy, recipient, shareOwner, userAssets, userShares);
         }
     }
 
