@@ -86,7 +86,6 @@ contract ReportedStrategy is BasicStrategy {
         return abi.decode(reporter.report(), (uint256));
     }
 
-
     /**
      * @notice Set the reporter contract
      * @param _reporter The new reporter contract

@@ -28,9 +28,9 @@ contract DeployStrategyScript is Script {
         // string memory json = vm.readFile(path);
 
         // Parse addresses from the JSON file
-        address registryAddress = 0x9D9f34369AaC65f1506D57a0Ce57757C2821429f;
-        address usdTokenAddress = 0x0864c69458072126424029192f0250a123C6a10C;
-        address priceOracleAddress = 0x42A54c50e941f438d85bDdf4216666fB6876aB18;
+        address registryAddress = 0xB2873092aFB2826118A4fb990241d4776598E207;
+        address usdTokenAddress = 0x69866D1f674d86D028A9B95eBfd5A2d3dd9AA35B;
+        address priceOracleAddress = 0x67edFBF8c1D46992D415631f6D65De9Cf94cde7D;
 
         // Initialize contract references
         registry = Registry(registryAddress);

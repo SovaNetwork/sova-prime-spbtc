@@ -23,8 +23,9 @@ contract DeployProtocolScript is Script {
     KycRulesHook public kycRulesHook;
     PriceOracleReporter public priceOracle;
     ReportedStrategy public reportedStrategyImplementation;
-    GatedMintReportedStrategy public gatedMintStrategyImplementation;
+    // GatedMintReportedStrategy public gatedMintStrategyImplementation;
     ManagedWithdrawReportedStrategy public managedWithdrawStrategyImplementation;
+    Conduit public conduit;
 
     function setUp() public {}
 
@@ -67,6 +68,8 @@ contract DeployProtocolScript is Script {
         registry = new Registry(address(roleManager));
         console.log("Registry deployed.");
 
+        conduit = Conduit(registry.conduit());
+
         // Link registry to role manager
         roleManager.initializeRegistry(address(registry));
 
@@ -95,9 +98,9 @@ contract DeployProtocolScript is Script {
         reportedStrategyImplementation = new ReportedStrategy();
         console.log("ReportedStrategy implementation deployed.");
 
-        // Deploy GatedMintReportedStrategy implementation to be used as a template
-        gatedMintStrategyImplementation = new GatedMintReportedStrategy();
-        console.log("GatedMintReportedStrategy implementation deployed.");
+        // // Deploy GatedMintReportedStrategy implementation to be used as a template
+        // gatedMintStrategyImplementation = new GatedMintReportedStrategy();
+        // console.log("GatedMintReportedStrategy implementation deployed.");
 
         // Deploy ManagedWithdrawReportedStrategy implementation to be used as a template
         managedWithdrawStrategyImplementation = new ManagedWithdrawReportedStrategy();
@@ -105,7 +108,7 @@ contract DeployProtocolScript is Script {
 
         // Register both strategy implementations in the registry
         registry.setStrategy(address(reportedStrategyImplementation), true);
-        registry.setStrategy(address(gatedMintStrategyImplementation), true);
+        // registry.setStrategy(address(gatedMintStrategyImplementation), true);
         registry.setStrategy(address(managedWithdrawStrategyImplementation), true);
         console.log("Registry configured with strategy implementations.");
     }
@@ -134,10 +137,11 @@ contract DeployProtocolScript is Script {
         console.log("Role Manager:", address(roleManager));
         console.log("Mock USD Token:", address(usdToken));
         console.log("Registry:", address(registry));
+        console.log("Conduit:", address(conduit);
         console.log("KYC Rules Hook:", address(kycRulesHook));
         console.log("Price Oracle Reporter:", address(priceOracle));
         console.log("ReportedStrategy Implementation:", address(reportedStrategyImplementation));
-        console.log("GatedMintReportedStrategy Implementation:", address(gatedMintStrategyImplementation));
+        // console.log("GatedMintReportedStrategy Implementation:", address(gatedMintStrategyImplementation));
         console.log("ManagedWithdrawReportedStrategy Implementation:", address(managedWithdrawStrategyImplementation));
     }
 }

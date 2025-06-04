@@ -36,7 +36,7 @@ contract Registry is IRegistry, RoleManaged {
      */
     constructor(address _roleManager) RoleManaged(_roleManager) {
         // Initialize the conduit with the registry address
-        conduit = address(new Conduit(address(this)));
+        conduit = address(new Conduit(_roleManager));
     }
 
     /**
