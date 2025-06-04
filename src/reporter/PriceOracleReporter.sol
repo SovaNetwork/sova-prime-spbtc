@@ -10,33 +10,38 @@ import {Ownable} from "solady/auth/Ownable.sol";
  */
 contract PriceOracleReporter is BaseReporter, Ownable {
     /*//////////////////////////////////////////////////////////////
-                            STATE
+                                ERRORS
     //////////////////////////////////////////////////////////////*/
 
-    // Current round number
-    uint256 public currentRound;
-
-    // The current price per share (in wei, 18 decimals)
-    uint256 public pricePerShare;
-
-    // The timestamp of the last update
-    uint256 public lastUpdateAt;
-
-    // Mapping of authorized updaters
-    mapping(address => bool) public authorizedUpdaters;
+    error InvalidSource();
 
     /*//////////////////////////////////////////////////////////////
-                            EVENTS & ERRORS
+                                EVENTS
     //////////////////////////////////////////////////////////////*/
 
     event PricePerShareUpdated(uint256 roundNumber, uint256 pricePerShare, string source);
     event SetUpdater(address indexed updater, bool isAuthorized);
 
-    // Errors
-    error InvalidSource();
 
     /*//////////////////////////////////////////////////////////////
-                            CONSTRUCTOR
+                                STATE
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Current round number
+    uint256 public currentRound;
+
+    /// @notice The current price per share (in wei, 18 decimals)
+    uint256 public pricePerShare;
+
+    /// @notice The timestamp of the last update
+    uint256 public lastUpdateAt;
+
+    /// @notice Mapping of authorized updaters
+    mapping(address => bool) public authorizedUpdaters;
+
+
+    /*//////////////////////////////////////////////////////////////
+                               CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
     /**
@@ -53,7 +58,7 @@ contract PriceOracleReporter is BaseReporter, Ownable {
     }
 
     /*//////////////////////////////////////////////////////////////
-                            PUBLIC FUNCTIONS
+                            REPORTING FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
     /**
