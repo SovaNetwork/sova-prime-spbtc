@@ -5,6 +5,7 @@ import {ERC4626} from "solady/tokens/ERC4626.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solady/utils/FixedPointMathLib.sol";
 import {ReentrancyGuard} from "solady/utils/ReentrancyGuard.sol";
+
 import {IHook} from "../hooks/IHook.sol";
 import {IStrategy} from "../strategy/IStrategy.sol";
 import {ItRWA} from "./ItRWA.sol";
@@ -22,7 +23,10 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
     using FixedPointMathLib for uint256;
     using SafeTransferLib for address;
 
-    // Custom errors
+    /*//////////////////////////////////////////////////////////////
+                            ERRORS
+    //////////////////////////////////////////////////////////////*/
+
     error HookCheckFailed(string reason);
     error NotStrategyAdmin();
     error HookAddressZero();
@@ -33,33 +37,50 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
     error HookIndexOutOfBounds();
     error InvalidDecimals();
 
-    // Operation type identifiers
+    /*//////////////////////////////////////////////////////////////
+                            EVENTS
+    //////////////////////////////////////////////////////////////*/
+
+    // Events for operation hooks
+    event HookAdded(bytes32 indexed operationType, address indexed hookAddress, uint256 index);
+    event HookRemoved(bytes32 indexed operationType, address indexed hookAddress);
+    event HooksReordered(bytes32 indexed operationType, uint256[] newIndices);
+
+    /*//////////////////////////////////////////////////////////////
+                            TOKEN STATE
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Internal storage for token metadata
+    string private _symbol;
+    string private _name;
+    address private immutable _asset;
+    uint8 private immutable _assetDecimals;
+
+    /// @notice The strategy contract
+    address public immutable strategy;
+
+    /*//////////////////////////////////////////////////////////////
+                            HOOK STATE
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Operation type identifiers
     bytes32 public constant OP_DEPOSIT = keccak256("DEPOSIT_OPERATION");
     bytes32 public constant OP_WITHDRAW = keccak256("WITHDRAW_OPERATION");
     bytes32 public constant OP_TRANSFER = keccak256("TRANSFER_OPERATION");
 
-    // Hook information structure
+    /// @notice Hook information structure
     struct HookInfo {
         IHook hook;
         uint256 addedAtBlock;
         bool hasProcessedOperations;
     }
 
-    // Internal storage for token metadata
-    string private _symbol;
-    string private _name;
-    address private immutable _asset;
-    uint8 private immutable _assetDecimals;
-
-    // Logic contracts
-    address public immutable strategy;
+    /// @notice Mapping of operation type to hook information
     mapping(bytes32 => HookInfo[]) public operationHooks;
 
-    // Events for withdrawal queueing
-    event WithdrawalQueued(address indexed user, uint256 assets, uint256 shares);
-    event HookAdded(bytes32 indexed operationType, address indexed hookAddress, uint256 index);
-    event HookRemoved(bytes32 indexed operationType, address indexed hookAddress);
-    event HooksReordered(bytes32 indexed operationType, uint256[] newIndices);
+    /*//////////////////////////////////////////////////////////////
+                            CONSTRUCTOR
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Contract constructor
@@ -88,6 +109,10 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
         strategy = strategy_;
     }
 
+    /*//////////////////////////////////////////////////////////////
+                            VIEW FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
     /**
      * @notice Returns the name of the token
      * @return Name of the token
@@ -112,18 +137,9 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
         return _asset;
     }
 
-    /**
-     * @notice Returns the total amount of the underlying asset managed by the Vault.
-     * @dev This value is expected by the base ERC4626 implementation to be in terms of asset's native decimals.
-     * @return Total assets in terms of _asset
-     */
-    function totalAssets() public view override returns (uint256) {
-        // Use the strategy's balance which implements price-per-share calculation
-        return IStrategy(strategy).balance();
-    }
 
     /*//////////////////////////////////////////////////////////////
-                            ERC4626 CONFIGURATION
+                    ERC4626 OVERRIDE VIEW FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
     /**
@@ -141,9 +157,18 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
         return _DEFAULT_UNDERLYING_DECIMALS - _assetDecimals;
     }
 
+    /**
+     * @notice Returns the total amount of the underlying asset managed by the Vault.
+     * @dev This value is expected by the base ERC4626 implementation to be in terms of asset's native decimals.
+     * @return Total assets in terms of _asset
+     */
+    function totalAssets() public view override returns (uint256) {
+        // Use the strategy's balance which implements price-per-share calculation
+        return IStrategy(strategy).balance();
+    }
 
     /*//////////////////////////////////////////////////////////////
-                            ERC4626 OVERRIDES
+                    ERC4626 OVERRIDE LOGIC FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
     /**
@@ -215,22 +240,10 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
         emit Withdraw(by, to, owner, assets, shares);
     }
 
-    /**
-     * @notice Collect assets from the strategy
-     * @param assets The amount of assets to collect
-     */
-    function _collect(uint256 assets) internal {
-        SafeTransferLib.safeTransferFrom(asset(), strategy, address(this), assets);
-    }
 
     /*//////////////////////////////////////////////////////////////
                         HOOK MANAGEMENT FUNCTIONS
     //////////////////////////////////////////////////////////////*/
-
-    modifier onlyStrategy() {
-        if (msg.sender != strategy) revert NotStrategyAdmin();
-        _;
-    }
 
     /**
      * @notice Adds a new operation hook to the end of the list for a specific operation type.
@@ -314,6 +327,10 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
         emit HooksReordered(operationType, newOrderIndices);
     }
 
+    /*//////////////////////////////////////////////////////////////
+                            HOOK VIEW FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
     /**
      * @notice Gets all registered hook addresses for a specific operation type.
      * @param operationType The type of operation.
@@ -371,5 +388,22 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
                 }
             }
         }
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                           INTERNAL FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Collect assets from the strategy
+     * @param assets The amount of assets to collect
+     */
+    function _collect(uint256 assets) internal {
+        SafeTransferLib.safeTransferFrom(asset(), strategy, address(this), assets);
+    }
+
+    modifier onlyStrategy() {
+        if (msg.sender != strategy) revert NotStrategyAdmin();
+        _;
     }
 }

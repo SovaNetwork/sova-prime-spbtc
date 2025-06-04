@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {tRWA} from "./tRWA.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
+import {tRWA} from "./tRWA.sol";
 import {IStrategy} from "../strategy/IStrategy.sol";
 import {IHook} from "../hooks/IHook.sol";
 
@@ -11,13 +11,20 @@ import {IHook} from "../hooks/IHook.sol";
  * @notice Extension of tRWA that implements manager-initiated withdrawals
  */
 contract ManagedWithdrawRWA is tRWA {
+    /*//////////////////////////////////////////////////////////////
+                            ERRORS
+    //////////////////////////////////////////////////////////////*/
+
     error UseRedeem();
     error InvalidArrayLengths();
     error InsufficientOutputAssets();
 
-    uint256 private constant ONE = 1e18;
-  /**
-     * @notice Contract constructor
+    /*//////////////////////////////////////////////////////////////
+                            CONSTRUCTOR
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Constructor
      * @param name_ Token name
      * @param symbol_ Token symbol
      * @param asset_ Asset address
@@ -32,32 +39,10 @@ contract ManagedWithdrawRWA is tRWA {
         address strategy_
     ) tRWA(name_, symbol_, asset_, assetDecimals_, strategy_) {}
 
-    /**
-     * @notice Withdraw assets from the strategy - must be called by the manager
-     * @dev Use redeem instead - all accounting is share-based
-     * @return shares The amount of shares burned
-     */
-    function withdraw(uint256, address, address) public view override onlyStrategy returns (uint256) {
-       revert UseRedeem();
-    }
 
-    /**
-     * @notice Redeem shares from the strategy - must be called by the manager
-     * @param shares The amount of shares to redeem
-     * @param to The address to send the assets to
-     * @param owner The owner of the shares
-     * @return assets The amount of assets received
-     */
-    function redeem(uint256 shares, address to, address owner) public override onlyStrategy returns (uint256 assets) {
-        if (shares > maxRedeem(owner)) revert RedeemMoreThanMax();
-        assets = previewRedeem(shares);
-
-        // Collect assets from strategy
-        _collect(assets);
-
-        // User must token-approve strategy for withdrawal
-        _withdraw(strategy, to, owner, assets, shares);
-    }
+    /*//////////////////////////////////////////////////////////////
+                            REDEMPTION FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Redeem shares from the strategy with minimum assets check
@@ -149,6 +134,37 @@ contract ManagedWithdrawRWA is tRWA {
             SafeTransferLib.safeTransfer(asset(), recipient, userAssets);
             emit Withdraw(strategy, recipient, shareOwner, userAssets, userShares);
         }
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                            ERC4626 OVERRIDES
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Withdraw assets from the strategy - must be called by the manager
+     * @dev Use redeem instead - all accounting is share-based
+     * @return shares The amount of shares burned
+     */
+    function withdraw(uint256, address, address) public view override onlyStrategy returns (uint256) {
+       revert UseRedeem();
+    }
+
+    /**
+     * @notice Redeem shares from the strategy - must be called by the manager
+     * @param shares The amount of shares to redeem
+     * @param to The address to send the assets to
+     * @param owner The owner of the shares
+     * @return assets The amount of assets received
+     */
+    function redeem(uint256 shares, address to, address owner) public override onlyStrategy returns (uint256 assets) {
+        if (shares > maxRedeem(owner)) revert RedeemMoreThanMax();
+        assets = previewRedeem(shares);
+
+        // Collect assets from strategy
+        _collect(assets);
+
+        // User must token-approve strategy for withdrawal
+        _withdraw(strategy, to, owner, assets, shares);
     }
 
     /**

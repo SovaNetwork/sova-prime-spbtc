@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {tRWA} from "./tRWA.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
+import {tRWA} from "./tRWA.sol";
 import {IHook} from "../hooks/IHook.sol";
 import {IRegistry} from "../registry/IRegistry.sol";
 import {RoleManaged} from "../auth/RoleManaged.sol";
@@ -15,29 +15,19 @@ import {GatedMintEscrow} from "../strategy/GatedMintEscrow.sol";
  * @dev Deposits are first collected and stored in Escrow; shares are only minted upon acceptance
  */
 contract GatedMintRWA is tRWA {
-    // Custom errors
+    /*//////////////////////////////////////////////////////////////
+                            ERRORS
+    //////////////////////////////////////////////////////////////*/
+
     error NotEscrow();
     error EscrowNotSet();
     error InvalidExpirationPeriod();
     error InvalidArrayLengths();
 
-    uint256 private constant ONE = 1e18;
+    /*//////////////////////////////////////////////////////////////
+                            EVENTS
+    //////////////////////////////////////////////////////////////*/
 
-    // Deposit tracking (IDs only - Escrow has full state)
-    bytes32[] public depositIds;
-    mapping(address => bytes32[]) public userDepositIds;
-
-    // Monotonically-increasing sequence number to guarantee unique depositIds
-    uint256 private sequenceNum;
-
-    // Deposit expiration time (in seconds) - default to 7 days
-    uint256 public depositExpirationPeriod = 7 days;
-    uint256 public constant MAX_DEPOSIT_EXPIRATION_PERIOD = 30 days;
-
-    // The escrow contract that holds assets and manages deposits
-    address public immutable escrow;
-
-    // Events
     event DepositPending(
         bytes32 indexed depositId,
         address indexed depositor,
@@ -53,6 +43,41 @@ contract GatedMintRWA is tRWA {
         uint256 totalShares
     );
 
+    /*//////////////////////////////////////////////////////////////
+                            STATE
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Deposit tracking (IDs only - Escrow has full state)
+    bytes32[] public depositIds;
+
+    /// @notice Mapping of user addresses to their deposit IDs
+    mapping(address => bytes32[]) public userDepositIds;
+
+    /// @notice Monotonically-increasing sequence number to guarantee unique depositIds
+    uint256 private sequenceNum;
+
+    /// @notice Deposit expiration time (in seconds) - default to 7 days
+    uint256 public depositExpirationPeriod = 7 days;
+
+    /// @notice Maximum deposit expiration period
+    uint256 public constant MAX_DEPOSIT_EXPIRATION_PERIOD = 30 days;
+
+    /// @notice The escrow contract that holds assets and manages deposits
+    address public immutable escrow;
+
+    /*//////////////////////////////////////////////////////////////
+                            CONSTRUCTOR
+    //////////////////////////////////////////////////////////////*/
+
+
+    /**
+     * @notice Constructor
+     * @param name_ The name of the token
+     * @param symbol_ The symbol of the token
+     * @param asset_ The address of the asset
+     * @param assetDecimals_ The decimals of the asset
+     * @param strategy_ The address of the strategy
+     */
     constructor(
         string memory name_,
         string memory symbol_,
@@ -63,6 +88,10 @@ contract GatedMintRWA is tRWA {
         // Deploy the GatedMintEscrow contract with this token as the controller
         escrow = address(new GatedMintEscrow(address(this), asset_, strategy_));
     }
+
+    /*//////////////////////////////////////////////////////////////
+                        CONFIGURATION FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Sets the period after which deposits expire and can be reclaimed
@@ -77,6 +106,10 @@ contract GatedMintRWA is tRWA {
 
         emit DepositExpirationPeriodUpdated(oldPeriod, newExpirationPeriod);
     }
+
+    /*//////////////////////////////////////////////////////////////
+                           ERC4626 OVERRIDES
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Override of _deposit to store deposit info instead of minting immediately
@@ -131,6 +164,10 @@ contract GatedMintRWA is tRWA {
         // Emit a custom event for the pending deposit
         emit DepositPending(depositId, by, to, assets);
     }
+
+    /*//////////////////////////////////////////////////////////////
+                            MINT FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Mint shares for an accepted deposit (called by Escrow)
@@ -195,6 +232,10 @@ contract GatedMintRWA is tRWA {
 
         emit BatchSharesMinted(ids, totalAssets, totalShares);
     }
+
+    /*//////////////////////////////////////////////////////////////
+                            VIEW FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Get all pending deposit IDs for a specific user
