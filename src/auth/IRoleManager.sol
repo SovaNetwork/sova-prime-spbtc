@@ -1,9 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-/// @title IRoleManager
-/// @notice Interface for the RoleManager contract
+/**
+ * @title IRoleManager
+ * @notice Interface for the RoleManager contract
+ */
 interface IRoleManager {
+    /*//////////////////////////////////////////////////////////////
+                            FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
     /// @notice Grants a role to a user
     /// @param user The address of the user to grant the role to
     /// @param role The role to grant

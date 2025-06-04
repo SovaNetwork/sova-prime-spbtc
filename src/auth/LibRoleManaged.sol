@@ -3,17 +3,33 @@ pragma solidity 0.8.25;
 
 import {RoleManager} from "./RoleManager.sol";
 
-/// @title LibRoleManaged
-/// @notice Library for role-managed contracts
+/**
+ * @title LibRoleManaged
+ * @notice Library for role-managed contracts
+ */
 abstract contract LibRoleManaged {
-    // Custom errors
+    /*//////////////////////////////////////////////////////////////
+                              ERRORS
+    //////////////////////////////////////////////////////////////*/
+
     error UnauthorizedRole(address caller, uint256 roleRequired);
 
-    // Events
+    /*//////////////////////////////////////////////////////////////
+                              EVENTS
+    //////////////////////////////////////////////////////////////*/
+
     event RoleCheckPassed(address indexed user, uint256 indexed role);
+
+    /*//////////////////////////////////////////////////////////////
+                              STATE
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice The role manager contract
     RoleManager public roleManager;
+
+    /*//////////////////////////////////////////////////////////////
+                        ROLE MANAGED LOGIC
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Get the registry contract

@@ -4,12 +4,21 @@ pragma solidity 0.8.25;
 import {RoleManager} from "./RoleManager.sol";
 import {LibRoleManaged} from "./LibRoleManaged.sol";
 
-/// @title RoleManaged
-/// @notice Base contract for role-managed contracts in the Fountfi protocol
-/// @dev Provides role checking functionality for contracts
+/**
+ * @title RoleManaged
+ * @notice Base contract for role-managed contracts in the Fountfi protocol
+ * @dev Provides role checking functionality for contracts
+ */
 abstract contract RoleManaged is LibRoleManaged {
-    // Custom errors
+    /*//////////////////////////////////////////////////////////////
+                               ERRORS
+    //////////////////////////////////////////////////////////////*/
+
     error InvalidRoleManager();
+
+    /*//////////////////////////////////////////////////////////////
+                            CONSTRUCTOR
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Constructor
