@@ -23,7 +23,6 @@ contract Conduit is RoleManaged {
     error InvalidAmount();
     error InvalidToken();
     error InvalidDestination();
-    error UnsupportedAsset();
 
     /*//////////////////////////////////////////////////////////////
                             INITIALIZATION
@@ -57,7 +56,7 @@ contract Conduit is RoleManaged {
     ) external returns (bool) {
         if (amount == 0) revert InvalidAmount();
         if (!IRegistry(registry()).isStrategyToken(msg.sender)) revert InvalidDestination();
-        if (ItRWA(msg.sender).asset() != token) revert UnsupportedAsset();
+        if (ItRWA(msg.sender).asset() != token) revert InvalidToken();
         if (ItRWA(msg.sender).strategy() != to) revert InvalidDestination();
 
         // Transfer tokens from the user to specific destination

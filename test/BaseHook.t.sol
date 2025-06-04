@@ -162,13 +162,13 @@ contract BaseHookTest is Test {
 
     function test_HookId() public {
         // Test that hookId returns the correct ID (keccak256 hash of the name)
-        bytes32 expectedApproveId = keccak256(abi.encodePacked("ApproveHook"));
-        bytes32 expectedRejectId = keccak256(abi.encodePacked("RejectHook"));
-        bytes32 expectedDefaultId = keccak256(abi.encodePacked("DefaultHook"));
+        bytes32 expectedApproveId = keccak256(abi.encodePacked("ApproveHook", address(approveHook)));
+        bytes32 expectedRejectId = keccak256(abi.encodePacked("RejectHook", address(rejectHook)));
+        bytes32 expectedDefaultId = keccak256(abi.encodePacked("DefaultHook", address(defaultHook)));
 
-        assertEq(approveHook.hookId(), expectedApproveId, "Hook ID should be hash of name");
-        assertEq(rejectHook.hookId(), expectedRejectId, "Hook ID should be hash of name");
-        assertEq(defaultHook.hookId(), expectedDefaultId, "Hook ID should be hash of name");
+        assertEq(approveHook.hookId(), expectedApproveId, "Hook ID should be hash of name and address");
+        assertEq(rejectHook.hookId(), expectedRejectId, "Hook ID should be hash of name and address");
+        assertEq(defaultHook.hookId(), expectedDefaultId, "Hook ID should be hash of name and address");
     }
 
     /*//////////////////////////////////////////////////////////////

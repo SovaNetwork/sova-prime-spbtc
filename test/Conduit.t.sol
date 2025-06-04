@@ -129,6 +129,7 @@ contract ConduitTest is BaseFountfiTest {
         // Make sure we're pretending to be the strategy token to call collect deposit
         vm.startPrank(address(trwaToken));
 
+        address strategy = trwaToken.strategy();
         uint256 initialTRWABalance = testToken.balanceOf(address(trwaToken));
         uint256 initialAliceBalance = testToken.balanceOf(alice);
 
@@ -136,16 +137,16 @@ contract ConduitTest is BaseFountfiTest {
         bool success = conduit.collectDeposit(
             address(testToken),
             alice,
-            address(trwaToken),
+            strategy,
             DEPOSIT_AMOUNT
         );
 
         // Verify transfer happened
         assertTrue(success, "Collect deposit should return true");
         assertEq(
-            testToken.balanceOf(address(trwaToken)),
+            testToken.balanceOf(strategy),
             initialTRWABalance + DEPOSIT_AMOUNT,
-            "tRWA token should receive the tokens"
+            "strategy should receive the tokens"
         );
         assertEq(
             testToken.balanceOf(alice),
@@ -210,7 +211,7 @@ contract ConduitTest is BaseFountfiTest {
         vm.stopPrank();
     }
 
-    function test_CollectDeposit_UnsupportedAsset() public {
+    function test_CollectDeposit_NonMatchingAsset() public {
         // Create another token that is registered in the registry but not the asset of the strategy
         MockERC20 differentToken = new MockERC20("Different Token", "DIFF", 6);
 
@@ -219,7 +220,7 @@ contract ConduitTest is BaseFountfiTest {
 
         vm.startPrank(address(trwaToken));
 
-        vm.expectRevert(Conduit.UnsupportedAsset.selector);
+        vm.expectRevert(Conduit.InvalidToken.selector);
         conduit.collectDeposit(
             address(differentToken),
             alice,
@@ -239,12 +240,14 @@ contract ConduitTest is BaseFountfiTest {
 
         vm.startPrank(address(trwaToken));
 
+        address strategy = trwaToken.strategy();
+
         // Should revert with the underlying SafeTransferLib error
         vm.expectRevert(abi.encodeWithSelector(SafeTransferLib.TransferFromFailed.selector));
         conduit.collectDeposit(
             address(testToken),
             alice,
-            address(trwaToken),
+            strategy,
             DEPOSIT_AMOUNT
         );
 
