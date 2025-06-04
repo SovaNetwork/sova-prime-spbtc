@@ -530,6 +530,229 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
         assertLt(diff, expectedRatio / 10); // Less than 10% difference
     }
 
+    // ============ RedeemMoreThanMax Tests ============
+
+    function test_Redeem_RedeemMoreThanMax() public {
+        // Setup initial deposit
+        _depositAsUser(alice, INITIAL_SUPPLY / 2);
+        
+        uint256 aliceShares = managedToken.balanceOf(alice);
+        uint256 tooManyShares = aliceShares + 1;
+
+        // Alice approves strategy to spend her shares
+        vm.prank(alice);
+        managedToken.approve(address(strategy), tooManyShares);
+
+        // Try to redeem more shares than alice has
+        vm.prank(address(strategy));
+        vm.expectRevert(ERC4626.RedeemMoreThanMax.selector);
+        managedToken.redeem(tooManyShares, alice, alice);
+    }
+
+    function test_RedeemWithMinAssets_RedeemMoreThanMax() public {
+        // Setup initial deposit
+        _depositAsUser(alice, INITIAL_SUPPLY / 2);
+        
+        uint256 aliceShares = managedToken.balanceOf(alice);
+        uint256 tooManyShares = aliceShares + 1;
+
+        // Alice approves strategy to spend her shares
+        vm.prank(alice);
+        managedToken.approve(address(strategy), tooManyShares);
+
+        // Try to redeem more shares than alice has with minAssets check
+        vm.prank(address(strategy));
+        vm.expectRevert(ERC4626.RedeemMoreThanMax.selector);
+        managedToken.redeem(tooManyShares, alice, alice, 0);
+    }
+
+    function test_BatchRedeemShares_RedeemMoreThanMax() public {
+        // Setup initial deposits
+        _depositAsUser(alice, INITIAL_SUPPLY / 4);
+        _depositAsUser(bob, INITIAL_SUPPLY / 4);
+        
+        uint256 aliceShares = managedToken.balanceOf(alice);
+        uint256 bobShares = managedToken.balanceOf(bob);
+
+        // Prepare batch arrays with one user trying to redeem too much
+        uint256[] memory shares = new uint256[](2);
+        shares[0] = aliceShares + 1; // Too many shares for alice
+        shares[1] = bobShares / 2;
+
+        address[] memory to = new address[](2);
+        to[0] = alice;
+        to[1] = bob;
+
+        address[] memory owners = new address[](2);
+        owners[0] = alice;
+        owners[1] = bob;
+
+        uint256[] memory minAssets = new uint256[](2);
+        minAssets[0] = 0;
+        minAssets[1] = 0;
+
+        // Approve strategy to spend shares
+        vm.prank(alice);
+        managedToken.approve(address(strategy), aliceShares + 1);
+        vm.prank(bob);
+        managedToken.approve(address(strategy), bobShares / 2);
+
+        // Try batch redeem with one user having too many shares
+        vm.prank(address(strategy));
+        vm.expectRevert(ERC4626.RedeemMoreThanMax.selector);
+        managedToken.batchRedeemShares(shares, to, owners, minAssets);
+    }
+
+    function test_Withdraw_WithHooks() public {
+        // Setup initial deposit
+        _depositAsUser(alice, INITIAL_SUPPLY / 2);
+        
+        // Create and add a hook that tracks withdraw operations
+        TrackingHook trackingHook = new TrackingHook();
+        
+        vm.prank(address(strategy));
+        managedToken.addOperationHook(OP_WITHDRAW, address(trackingHook));
+
+        uint256 userShares = managedToken.balanceOf(alice);
+        uint256 sharesToRedeem = userShares / 2;
+
+        // Alice must approve strategy to spend her shares
+        vm.prank(alice);
+        managedToken.approve(address(strategy), sharesToRedeem);
+
+        // Perform the redeem which will trigger _withdraw with hooks
+        vm.prank(address(strategy));
+        uint256 assetsRedeemed = managedToken.redeem(sharesToRedeem, alice, alice);
+
+        // Verify the hook was called
+        assertTrue(trackingHook.wasWithdrawCalled());
+        assertEq(trackingHook.lastWithdrawToken(), address(managedToken));
+        assertEq(trackingHook.lastWithdrawOperator(), address(strategy));
+        assertEq(trackingHook.lastWithdrawAssets(), assetsRedeemed);
+        assertEq(trackingHook.lastWithdrawReceiver(), alice);
+        assertEq(trackingHook.lastWithdrawOwner(), alice);
+    }
+
+    function test_Withdraw_MultipleHooks() public {
+        // Setup initial deposit
+        _depositAsUser(alice, INITIAL_SUPPLY / 2);
+        
+        // Create and add multiple hooks
+        TrackingHook hook1 = new TrackingHook();
+        TrackingHook hook2 = new TrackingHook();
+        
+        vm.startPrank(address(strategy));
+        managedToken.addOperationHook(OP_WITHDRAW, address(hook1));
+        managedToken.addOperationHook(OP_WITHDRAW, address(hook2));
+        vm.stopPrank();
+
+        uint256 userShares = managedToken.balanceOf(alice);
+        uint256 sharesToRedeem = userShares / 2;
+
+        // Alice must approve strategy to spend her shares
+        vm.prank(alice);
+        managedToken.approve(address(strategy), sharesToRedeem);
+
+        // Perform the redeem which will trigger _withdraw with hooks
+        vm.prank(address(strategy));
+        managedToken.redeem(sharesToRedeem, alice, alice);
+
+        // Verify both hooks were called
+        assertTrue(hook1.wasWithdrawCalled());
+        assertTrue(hook2.wasWithdrawCalled());
+    }
+
+    function test_BatchRedeemShares_WithHooks() public {
+        // Setup initial deposits
+        _depositAsUser(alice, INITIAL_SUPPLY / 4);
+        _depositAsUser(bob, INITIAL_SUPPLY / 4);
+        
+        // Create and add a hook that tracks withdraw operations
+        TrackingHook trackingHook = new TrackingHook();
+        
+        vm.prank(address(strategy));
+        managedToken.addOperationHook(OP_WITHDRAW, address(trackingHook));
+
+        uint256 aliceShares = managedToken.balanceOf(alice);
+        uint256 bobShares = managedToken.balanceOf(bob);
+
+        // Prepare batch arrays
+        uint256[] memory shares = new uint256[](2);
+        shares[0] = aliceShares / 2;
+        shares[1] = bobShares / 2;
+
+        address[] memory to = new address[](2);
+        to[0] = alice;
+        to[1] = bob;
+
+        address[] memory owners = new address[](2);
+        owners[0] = alice;
+        owners[1] = bob;
+
+        uint256[] memory minAssets = new uint256[](2);
+        minAssets[0] = 0;
+        minAssets[1] = 0;
+
+        // Approve strategy to spend shares
+        vm.prank(alice);
+        managedToken.approve(address(strategy), aliceShares / 2);
+        vm.prank(bob);
+        managedToken.approve(address(strategy), bobShares / 2);
+
+        // Perform batch redeem
+        vm.prank(address(strategy));
+        uint256[] memory assetsRedeemed = managedToken.batchRedeemShares(shares, to, owners, minAssets);
+
+        // Verify the hook was called for each withdrawal
+        assertTrue(trackingHook.wasWithdrawCalled());
+        // The hook only stores the last call, but we can verify it was called
+        assertEq(trackingHook.lastWithdrawToken(), address(managedToken));
+        assertEq(trackingHook.lastWithdrawOperator(), address(strategy));
+    }
+
+    function test_BatchRedeemShares_WithFailingHook() public {
+        // Setup initial deposits
+        _depositAsUser(alice, INITIAL_SUPPLY / 4);
+        _depositAsUser(bob, INITIAL_SUPPLY / 4);
+        
+        // Create a hook that rejects withdraw operations
+        MockHook rejectingHook = new MockHook(false, "Batch withdrawal rejected");
+        
+        vm.prank(address(strategy));
+        managedToken.addOperationHook(OP_WITHDRAW, address(rejectingHook));
+
+        uint256 aliceShares = managedToken.balanceOf(alice);
+        uint256 bobShares = managedToken.balanceOf(bob);
+
+        // Prepare batch arrays
+        uint256[] memory shares = new uint256[](2);
+        shares[0] = aliceShares / 2;
+        shares[1] = bobShares / 2;
+
+        address[] memory to = new address[](2);
+        to[0] = alice;
+        to[1] = bob;
+
+        address[] memory owners = new address[](2);
+        owners[0] = alice;
+        owners[1] = bob;
+
+        uint256[] memory minAssets = new uint256[](2);
+        minAssets[0] = 0;
+        minAssets[1] = 0;
+
+        // Approve strategy to spend shares
+        vm.prank(alice);
+        managedToken.approve(address(strategy), aliceShares / 2);
+        vm.prank(bob);
+        managedToken.approve(address(strategy), bobShares / 2);
+
+        // Try batch redeem - should fail due to rejecting hook
+        vm.prank(address(strategy));
+        vm.expectRevert(abi.encodeWithSelector(tRWA.HookCheckFailed.selector, "Batch withdrawal rejected"));
+        managedToken.batchRedeemShares(shares, to, owners, minAssets);
+    }
+
     // ============ Helper Functions ============
 
     function _depositAsUser(address user, uint256 amount) internal {
@@ -539,5 +762,60 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
         usdc.approve(address(mockConduit), amount);
         managedToken.deposit(amount, user);
         vm.stopPrank();
+    }
+}
+
+/**
+ * @title TrackingHook
+ * @notice Hook that tracks withdraw operations for testing
+ */
+contract TrackingHook is IHook {
+    bool public wasWithdrawCalled;
+    address public lastWithdrawToken;
+    address public lastWithdrawOperator;
+    uint256 public lastWithdrawAssets;
+    address public lastWithdrawReceiver;
+    address public lastWithdrawOwner;
+
+    function onBeforeDeposit(
+        address token,
+        address from,
+        uint256 assets,
+        address receiver
+    ) external pure override returns (HookOutput memory) {
+        return HookOutput(true, "");
+    }
+
+    function onBeforeWithdraw(
+        address token,
+        address operator,
+        uint256 assets,
+        address receiver,
+        address owner
+    ) external override returns (HookOutput memory) {
+        wasWithdrawCalled = true;
+        lastWithdrawToken = token;
+        lastWithdrawOperator = operator;
+        lastWithdrawAssets = assets;
+        lastWithdrawReceiver = receiver;
+        lastWithdrawOwner = owner;
+        return HookOutput(true, "");
+    }
+
+    function onBeforeTransfer(
+        address token,
+        address from,
+        address to,
+        uint256 amount
+    ) external pure override returns (HookOutput memory) {
+        return HookOutput(true, "");
+    }
+
+    function hookName() external pure override returns (string memory) {
+        return "TrackingHook";
+    }
+
+    function hookId() external pure override returns (bytes32) {
+        return keccak256("TrackingHook");
     }
 }

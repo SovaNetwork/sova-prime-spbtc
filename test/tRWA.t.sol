@@ -155,6 +155,28 @@ contract TRWATest is BaseFountfiTest {
         vm.stopPrank();
     }
 
+    function test_Constructor_Reverts_InvalidDecimals() public {
+        vm.startPrank(owner);
+
+        // Test asset decimals > 18
+        vm.expectRevert(abi.encodeWithSignature("InvalidDecimals()"));
+        new tRWA("Test", "TEST", address(usdc), 19, address(strategy));
+
+        // Test asset decimals = 20
+        vm.expectRevert(abi.encodeWithSignature("InvalidDecimals()"));
+        new tRWA("Test", "TEST", address(usdc), 20, address(strategy));
+
+        // Test asset decimals = 30
+        vm.expectRevert(abi.encodeWithSignature("InvalidDecimals()"));
+        new tRWA("Test", "TEST", address(usdc), 30, address(strategy));
+
+        // Test that 18 decimals works (boundary condition)
+        tRWA validToken = new tRWA("Test", "TEST", address(usdc), 18, address(strategy));
+        assertEq(validToken.decimals(), 18);
+
+        vm.stopPrank();
+    }
+
     /*//////////////////////////////////////////////////////////////
                           ERC4626 BASIC TESTS
     //////////////////////////////////////////////////////////////*/
