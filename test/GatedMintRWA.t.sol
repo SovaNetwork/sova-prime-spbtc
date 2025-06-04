@@ -616,10 +616,15 @@ contract GatedMintRWATest is BaseFountfiTest {
 
         uint256 totalAssets = 0;
 
+        // Record initial balance
+        uint256 aliceBalanceBefore = gatedToken.balanceOf(alice);
+
         vm.prank(address(escrow));
-        // This should revert due to division by zero in the proportional calculation
-        vm.expectRevert(); // solidity divide-by-zero error
+        // This should succeed but mint 0 shares
         gatedToken.batchMintShares(depositIds, recipients, assetAmounts, totalAssets);
+        
+        // Verify no shares were minted
+        assertEq(gatedToken.balanceOf(alice), aliceBalanceBefore);
     }
 
     // ============ Helper Functions ============

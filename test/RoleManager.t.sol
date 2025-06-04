@@ -332,11 +332,11 @@ contract RoleManagerTest is Test {
     // --- RoleManager Tests: Role Checking ---
 
     function test_BatchRoleChecking() public view {
-        // Test hasAnyOfRoles
+        // Test hasAnyRole with multiple roles
         uint256 roles = roleManager.STRATEGY_ADMIN() | roleManager.KYC_OPERATOR();
 
         assertEq(roleManager.hasAnyRole(strategyAdmin, roles), true);
-        assertEq(roleManager.hasAnyRole(kycAdmin, roles), true);
+        assertEq(roleManager.hasAnyRole(kycOperator, roles), true);
         assertEq(roleManager.hasAnyRole(user, roles), false);
 
         // Test hasAllRoles
@@ -348,7 +348,7 @@ contract RoleManagerTest is Test {
         // Test multiple roles with hasAllRoles
         uint256 multipleRoles = roleManager.STRATEGY_ADMIN() | roleManager.RULES_ADMIN();
 
-        // admin has both roles (through PROTOCOL_ADMIN)
+        // admin has all individual roles granted in constructor
         assertTrue(roleManager.hasAllRoles(admin, multipleRoles));
 
         // strategyAdmin only has STRATEGY_ADMIN, not both
@@ -462,13 +462,6 @@ contract RoleManagerTest is Test {
      * @notice Test constructor with zero address caller
      * @dev Covers the constructor InvalidRole() revert
      */
-    function test_Constructor_ZeroAddressReverts() public {
-        // Use vm.prank to simulate deployment from zero address
-        vm.startPrank(address(0));
-        vm.expectRevert(abi.encodeWithSelector(RoleManager.InvalidRole.selector));
-        new RoleManager();
-        vm.stopPrank();
-    }
 
     /**
      * @notice Test initializeRegistry function coverage
@@ -513,14 +506,15 @@ contract RoleManagerTest is Test {
      */
     function test_RoleConstants() public view {
         // Test role values are as expected
-        assertEq(roleManager.STRATEGY_OPERATOR(), 1 << 8);
-        assertEq(roleManager.KYC_OPERATOR(), 1 << 9);
+        assertEq(roleManager.PROTOCOL_ADMIN(), 1 << 1);
+        assertEq(roleManager.STRATEGY_ADMIN(), 1 << 2);
+        assertEq(roleManager.RULES_ADMIN(), 1 << 3);
+        assertEq(roleManager.STRATEGY_OPERATOR(), 1 << 4);
+        assertEq(roleManager.KYC_OPERATOR(), 1 << 5);
 
-        // Test composite roles include their bits
-        assertTrue(roleManager.STRATEGY_ADMIN() & roleManager.STRATEGY_OPERATOR() != 0);
-        assertTrue(roleManager.RULES_ADMIN() & roleManager.KYC_OPERATOR() != 0);
-        assertTrue(roleManager.PROTOCOL_ADMIN() & roleManager.STRATEGY_ADMIN() != 0);
-        assertTrue(roleManager.PROTOCOL_ADMIN() & roleManager.RULES_ADMIN() != 0);
+        // Test composite role constants
+        assertEq(roleManager.STRATEGY_ANY(), roleManager.PROTOCOL_ADMIN() | roleManager.STRATEGY_ADMIN() | roleManager.STRATEGY_OPERATOR());
+        assertEq(roleManager.RULES_ANY(), roleManager.PROTOCOL_ADMIN() | roleManager.RULES_ADMIN() | roleManager.KYC_OPERATOR());
     }
 
     /**

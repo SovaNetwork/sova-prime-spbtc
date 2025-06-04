@@ -36,7 +36,10 @@ contract KycRulesTest is BaseFountfiTest {
         roleManager.grantRole(owner, roleManager.KYC_OPERATOR());
 
         // Set up additional roles for RBAC testing
+        // Since RULES_ADMIN doesn't automatically include KYC_OPERATOR anymore,
+        // we need to grant KYC_OPERATOR to kycAdmin as well
         roleManager.grantRole(kycAdmin, roleManager.RULES_ADMIN());
+        roleManager.grantRole(kycAdmin, roleManager.KYC_OPERATOR());
         roleManager.grantRole(kycOperator, roleManager.KYC_OPERATOR());
 
         vm.stopPrank();
