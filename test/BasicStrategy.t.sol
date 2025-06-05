@@ -9,7 +9,7 @@ import {RoleManaged} from "../src/auth/RoleManaged.sol";
 import {RoleManager} from "../src/auth/RoleManager.sol";
 import {LibRoleManaged} from "../src/auth/LibRoleManaged.sol";
 import {CloneableRoleManaged} from "../src/auth/CloneableRoleManaged.sol";
-import {MockHook} from "../src/mocks/MockHook.sol";
+import {MockHook} from "../src/mocks/hooks/MockHook.sol";
 import {MockERC20} from "../src/mocks/MockERC20.sol";
 
 /**
@@ -35,7 +35,6 @@ contract TestableBasicStrategy is BasicStrategy {
 contract PayableTest {
     receive() external payable {}
 }
-
 
 /**
  * @title BasicStrategyTest

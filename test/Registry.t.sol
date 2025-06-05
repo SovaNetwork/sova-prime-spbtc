@@ -177,8 +177,7 @@ contract RegistryTest is Test {
         vm.startPrank(owner);
 
         // Deploy a strategy
-        (, address token) =
-            registry.deploy(address(strategyImpl), "Test RWA Token", "tRWA", address(usdc), owner, "");
+        (, address token) = registry.deploy(address(strategyImpl), "Test RWA Token", "tRWA", address(usdc), owner, "");
 
         // Check if it's a strategy token
         assertTrue(registry.isStrategyToken(token));

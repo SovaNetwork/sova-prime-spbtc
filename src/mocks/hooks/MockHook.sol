@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {IHook} from "../hooks/IHook.sol";
+import {IHook} from "../../hooks/IHook.sol";
 
 /**
  * @title MockHook

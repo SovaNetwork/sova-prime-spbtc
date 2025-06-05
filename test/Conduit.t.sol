@@ -121,7 +121,9 @@ contract ConduitTest is BaseFountfiTest {
         // Verify transfer happened
         assertTrue(success, "Collect deposit should return true");
         assertEq(
-            testToken.balanceOf(currentStrategy), initialTRWABalance + DEPOSIT_AMOUNT, "strategy should receive the tokens"
+            testToken.balanceOf(currentStrategy),
+            initialTRWABalance + DEPOSIT_AMOUNT,
+            "strategy should receive the tokens"
         );
         assertEq(testToken.balanceOf(alice), initialAliceBalance - DEPOSIT_AMOUNT, "Alice's balance should decrease");
 

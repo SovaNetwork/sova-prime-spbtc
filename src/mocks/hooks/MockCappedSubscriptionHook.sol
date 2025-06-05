@@ -2,7 +2,7 @@
 pragma solidity 0.8.25;
 
 import {MockHook} from "./MockHook.sol";
-import {IHook} from "../hooks/IHook.sol";
+import {IHook} from "../../hooks/IHook.sol";
 
 /**
  * @title MockCappedSubscriptionHook

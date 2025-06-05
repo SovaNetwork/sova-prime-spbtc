@@ -3,7 +3,7 @@ pragma solidity ^0.8.25;
 
 import {Test} from "forge-std/Test.sol";
 import {MockERC20} from "../src/mocks/MockERC20.sol";
-import {MockHook} from "../src/mocks/MockHook.sol";
+import {MockHook} from "../src/mocks/hooks/MockHook.sol";
 import {MockReporter} from "../src/mocks/MockReporter.sol";
 import {MockStrategy} from "../src/mocks/MockStrategy.sol";
 import {MockRoleManager} from "../src/mocks/MockRoleManager.sol";
@@ -11,7 +11,7 @@ import {tRWA} from "../src/token/tRWA.sol";
 import {Registry} from "../src/registry/Registry.sol";
 import {RulesEngine} from "../src/hooks/RulesEngine.sol";
 import {KycRulesHook} from "../src/hooks/KycRulesHook.sol";
-import {MockCappedSubscriptionHook} from "../src/mocks/MockCappedSubscriptionHook.sol";
+import {MockCappedSubscriptionHook} from "../src/mocks/hooks/MockCappedSubscriptionHook.sol";
 import {BaseHook} from "../src/hooks/BaseHook.sol";
 import {IHook} from "../src/hooks/IHook.sol";
 import {PriceOracleReporter} from "../src/reporter/PriceOracleReporter.sol";

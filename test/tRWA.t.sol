@@ -4,8 +4,10 @@ pragma solidity ^0.8.25;
 import {Test} from "forge-std/Test.sol";
 import {BaseFountfiTest} from "./BaseFountfiTest.t.sol";
 import {MockERC20} from "../src/mocks/MockERC20.sol";
-import {MockHook} from "../src/mocks/MockHook.sol";
-import {WithdrawQueueMockHook} from "../src/mocks/WithdrawQueueMockHook.sol";
+import {MockHook} from "../src/mocks/hooks/MockHook.sol";
+import {AlwaysApprovingHook} from "../src/mocks/hooks/AlwaysApprovingHook.sol";
+import {AlwaysRejectingHook} from "../src/mocks/hooks/AlwaysRejectingHook.sol";
+import {WithdrawQueueMockHook} from "../src/mocks/hooks/WithdrawQueueMockHook.sol";
 import {MockStrategy} from "../src/mocks/MockStrategy.sol";
 import {MockRoleManager} from "../src/mocks/MockRoleManager.sol";
 import {MockRegistry} from "../src/mocks/MockRegistry.sol";
@@ -15,88 +17,6 @@ import {IHook} from "../src/hooks/IHook.sol";
 import {Registry} from "../src/registry/Registry.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {ERC4626} from "solady/tokens/ERC4626.sol";
-
-/**
- * @title SimpleMockHook
- * @notice Simple hook that always approves operations
- */
-contract SimpleMockHook is IHook {
-    function onBeforeDeposit(address, address, uint256, address)
-        external
-        pure
-        override
-        returns (HookOutput memory)
-    {
-        return HookOutput(true, "");
-    }
-
-    function onBeforeWithdraw(address, address, uint256, address, address)
-        external
-        pure
-        override
-        returns (HookOutput memory)
-    {
-        return HookOutput(true, "");
-    }
-
-    function onBeforeTransfer(address, address, address, uint256)
-        external
-        pure
-        override
-        returns (HookOutput memory)
-    {
-        return HookOutput(true, "");
-    }
-
-    function name() external pure override returns (string memory) {
-        return "SimpleMockHook";
-    }
-
-    function hookId() external pure override returns (bytes32) {
-        return keccak256("SimpleMockHook");
-    }
-}
-
-/**
- * @title RejectingHook
- * @notice Hook that always rejects operations
- */
-contract RejectingHook is IHook {
-    function onBeforeDeposit(address, address, uint256, address)
-        external
-        pure
-        override
-        returns (HookOutput memory)
-    {
-        return HookOutput(false, "Deposit rejected");
-    }
-
-    function onBeforeWithdraw(address, address, uint256, address, address)
-        external
-        pure
-        override
-        returns (HookOutput memory)
-    {
-        return HookOutput(false, "Withdraw rejected");
-    }
-
-    function onBeforeTransfer(address, address, address, uint256)
-        external
-        pure
-        override
-        returns (HookOutput memory)
-    {
-        return HookOutput(false, "Transfer rejected");
-    }
-
-    function name() external pure override returns (string memory) {
-        return "RejectingHook";
-    }
-
-    function hookId() external pure override returns (bytes32) {
-        return keccak256("RejectingHook");
-    }
-}
 
 /**
  * @title TRWATest
@@ -332,7 +252,7 @@ contract TRWATest is BaseFountfiTest {
 
     function test_Deposit_HookRejects() public {
         // Deploy a rejecting hook
-        RejectingHook rejectHook = new RejectingHook();
+        AlwaysRejectingHook rejectHook = new AlwaysRejectingHook("Deposit rejected");
 
         // Add hook
         vm.prank(address(strategy));
@@ -356,7 +276,7 @@ contract TRWATest is BaseFountfiTest {
         vm.stopPrank();
 
         // Deploy a rejecting hook for withdrawals
-        RejectingHook rejectHook = new RejectingHook();
+        AlwaysRejectingHook rejectHook = new AlwaysRejectingHook("Withdraw rejected");
 
         // Add hook
         vm.startPrank(address(strategy));
@@ -476,7 +396,7 @@ contract TRWATest is BaseFountfiTest {
 
     function test_RemoveHook_InvalidIndex() public {
         // Add one hook
-        SimpleMockHook hook = new SimpleMockHook();
+        AlwaysApprovingHook hook = new AlwaysApprovingHook();
         vm.prank(address(strategy));
         token.addOperationHook(OP_DEPOSIT, address(hook));
 
@@ -488,7 +408,7 @@ contract TRWATest is BaseFountfiTest {
 
     function test_RemoveHook_HasProcessedOperations() public {
         // Add hook
-        SimpleMockHook hook = new SimpleMockHook();
+        AlwaysApprovingHook hook = new AlwaysApprovingHook();
         vm.prank(address(strategy));
         token.addOperationHook(OP_DEPOSIT, address(hook));
 
@@ -549,8 +469,8 @@ contract TRWATest is BaseFountfiTest {
 
     function test_ReorderHooks_InvalidLength() public {
         // Add two hooks
-        SimpleMockHook hook1 = new SimpleMockHook();
-        SimpleMockHook hook2 = new SimpleMockHook();
+        AlwaysApprovingHook hook1 = new AlwaysApprovingHook();
+        AlwaysApprovingHook hook2 = new AlwaysApprovingHook();
         vm.startPrank(address(strategy));
         token.addOperationHook(OP_DEPOSIT, address(hook1));
         token.addOperationHook(OP_DEPOSIT, address(hook2));
@@ -566,8 +486,8 @@ contract TRWATest is BaseFountfiTest {
 
     function test_ReorderHooks_IndexOutOfBounds() public {
         // Add two hooks
-        SimpleMockHook hook1 = new SimpleMockHook();
-        SimpleMockHook hook2 = new SimpleMockHook();
+        AlwaysApprovingHook hook1 = new AlwaysApprovingHook();
+        AlwaysApprovingHook hook2 = new AlwaysApprovingHook();
         vm.startPrank(address(strategy));
         token.addOperationHook(OP_DEPOSIT, address(hook1));
         token.addOperationHook(OP_DEPOSIT, address(hook2));
@@ -584,8 +504,8 @@ contract TRWATest is BaseFountfiTest {
 
     function test_ReorderHooks_DuplicateIndex() public {
         // Add two hooks
-        SimpleMockHook hook1 = new SimpleMockHook();
-        SimpleMockHook hook2 = new SimpleMockHook();
+        AlwaysApprovingHook hook1 = new AlwaysApprovingHook();
+        AlwaysApprovingHook hook2 = new AlwaysApprovingHook();
         vm.startPrank(address(strategy));
         token.addOperationHook(OP_DEPOSIT, address(hook1));
         token.addOperationHook(OP_DEPOSIT, address(hook2));
@@ -690,7 +610,7 @@ contract TRWATest is BaseFountfiTest {
         vm.stopPrank();
 
         // Deploy a rejecting hook for transfers
-        RejectingHook rejectHook = new RejectingHook();
+        AlwaysRejectingHook rejectHook = new AlwaysRejectingHook("Transfer rejected");
 
         // Add hook
         vm.prank(address(strategy));
@@ -763,7 +683,7 @@ contract TRWATest is BaseFountfiTest {
 
     function test_GetHookInfoForOperation() public {
         // Add a hook
-        SimpleMockHook hook = new SimpleMockHook();
+        AlwaysApprovingHook hook = new AlwaysApprovingHook();
         vm.prank(address(strategy));
         token.addOperationHook(OP_DEPOSIT, address(hook));
 
@@ -779,7 +699,7 @@ contract TRWATest is BaseFountfiTest {
 
     function test_RemoveOperationHook_Success() public {
         // Add a hook
-        SimpleMockHook hook = new SimpleMockHook();
+        AlwaysApprovingHook hook = new AlwaysApprovingHook();
         vm.prank(address(strategy));
         token.addOperationHook(OP_DEPOSIT, address(hook));
 

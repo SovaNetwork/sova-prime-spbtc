@@ -11,7 +11,7 @@ import {MockConduit} from "../src/mocks/MockConduit.sol";
 import {RoleManager} from "../src/auth/RoleManager.sol";
 import {ERC4626} from "solady/tokens/ERC4626.sol";
 import {tRWA} from "../src/token/tRWA.sol";
-import {MockHook} from "../src/mocks/MockHook.sol";
+import {MockHook} from "../src/mocks/hooks/MockHook.sol";
 import {IHook} from "../src/hooks/IHook.sol";
 
 /**
@@ -26,12 +26,7 @@ contract TrackingHook is IHook {
     address public lastWithdrawReceiver;
     address public lastWithdrawOwner;
 
-    function onBeforeDeposit(address, address, uint256, address)
-        external
-        pure
-        override
-        returns (HookOutput memory)
-    {
+    function onBeforeDeposit(address, address, uint256, address) external pure override returns (HookOutput memory) {
         return HookOutput(true, "");
     }
 
@@ -49,12 +44,7 @@ contract TrackingHook is IHook {
         return HookOutput(true, "");
     }
 
-    function onBeforeTransfer(address, address, address, uint256)
-        external
-        pure
-        override
-        returns (HookOutput memory)
-    {
+    function onBeforeTransfer(address, address, address, uint256) external pure override returns (HookOutput memory) {
         return HookOutput(true, "");
     }
 
@@ -788,5 +778,3 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
         vm.stopPrank();
     }
 }
-
-

@@ -3,7 +3,8 @@ pragma solidity ^0.8.25;
 
 import {BaseFountfiTest} from "./BaseFountfiTest.t.sol";
 import {RulesEngine} from "../src/hooks/RulesEngine.sol";
-import {MockHook} from "../src/mocks/MockHook.sol";
+import {MockHook} from "../src/mocks/hooks/MockHook.sol";
+import {AlwaysRevertingHook} from "../src/mocks/hooks/AlwaysRevertingHook.sol";
 import {RoleManager} from "../src/auth/RoleManager.sol";
 import {IHook} from "../src/hooks/IHook.sol";
 import {RoleManaged} from "../src/auth/RoleManaged.sol";
@@ -173,36 +174,6 @@ contract UniqueHook3 is IHook {
 
     function onBeforeTransfer(address, address, address, uint256) external pure returns (IHook.HookOutput memory) {
         return IHook.HookOutput(true, "");
-    }
-}
-
-/**
- * @title FailingHook
- * @notice A hook that always reverts to test hook call failure scenarios
- */
-contract FailingHook is IHook {
-    function hookId() external pure returns (bytes32) {
-        return keccak256("FailingHookForRulesEngine");
-    }
-
-    function name() external pure returns (string memory) {
-        return "FailingHook";
-    }
-
-    function onBeforeDeposit(address, address, uint256, address) external pure returns (IHook.HookOutput memory) {
-        revert("Hook intentionally fails");
-    }
-
-    function onBeforeWithdraw(address, address, uint256, address, address)
-        external
-        pure
-        returns (IHook.HookOutput memory)
-    {
-        revert("Hook intentionally fails");
-    }
-
-    function onBeforeTransfer(address, address, address, uint256) external pure returns (IHook.HookOutput memory) {
-        revert("Hook intentionally fails");
     }
 }
 
@@ -699,7 +670,7 @@ contract RulesEngineTests is BaseFountfiTest {
      */
     function test_HookCallFailure() public {
         // Create a hook that will revert when called
-        FailingHook failingHook = new FailingHook();
+        AlwaysRevertingHook failingHook = new AlwaysRevertingHook("Hook intentionally fails");
 
         vm.startPrank(owner);
 

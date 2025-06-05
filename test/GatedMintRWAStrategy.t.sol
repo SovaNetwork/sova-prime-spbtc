@@ -7,7 +7,6 @@ import {GatedMintReportedStrategy} from "../src/strategy/GatedMintRWAStrategy.so
 import {GatedMintRWA} from "../src/token/GatedMintRWA.sol";
 import {MockERC20} from "../src/mocks/MockERC20.sol";
 
-
 /**
  * @title GatedMintRWAStrategyTest
  * @notice Tests for GatedMintRWAStrategy contract to achieve 100% coverage

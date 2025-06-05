@@ -29,8 +29,8 @@ contract ConcreteHook is BaseHook {
      */
     function onBeforeDeposit(address token, address user, uint256 assets, address receiver)
         public
-        override
         view
+        override
         returns (IHook.HookOutput memory)
     {
         // Custom logic that uses the parameters to ensure they're passed correctly
@@ -46,8 +46,8 @@ contract ConcreteHook is BaseHook {
      */
     function onBeforeWithdraw(address token, address by, uint256 assets, address to, address owner)
         public
-        override
         view
+        override
         returns (IHook.HookOutput memory)
     {
         // Custom logic that uses the parameters to ensure they're passed correctly
@@ -63,8 +63,8 @@ contract ConcreteHook is BaseHook {
      */
     function onBeforeTransfer(address token, address from, address to, uint256 amount)
         public
-        override
         view
+        override
         returns (IHook.HookOutput memory)
     {
         // Custom logic that uses the parameters to ensure they're passed correctly

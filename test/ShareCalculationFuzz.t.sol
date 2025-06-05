@@ -142,9 +142,7 @@ contract ShareCalculationFuzzTest is BaseFountfiTest {
         console2.log("Share price after Charlie:", sharePrices[3]);
 
         // Verify proportional ownership
-        _verifyProportionalOwnership(
-            [aliceShares, bobShares, charlieShares], [deposits[0], deposits[1], deposits[2]]
-        );
+        _verifyProportionalOwnership([aliceShares, bobShares, charlieShares], [deposits[0], deposits[1], deposits[2]]);
     }
 
     /**
@@ -357,10 +355,7 @@ contract ShareCalculationFuzzTest is BaseFountfiTest {
         return (totalAssets * 1e12).mulDiv(PRECISION, totalShares);
     }
 
-    function _verifyProportionalOwnership(uint256[3] memory shares, uint256[3] memory deposits)
-        private
-        pure
-    {
+    function _verifyProportionalOwnership(uint256[3] memory shares, uint256[3] memory deposits) private pure {
         uint256 totalShares = shares[0] + shares[1] + shares[2];
         uint256 totalDeposits = deposits[0] + deposits[1] + deposits[2];
 

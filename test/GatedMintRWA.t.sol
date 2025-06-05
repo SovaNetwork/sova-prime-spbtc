@@ -7,7 +7,7 @@ import {GatedMintRWA} from "../src/token/GatedMintRWA.sol";
 import {GatedMintEscrow} from "../src/strategy/GatedMintEscrow.sol";
 import {MockERC20} from "../src/mocks/MockERC20.sol";
 import {MockStrategy} from "../src/mocks/MockStrategy.sol";
-import {MockHook} from "../src/mocks/MockHook.sol";
+import {MockHook} from "../src/mocks/hooks/MockHook.sol";
 import {MockRegistry} from "../src/mocks/MockRegistry.sol";
 import {MockConduit} from "../src/mocks/MockConduit.sol";
 import {tRWA} from "../src/token/tRWA.sol";

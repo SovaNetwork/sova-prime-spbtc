@@ -7,7 +7,7 @@ import {BasicStrategy} from "../src/strategy/BasicStrategy.sol";
 import {IStrategy} from "../src/strategy/IStrategy.sol";
 import {tRWA} from "../src/token/tRWA.sol";
 import {RoleManager} from "../src/auth/RoleManager.sol";
-import {MockHook} from "../src/mocks/MockHook.sol";
+import {MockHook} from "../src/mocks/hooks/MockHook.sol";
 import {MockERC20} from "../src/mocks/MockERC20.sol";
 import {MockReporter} from "../src/mocks/MockReporter.sol";
 import {BaseReporter} from "../src/reporter/BaseReporter.sol";
