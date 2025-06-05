@@ -422,7 +422,7 @@ contract GatedMintEscrowTest is BaseFountfiTest {
         assertEq(uint8(deposit.state), 0); // PENDING
     }
 
-    function test_GetPendingDeposit_NonExistent() public {
+    function test_GetPendingDeposit_NonExistent() public view {
         bytes32 invalidDepositId = keccak256("invalid");
 
         GatedMintEscrow.PendingDeposit memory deposit = escrow.getPendingDeposit(invalidDepositId);

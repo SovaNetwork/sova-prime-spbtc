@@ -240,7 +240,6 @@ contract MultiUserFuzzTest is BaseFountfiTest {
 
         // Record initial state
         uint256 initialTotalAssets = token.totalAssets();
-        uint256 initialTotalShares = token.totalSupply();
 
         // Execute all deposits first (simulating same block)
         uint256[] memory sharesReceived = new uint256[](3);
@@ -287,7 +286,7 @@ contract MultiUserFuzzTest is BaseFountfiTest {
             _testDustAmounts(seed);
         } else if (extremeType == 1) {
             // Test maximum amounts
-            _testMaxAmounts(seed);
+            _testMaxAmounts();
         } else {
             // Test mixed dust and max
             _testMixedExtremes(seed);
@@ -378,7 +377,7 @@ contract MultiUserFuzzTest is BaseFountfiTest {
         }
     }
 
-    function _testMaxAmounts(uint256 seed) private {
+    function _testMaxAmounts() private {
         // Test with very large amounts (USDC decimals)
         uint256 maxAmount = 100000000e6; // 100M USDC
         vm.prank(owner); // Need owner to mint

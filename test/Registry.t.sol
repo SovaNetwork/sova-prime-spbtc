@@ -167,7 +167,7 @@ contract RegistryTest is Test {
         vm.stopPrank();
     }
 
-    function test_AllStrategyTokens_Empty() public {
+    function test_AllStrategyTokens_Empty() public view {
         // Test the empty case when no strategies are deployed
         address[] memory tokens = registry.allStrategyTokens();
         assertEq(tokens.length, 0);
@@ -177,7 +177,7 @@ contract RegistryTest is Test {
         vm.startPrank(owner);
 
         // Deploy a strategy
-        (address strategy, address token) =
+        (, address token) =
             registry.deploy(address(strategyImpl), "Test RWA Token", "tRWA", address(usdc), owner, "");
 
         // Check if it's a strategy token

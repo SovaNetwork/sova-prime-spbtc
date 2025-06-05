@@ -123,7 +123,7 @@ contract BaseHookTest is Test {
                               NAME TESTS
     //////////////////////////////////////////////////////////////*/
 
-    function test_Name() public {
+    function test_Name() public view {
         // Test that name returns the correct name
         assertEq(approveHook.name(), "ApproveHook", "name should return the name");
         assertEq(rejectHook.name(), "RejectHook", "name should return the name");
@@ -134,7 +134,7 @@ contract BaseHookTest is Test {
                               ID TESTS
     //////////////////////////////////////////////////////////////*/
 
-    function test_HookId() public {
+    function test_HookId() public view {
         // Test that hookId returns the correct ID (keccak256 hash of the name)
         bytes32 expectedApproveId = keccak256(abi.encodePacked("ApproveHook", address(approveHook)));
         bytes32 expectedRejectId = keccak256(abi.encodePacked("RejectHook", address(rejectHook)));

@@ -321,7 +321,7 @@ contract GatedMintRWATest is BaseFountfiTest {
 
     // ============ View Function Tests ============
 
-    function test_GetUserPendingDeposits_EmptyByDefault() public {
+    function test_GetUserPendingDeposits_EmptyByDefault() public view {
         bytes32[] memory pendingDeposits = gatedToken.getUserPendingDeposits(alice);
         assertEq(pendingDeposits.length, 0);
     }
@@ -353,7 +353,7 @@ contract GatedMintRWATest is BaseFountfiTest {
         assertEq(state, 0); // PENDING
     }
 
-    function test_GetDepositDetails_NonExistent() public {
+    function test_GetDepositDetails_NonExistent() public view {
         bytes32 invalidDepositId = keccak256("invalid");
 
         (address depositor, address recipient, uint256 amount, uint256 expTime, uint8 state) =

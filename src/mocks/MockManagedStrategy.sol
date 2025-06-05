@@ -26,20 +26,17 @@ contract MockManagedStrategy is IStrategy {
 
     /**
      * @notice Initialize the strategy without deploying a token
-     * @param name_ Name of the token (not used here)
-     * @param symbol_ Symbol of the token (not used here)
      * @param roleManager_ Address of the role manager
      * @param manager_ Address of the manager
      * @param asset_ Address of the underlying asset
-     * @param assetDecimals_ Number of decimals of the asset (not used here)
      */
     function initialize(
-        string calldata name_,
-        string calldata symbol_,
+        string calldata,
+        string calldata,
         address roleManager_,
         address manager_,
         address asset_,
-        uint8 assetDecimals_,
+        uint8,
         bytes memory
     ) external override {
         if (_initialized) revert AlreadyInitialized();

@@ -29,6 +29,15 @@ contract TestableBasicStrategy is BasicStrategy {
 }
 
 /**
+ * @title PayableTest
+ * @notice Helper contract for testing payable calls
+ */
+contract PayableTest {
+    receive() external payable {}
+}
+
+
+/**
  * @title BasicStrategyTest
  * @notice Tests for BasicStrategy
  */
@@ -326,15 +335,15 @@ contract BasicStrategyTest is BaseFountfiTest {
         vm.deal(address(strategy), 2 ether);
 
         // Deploy a simple payable contract
-        PayableTest payable_contract = new PayableTest();
+        PayableTest payableContract = new PayableTest();
 
         vm.startPrank(manager);
 
         // Call the contract with 1 ETH
-        (bool success,) = strategy.call(address(payable_contract), 1 ether, "");
+        (bool success,) = strategy.call(address(payableContract), 1 ether, "");
 
         assertTrue(success, "Call should succeed");
-        assertEq(address(payable_contract).balance, 1 ether, "Contract should receive 1 ETH");
+        assertEq(address(payableContract).balance, 1 ether, "Contract should receive 1 ETH");
 
         vm.stopPrank();
     }
@@ -451,9 +460,4 @@ contract BasicStrategyTest is BaseFountfiTest {
         vm.expectRevert(); // low-level solidity error
         strategy.callStrategyToken(invalidCalldata);
     }
-}
-
-// Helper contract for testing payable calls
-contract PayableTest {
-    receive() external payable {}
 }

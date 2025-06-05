@@ -14,6 +14,36 @@ import {tRWA} from "../src/token/tRWA.sol";
 import {IStrategy} from "../src/strategy/IStrategy.sol";
 
 /**
+ * @title TestManagedWithdrawReportedStrategy
+ * @notice Test contract to expose internal functions and add test helpers
+ */
+contract TestManagedWithdrawReportedStrategy is ManagedWithdrawReportedStrategy {
+    function deployTokenPublic(string calldata name_, string calldata symbol_, address asset_, uint8 assetDecimals_)
+        external
+        returns (address)
+    {
+        return _deployToken(name_, symbol_, asset_, assetDecimals_);
+    }
+
+    function setTokenPublic(address token_) external {
+        sToken = token_;
+    }
+
+    function setNonceUsed(address user, uint96 nonce) external {
+        usedNonces[user][nonce] = true;
+    }
+
+    function usedNoncesPublic(address user, uint96 nonce) external view returns (bool) {
+        return usedNonces[user][nonce];
+    }
+
+    // Debug function to check manager directly
+    function isManager(address addr) external view returns (bool) {
+        return addr == manager;
+    }
+}
+
+/**
  * @title ManagedWithdrawReportedStrategyTest
  * @notice Tests for ManagedWithdrawReportedStrategy contract to achieve 100% coverage
  */
@@ -236,7 +266,7 @@ contract ManagedWithdrawReportedStrategyTest is BaseFountfiTest {
 
         // Use low-level call to ensure we're calling the right function
         vm.prank(manager);
-        (bool success, bytes memory data) = address(strategy).call(
+        (bool success,) = address(strategy).call(
             abi.encodeWithSelector(ManagedWithdrawReportedStrategy.batchRedeem.selector, requests, signatures)
         );
         require(success, "Batch redeem call failed");
@@ -384,35 +414,5 @@ contract ManagedWithdrawReportedStrategyTest is BaseFountfiTest {
         vm.prank(manager);
         vm.expectRevert(ManagedWithdrawReportedStrategy.WithdrawInvalidSignature.selector);
         strategy.redeem(request, signature);
-    }
-}
-
-/**
- * @title TestManagedWithdrawReportedStrategy
- * @notice Test contract to expose internal functions and add test helpers
- */
-contract TestManagedWithdrawReportedStrategy is ManagedWithdrawReportedStrategy {
-    function deployTokenPublic(string calldata name_, string calldata symbol_, address asset_, uint8 assetDecimals_)
-        external
-        returns (address)
-    {
-        return _deployToken(name_, symbol_, asset_, assetDecimals_);
-    }
-
-    function setTokenPublic(address token_) external {
-        sToken = token_;
-    }
-
-    function setNonceUsed(address user, uint96 nonce) external {
-        usedNonces[user][nonce] = true;
-    }
-
-    function usedNoncesPublic(address user, uint96 nonce) external view returns (bool) {
-        return usedNonces[user][nonce];
-    }
-
-    // Debug function to check manager directly
-    function isManager(address addr) external view returns (bool) {
-        return addr == manager;
     }
 }

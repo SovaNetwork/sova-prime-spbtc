@@ -111,17 +111,17 @@ contract ConduitTest is BaseFountfiTest {
         // Make sure we're pretending to be the strategy token to call collect deposit
         vm.startPrank(address(trwaToken));
 
-        address strategy = trwaToken.strategy();
+        address currentStrategy = trwaToken.strategy();
         uint256 initialTRWABalance = testToken.balanceOf(address(trwaToken));
         uint256 initialAliceBalance = testToken.balanceOf(alice);
 
         // Call collect deposit
-        bool success = conduit.collectDeposit(address(testToken), alice, strategy, DEPOSIT_AMOUNT);
+        bool success = conduit.collectDeposit(address(testToken), alice, currentStrategy, DEPOSIT_AMOUNT);
 
         // Verify transfer happened
         assertTrue(success, "Collect deposit should return true");
         assertEq(
-            testToken.balanceOf(strategy), initialTRWABalance + DEPOSIT_AMOUNT, "strategy should receive the tokens"
+            testToken.balanceOf(currentStrategy), initialTRWABalance + DEPOSIT_AMOUNT, "strategy should receive the tokens"
         );
         assertEq(testToken.balanceOf(alice), initialAliceBalance - DEPOSIT_AMOUNT, "Alice's balance should decrease");
 
@@ -189,11 +189,28 @@ contract ConduitTest is BaseFountfiTest {
 
         vm.startPrank(address(trwaToken));
 
-        address strategy = trwaToken.strategy();
+        address currentStrategy = trwaToken.strategy();
 
         // Should revert with the underlying SafeTransferLib error
         vm.expectRevert(abi.encodeWithSelector(SafeTransferLib.TransferFromFailed.selector));
-        conduit.collectDeposit(address(testToken), alice, strategy, DEPOSIT_AMOUNT);
+        conduit.collectDeposit(address(testToken), alice, currentStrategy, DEPOSIT_AMOUNT);
+
+        vm.stopPrank();
+    }
+
+    function test_CollectDeposit_InvalidDestination_WrongStrategy() public {
+        // Test case where the 'to' address doesn't match the strategy of the calling token
+        address wrongDestination = address(0x999);
+
+        vm.startPrank(address(trwaToken));
+
+        vm.expectRevert(Conduit.InvalidDestination.selector);
+        conduit.collectDeposit(
+            address(testToken),
+            alice,
+            wrongDestination, // This doesn't match trwaToken.strategy()
+            DEPOSIT_AMOUNT
+        );
 
         vm.stopPrank();
     }
@@ -239,23 +256,6 @@ contract ConduitTest is BaseFountfiTest {
         // Should revert with the underlying SafeTransferLib error
         vm.expectRevert(abi.encodeWithSelector(SafeTransferLib.TransferFailed.selector));
         conduit.rescueERC20(address(testToken), bob, excessiveAmount);
-
-        vm.stopPrank();
-    }
-
-    function test_CollectDeposit_InvalidDestination_WrongStrategy() public {
-        // Test case where the 'to' address doesn't match the strategy of the calling token
-        address wrongDestination = address(0x999);
-
-        vm.startPrank(address(trwaToken));
-
-        vm.expectRevert(Conduit.InvalidDestination.selector);
-        conduit.collectDeposit(
-            address(testToken),
-            alice,
-            wrongDestination, // This doesn't match trwaToken.strategy()
-            DEPOSIT_AMOUNT
-        );
 
         vm.stopPrank();
     }

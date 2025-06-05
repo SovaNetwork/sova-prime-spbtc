@@ -15,6 +15,59 @@ import {MockHook} from "../src/mocks/MockHook.sol";
 import {IHook} from "../src/hooks/IHook.sol";
 
 /**
+ * @title TrackingHook
+ * @notice Hook that tracks withdraw operations for testing
+ */
+contract TrackingHook is IHook {
+    bool public wasWithdrawCalled;
+    address public lastWithdrawToken;
+    address public lastWithdrawOperator;
+    uint256 public lastWithdrawAssets;
+    address public lastWithdrawReceiver;
+    address public lastWithdrawOwner;
+
+    function onBeforeDeposit(address, address, uint256, address)
+        external
+        pure
+        override
+        returns (HookOutput memory)
+    {
+        return HookOutput(true, "");
+    }
+
+    function onBeforeWithdraw(address token, address operator, uint256 assets, address receiver, address owner)
+        external
+        override
+        returns (HookOutput memory)
+    {
+        wasWithdrawCalled = true;
+        lastWithdrawToken = token;
+        lastWithdrawOperator = operator;
+        lastWithdrawAssets = assets;
+        lastWithdrawReceiver = receiver;
+        lastWithdrawOwner = owner;
+        return HookOutput(true, "");
+    }
+
+    function onBeforeTransfer(address, address, address, uint256)
+        external
+        pure
+        override
+        returns (HookOutput memory)
+    {
+        return HookOutput(true, "");
+    }
+
+    function name() external pure override returns (string memory) {
+        return "TrackingHook";
+    }
+
+    function hookId() external pure override returns (bytes32) {
+        return keccak256("TrackingHook");
+    }
+}
+
+/**
  * @title ManagedWithdrawRWATest
  * @notice Comprehensive tests for ManagedWithdrawRWA contract to achieve 100% coverage
  */
@@ -194,7 +247,6 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
         // Setup initial deposit
         _depositAsUser(alice, INITIAL_SUPPLY / 2);
 
-        uint256 userShares = managedToken.balanceOf(alice);
         uint256 maxRedeemable = managedToken.maxRedeem(alice);
         uint256 excessiveShares = maxRedeemable + 1;
 
@@ -257,7 +309,6 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
         // Setup initial deposit
         _depositAsUser(alice, INITIAL_SUPPLY / 2);
 
-        uint256 userShares = managedToken.balanceOf(alice);
         uint256 maxRedeemable = managedToken.maxRedeem(alice);
         uint256 excessiveShares = maxRedeemable + 1;
         uint256 minAssets = 0;
@@ -674,7 +725,7 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
 
         // Perform batch redeem
         vm.prank(address(strategy));
-        uint256[] memory assetsRedeemed = managedToken.batchRedeemShares(shares, to, owners, minAssets);
+        managedToken.batchRedeemShares(shares, to, owners, minAssets);
 
         // Verify the hook was called for each withdrawal
         assertTrue(trackingHook.wasWithdrawCalled());
@@ -738,55 +789,4 @@ contract ManagedWithdrawRWATest is BaseFountfiTest {
     }
 }
 
-/**
- * @title TrackingHook
- * @notice Hook that tracks withdraw operations for testing
- */
-contract TrackingHook is IHook {
-    bool public wasWithdrawCalled;
-    address public lastWithdrawToken;
-    address public lastWithdrawOperator;
-    uint256 public lastWithdrawAssets;
-    address public lastWithdrawReceiver;
-    address public lastWithdrawOwner;
 
-    function onBeforeDeposit(address token, address from, uint256 assets, address receiver)
-        external
-        pure
-        override
-        returns (HookOutput memory)
-    {
-        return HookOutput(true, "");
-    }
-
-    function onBeforeWithdraw(address token, address operator, uint256 assets, address receiver, address owner)
-        external
-        override
-        returns (HookOutput memory)
-    {
-        wasWithdrawCalled = true;
-        lastWithdrawToken = token;
-        lastWithdrawOperator = operator;
-        lastWithdrawAssets = assets;
-        lastWithdrawReceiver = receiver;
-        lastWithdrawOwner = owner;
-        return HookOutput(true, "");
-    }
-
-    function onBeforeTransfer(address token, address from, address to, uint256 amount)
-        external
-        pure
-        override
-        returns (HookOutput memory)
-    {
-        return HookOutput(true, "");
-    }
-
-    function name() external pure override returns (string memory) {
-        return "TrackingHook";
-    }
-
-    function hookId() external pure override returns (bytes32) {
-        return keccak256("TrackingHook");
-    }
-}
