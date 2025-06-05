@@ -97,6 +97,115 @@ contract OperationSpecificMockHook is MockHook {
     }
 }
 
+// Unique hooks for RulesEngine test to avoid ID collision
+contract UniqueHook1 is IHook {
+    function hookId() external pure returns (bytes32) {
+        return keccak256("UniqueHook1ForRulesEngine");
+    }
+
+    function name() external pure returns (string memory) {
+        return "UniqueHook1";
+    }
+
+    function onBeforeDeposit(address, address, uint256, address) external pure returns (IHook.HookOutput memory) {
+        return IHook.HookOutput(true, "");
+    }
+
+    function onBeforeWithdraw(address, address, uint256, address, address)
+        external
+        pure
+        returns (IHook.HookOutput memory)
+    {
+        return IHook.HookOutput(true, "");
+    }
+
+    function onBeforeTransfer(address, address, address, uint256) external pure returns (IHook.HookOutput memory) {
+        return IHook.HookOutput(true, "");
+    }
+}
+
+contract UniqueHook2 is IHook {
+    function hookId() external pure returns (bytes32) {
+        return keccak256("UniqueHook2ForRulesEngine");
+    }
+
+    function name() external pure returns (string memory) {
+        return "UniqueHook2";
+    }
+
+    function onBeforeDeposit(address, address, uint256, address) external pure returns (IHook.HookOutput memory) {
+        return IHook.HookOutput(true, "");
+    }
+
+    function onBeforeWithdraw(address, address, uint256, address, address)
+        external
+        pure
+        returns (IHook.HookOutput memory)
+    {
+        return IHook.HookOutput(true, "");
+    }
+
+    function onBeforeTransfer(address, address, address, uint256) external pure returns (IHook.HookOutput memory) {
+        return IHook.HookOutput(true, "");
+    }
+}
+
+contract UniqueHook3 is IHook {
+    function hookId() external pure returns (bytes32) {
+        return keccak256("UniqueHook3ForRulesEngine");
+    }
+
+    function name() external pure returns (string memory) {
+        return "UniqueHook3";
+    }
+
+    function onBeforeDeposit(address, address, uint256, address) external pure returns (IHook.HookOutput memory) {
+        return IHook.HookOutput(true, "");
+    }
+
+    function onBeforeWithdraw(address, address, uint256, address, address)
+        external
+        pure
+        returns (IHook.HookOutput memory)
+    {
+        return IHook.HookOutput(true, "");
+    }
+
+    function onBeforeTransfer(address, address, address, uint256) external pure returns (IHook.HookOutput memory) {
+        return IHook.HookOutput(true, "");
+    }
+}
+
+/**
+ * @title FailingHook
+ * @notice A hook that always reverts to test hook call failure scenarios
+ */
+contract FailingHook is IHook {
+    function hookId() external pure returns (bytes32) {
+        return keccak256("FailingHookForRulesEngine");
+    }
+
+    function name() external pure returns (string memory) {
+        return "FailingHook";
+    }
+
+    function onBeforeDeposit(address, address, uint256, address) external pure returns (IHook.HookOutput memory) {
+        revert("Hook intentionally fails");
+    }
+
+    function onBeforeWithdraw(address, address, uint256, address, address)
+        external
+        pure
+        returns (IHook.HookOutput memory)
+    {
+        revert("Hook intentionally fails");
+    }
+
+    function onBeforeTransfer(address, address, address, uint256) external pure returns (IHook.HookOutput memory) {
+        revert("Hook intentionally fails");
+    }
+}
+
 /**
  * @title RulesEngineTests
  * @notice Test contract for the RulesEngine implementation
@@ -602,114 +711,5 @@ contract RulesEngineTests is BaseFountfiTest {
         // Try to call onBeforeTransfer - should revert with HookEvaluationFailed
         vm.expectRevert(abi.encodeWithSelector(RulesEngine.HookEvaluationFailed.selector, failingHookId, bytes4(0)));
         rulesEngine.onBeforeTransfer(address(0), alice, bob, 100);
-    }
-}
-
-// Unique hooks for RulesEngine test to avoid ID collision
-contract UniqueHook1 is IHook {
-    function hookId() external pure returns (bytes32) {
-        return keccak256("UniqueHook1ForRulesEngine");
-    }
-
-    function name() external pure returns (string memory) {
-        return "UniqueHook1";
-    }
-
-    function onBeforeDeposit(address, address, uint256, address) external pure returns (IHook.HookOutput memory) {
-        return IHook.HookOutput(true, "");
-    }
-
-    function onBeforeWithdraw(address, address, uint256, address, address)
-        external
-        pure
-        returns (IHook.HookOutput memory)
-    {
-        return IHook.HookOutput(true, "");
-    }
-
-    function onBeforeTransfer(address, address, address, uint256) external pure returns (IHook.HookOutput memory) {
-        return IHook.HookOutput(true, "");
-    }
-}
-
-contract UniqueHook2 is IHook {
-    function hookId() external pure returns (bytes32) {
-        return keccak256("UniqueHook2ForRulesEngine");
-    }
-
-    function name() external pure returns (string memory) {
-        return "UniqueHook2";
-    }
-
-    function onBeforeDeposit(address, address, uint256, address) external pure returns (IHook.HookOutput memory) {
-        return IHook.HookOutput(true, "");
-    }
-
-    function onBeforeWithdraw(address, address, uint256, address, address)
-        external
-        pure
-        returns (IHook.HookOutput memory)
-    {
-        return IHook.HookOutput(true, "");
-    }
-
-    function onBeforeTransfer(address, address, address, uint256) external pure returns (IHook.HookOutput memory) {
-        return IHook.HookOutput(true, "");
-    }
-}
-
-contract UniqueHook3 is IHook {
-    function hookId() external pure returns (bytes32) {
-        return keccak256("UniqueHook3ForRulesEngine");
-    }
-
-    function name() external pure returns (string memory) {
-        return "UniqueHook3";
-    }
-
-    function onBeforeDeposit(address, address, uint256, address) external pure returns (IHook.HookOutput memory) {
-        return IHook.HookOutput(true, "");
-    }
-
-    function onBeforeWithdraw(address, address, uint256, address, address)
-        external
-        pure
-        returns (IHook.HookOutput memory)
-    {
-        return IHook.HookOutput(true, "");
-    }
-
-    function onBeforeTransfer(address, address, address, uint256) external pure returns (IHook.HookOutput memory) {
-        return IHook.HookOutput(true, "");
-    }
-}
-
-/**
- * @title FailingHook
- * @notice A hook that always reverts to test hook call failure scenarios
- */
-contract FailingHook is IHook {
-    function hookId() external pure returns (bytes32) {
-        return keccak256("FailingHookForRulesEngine");
-    }
-
-    function name() external pure returns (string memory) {
-        return "FailingHook";
-    }
-
-    function onBeforeDeposit(address, address, uint256, address) external pure returns (IHook.HookOutput memory) {
-        revert("Hook intentionally fails");
-    }
-
-    function onBeforeWithdraw(address, address, uint256, address, address)
-        external
-        pure
-        returns (IHook.HookOutput memory)
-    {
-        revert("Hook intentionally fails");
-    }
-
-    function onBeforeTransfer(address, address, address, uint256) external pure returns (IHook.HookOutput memory) {
-        revert("Hook intentionally fails");
     }
 }

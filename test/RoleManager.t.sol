@@ -642,7 +642,7 @@ contract RoleManagerTest is Test {
      * @notice Test branches that need specific conditions
      * @dev Targeted tests for remaining uncovered branches
      */
-    function test_UncoveredBranches() public {
+    function test_RevokeRole_Unauthorized() public {
         // Test 1: Create a scenario where _canManageRole returns false for non-owner/non-PROTOCOL_ADMIN
         // trying to revoke a role (covers revokeRole unauthorized branch - line 116)
         vm.startPrank(admin);
@@ -652,36 +652,23 @@ contract RoleManagerTest is Test {
         // Try to revoke from someone with no permissions
         address nobody = address(0x9999);
         vm.startPrank(nobody);
-        try roleManager.revokeRole(user, roleManager.KYC_OPERATOR()) {
-            // Should not reach here
-            assertTrue(false, "Should have reverted");
-        } catch {
-            // Expected to revert - this covers the branch
-        }
+        vm.expectRevert(abi.encodeWithSelector(Ownable.Unauthorized.selector));
+        roleManager.revokeRole(user, roleManager.KYC_OPERATOR());
         vm.stopPrank();
 
         // Test 2: Owner check in setRoleAdmin - try with non-owner who doesn't have PROTOCOL_ADMIN
         vm.startPrank(nobody);
-        try roleManager.setRoleAdmin(1 << 20, roleManager.STRATEGY_ADMIN()) {
-            assertTrue(false, "Should have reverted");
-        } catch {
-            // Expected to revert - covers the authorization branch
-        }
+        vm.expectRevert(abi.encodeWithSelector(Ownable.Unauthorized.selector));
+        roleManager.setRoleAdmin(1 << 20, roleManager.STRATEGY_ADMIN());
         vm.stopPrank();
 
         // Test 3: Role validation in setRoleAdmin
         vm.startPrank(admin);
-        try roleManager.setRoleAdmin(0, roleManager.STRATEGY_ADMIN()) {
-            assertTrue(false, "Should have reverted");
-        } catch {
-            // Expected to revert - covers targetRole validation
-        }
+        vm.expectRevert(abi.encodeWithSelector(RoleManager.InvalidRole.selector));
+        roleManager.setRoleAdmin(0, roleManager.STRATEGY_ADMIN());
 
-        try roleManager.setRoleAdmin(roleManager.PROTOCOL_ADMIN(), roleManager.STRATEGY_ADMIN()) {
-            assertTrue(false, "Should have reverted");
-        } catch {
-            // Expected to revert - covers targetRole validation
-        }
+        vm.expectRevert(abi.encodeWithSelector(RoleManager.InvalidRole.selector));
+        roleManager.setRoleAdmin(roleManager.PROTOCOL_ADMIN(), roleManager.STRATEGY_ADMIN());
         vm.stopPrank();
     }
 
@@ -705,11 +692,8 @@ contract RoleManagerTest is Test {
 
         // STRATEGY_ADMIN user should not be able to grant this role since it requires RULES_ADMIN
         vm.startPrank(strategyAdminUser);
-        try roleManager.grantRole(user, customRole) {
-            assertTrue(false, "Should have reverted");
-        } catch {
-            // Expected to revert - this should cover the false branch of hasAllRoles(manager, PROTOCOL_ADMIN)
-        }
+        vm.expectRevert(abi.encodeWithSelector(Ownable.Unauthorized.selector));
+        roleManager.grantRole(user, customRole);
         vm.stopPrank();
     }
 

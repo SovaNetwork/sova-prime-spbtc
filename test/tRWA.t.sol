@@ -17,6 +17,88 @@ import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {ERC4626} from "solady/tokens/ERC4626.sol";
 
 /**
+ * @title SimpleMockHook
+ * @notice Simple hook that always approves operations
+ */
+contract SimpleMockHook is IHook {
+    function onBeforeDeposit(address, address, uint256, address)
+        external
+        pure
+        override
+        returns (HookOutput memory)
+    {
+        return HookOutput(true, "");
+    }
+
+    function onBeforeWithdraw(address, address, uint256, address, address)
+        external
+        pure
+        override
+        returns (HookOutput memory)
+    {
+        return HookOutput(true, "");
+    }
+
+    function onBeforeTransfer(address, address, address, uint256)
+        external
+        pure
+        override
+        returns (HookOutput memory)
+    {
+        return HookOutput(true, "");
+    }
+
+    function name() external pure override returns (string memory) {
+        return "SimpleMockHook";
+    }
+
+    function hookId() external pure override returns (bytes32) {
+        return keccak256("SimpleMockHook");
+    }
+}
+
+/**
+ * @title RejectingHook
+ * @notice Hook that always rejects operations
+ */
+contract RejectingHook is IHook {
+    function onBeforeDeposit(address, address, uint256, address)
+        external
+        pure
+        override
+        returns (HookOutput memory)
+    {
+        return HookOutput(false, "Deposit rejected");
+    }
+
+    function onBeforeWithdraw(address, address, uint256, address, address)
+        external
+        pure
+        override
+        returns (HookOutput memory)
+    {
+        return HookOutput(false, "Withdraw rejected");
+    }
+
+    function onBeforeTransfer(address, address, address, uint256)
+        external
+        pure
+        override
+        returns (HookOutput memory)
+    {
+        return HookOutput(false, "Transfer rejected");
+    }
+
+    function name() external pure override returns (string memory) {
+        return "RejectingHook";
+    }
+
+    function hookId() external pure override returns (bytes32) {
+        return keccak256("RejectingHook");
+    }
+}
+
+/**
  * @title TRWATest
  * @notice Comprehensive tests for tRWA contract to achieve 100% coverage
  */
@@ -831,87 +913,5 @@ contract TRWATest is BaseFountfiTest {
 
         // The line 194 path (by != owner) is tested indirectly through ERC4626 mechanics
         // This test confirms the allowance infrastructure that enables line 194
-    }
-}
-
-/**
- * @title SimpleMockHook
- * @notice Simple hook that always approves operations
- */
-contract SimpleMockHook is IHook {
-    function onBeforeDeposit(address token, address from, uint256 assets, address receiver)
-        external
-        pure
-        override
-        returns (HookOutput memory)
-    {
-        return HookOutput(true, "");
-    }
-
-    function onBeforeWithdraw(address token, address operator, uint256 assets, address receiver, address owner)
-        external
-        pure
-        override
-        returns (HookOutput memory)
-    {
-        return HookOutput(true, "");
-    }
-
-    function onBeforeTransfer(address token, address from, address to, uint256 amount)
-        external
-        pure
-        override
-        returns (HookOutput memory)
-    {
-        return HookOutput(true, "");
-    }
-
-    function name() external pure override returns (string memory) {
-        return "SimpleMockHook";
-    }
-
-    function hookId() external pure override returns (bytes32) {
-        return keccak256("SimpleMockHook");
-    }
-}
-
-/**
- * @title RejectingHook
- * @notice Hook that always rejects operations
- */
-contract RejectingHook is IHook {
-    function onBeforeDeposit(address token, address from, uint256 assets, address receiver)
-        external
-        pure
-        override
-        returns (HookOutput memory)
-    {
-        return HookOutput(false, "Deposit rejected");
-    }
-
-    function onBeforeWithdraw(address token, address operator, uint256 assets, address receiver, address owner)
-        external
-        pure
-        override
-        returns (HookOutput memory)
-    {
-        return HookOutput(false, "Withdraw rejected");
-    }
-
-    function onBeforeTransfer(address token, address from, address to, uint256 amount)
-        external
-        pure
-        override
-        returns (HookOutput memory)
-    {
-        return HookOutput(false, "Transfer rejected");
-    }
-
-    function name() external pure override returns (string memory) {
-        return "RejectingHook";
-    }
-
-    function hookId() external pure override returns (bytes32) {
-        return keccak256("RejectingHook");
     }
 }
