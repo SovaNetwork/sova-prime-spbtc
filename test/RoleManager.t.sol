@@ -645,30 +645,35 @@ contract RoleManagerTest is Test {
     function test_RevokeRole_Unauthorized() public {
         // Test 1: Create a scenario where _canManageRole returns false for non-owner/non-PROTOCOL_ADMIN
         // trying to revoke a role (covers revokeRole unauthorized branch - line 116)
+
+        uint256 kycOperatorRole = roleManager.KYC_OPERATOR();
+        uint256 strategyAdminRole = roleManager.STRATEGY_ADMIN();
+        uint256 protocolAdminRole = roleManager.PROTOCOL_ADMIN();
+
         vm.startPrank(admin);
-        roleManager.grantRole(user, roleManager.KYC_OPERATOR());
+        roleManager.grantRole(user, kycOperatorRole);
         vm.stopPrank();
 
         // Try to revoke from someone with no permissions
         address nobody = address(0x9999);
         vm.startPrank(nobody);
         vm.expectRevert(abi.encodeWithSelector(Ownable.Unauthorized.selector));
-        roleManager.revokeRole(user, roleManager.KYC_OPERATOR());
+        roleManager.revokeRole(user, kycOperatorRole);
         vm.stopPrank();
 
         // Test 2: Owner check in setRoleAdmin - try with non-owner who doesn't have PROTOCOL_ADMIN
         vm.startPrank(nobody);
         vm.expectRevert(abi.encodeWithSelector(Ownable.Unauthorized.selector));
-        roleManager.setRoleAdmin(1 << 20, roleManager.STRATEGY_ADMIN());
+        roleManager.setRoleAdmin(1 << 20, strategyAdminRole);
         vm.stopPrank();
 
         // Test 3: Role validation in setRoleAdmin
         vm.startPrank(admin);
         vm.expectRevert(abi.encodeWithSelector(RoleManager.InvalidRole.selector));
-        roleManager.setRoleAdmin(0, roleManager.STRATEGY_ADMIN());
+        roleManager.setRoleAdmin(0, strategyAdminRole);
 
         vm.expectRevert(abi.encodeWithSelector(RoleManager.InvalidRole.selector));
-        roleManager.setRoleAdmin(roleManager.PROTOCOL_ADMIN(), roleManager.STRATEGY_ADMIN());
+        roleManager.setRoleAdmin(protocolAdminRole, strategyAdminRole);
         vm.stopPrank();
     }
 
