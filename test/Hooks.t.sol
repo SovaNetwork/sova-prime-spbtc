@@ -373,14 +373,9 @@ contract HooksTest is BaseFountfiTest {
 
         // Now try to remove the hook - should fail
         vm.startPrank(address(removalTestStrategy));
-
-        bool success = false;
-        try removalTestToken.removeOperationHook(removalTestToken.OP_DEPOSIT(), 0) {
-            success = true;
-        } catch {
-            // Expected to revert
-        }
-        assertFalse(success, "Should not be able to remove hook after operations");
+        bytes32 depositOp = removalTestToken.OP_DEPOSIT();
+        vm.expectRevert(abi.encodeWithSelector(tRWA.HookHasProcessedOperations.selector));
+        removalTestToken.removeOperationHook(depositOp, 0);
 
         vm.stopPrank();
     }
@@ -405,13 +400,9 @@ contract HooksTest is BaseFountfiTest {
         vm.startPrank(address(removalTestStrategy));
 
         // Should not be able to remove the deposit hook (it was used)
-        bool success = false;
-        try removalTestToken.removeOperationHook(removalTestToken.OP_DEPOSIT(), 0) {
-            success = true;
-        } catch {
-            // Expected to revert
-        }
-        assertFalse(success, "Should not be able to remove used deposit hook");
+        bytes32 depositOp = removalTestToken.OP_DEPOSIT();
+        vm.expectRevert(abi.encodeWithSelector(tRWA.HookHasProcessedOperations.selector));
+        removalTestToken.removeOperationHook(depositOp, 0);
 
         // Should be able to remove the withdraw hook (it was not used)
         removalTestToken.removeOperationHook(removalTestToken.OP_WITHDRAW(), 0);
@@ -455,26 +446,18 @@ contract HooksTest is BaseFountfiTest {
     function test_RemoveHookIndexValidation() public {
         vm.startPrank(address(removalTestStrategy));
 
+        bytes32 depositOp = removalTestToken.OP_DEPOSIT();
+
         // Test 1: Try to remove hook from empty list
-        bool success = false;
-        try removalTestToken.removeOperationHook(removalTestToken.OP_DEPOSIT(), 0) {
-            success = true;
-        } catch {
-            // Expected to revert
-        }
-        assertFalse(success, "Should not be able to remove from empty list");
+        vm.expectRevert(abi.encodeWithSelector(tRWA.HookIndexOutOfBounds.selector));
+        removalTestToken.removeOperationHook(depositOp, 0);
 
         // Add one hook
         removalTestToken.addOperationHook(removalTestToken.OP_DEPOSIT(), address(hook1));
 
         // Test 2: Try to remove with invalid index
-        success = false;
-        try removalTestToken.removeOperationHook(removalTestToken.OP_DEPOSIT(), 1) {
-            success = true;
-        } catch {
-            // Expected to revert
-        }
-        assertFalse(success, "Should not be able to remove with invalid index");
+        vm.expectRevert(abi.encodeWithSelector(tRWA.HookIndexOutOfBounds.selector));
+        removalTestToken.removeOperationHook(depositOp, 1);
 
         vm.stopPrank();
     }
@@ -483,13 +466,9 @@ contract HooksTest is BaseFountfiTest {
         // Test that non-strategy caller gets rejected
         vm.startPrank(alice);
 
-        bool success = false;
-        try removalTestToken.removeOperationHook(removalTestToken.OP_DEPOSIT(), 0) {
-            success = true;
-        } catch {
-            // Expected to revert
-        }
-        assertFalse(success, "Non-strategy caller should be rejected");
+        bytes32 depositOp = removalTestToken.OP_DEPOSIT();
+        vm.expectRevert(abi.encodeWithSelector(tRWA.NotStrategyAdmin.selector));
+        removalTestToken.removeOperationHook(depositOp, 0);
 
         vm.stopPrank();
     }

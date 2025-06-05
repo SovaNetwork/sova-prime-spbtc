@@ -30,6 +30,7 @@ contract ConcreteHook is BaseHook {
     function onBeforeDeposit(address token, address user, uint256 assets, address receiver)
         public
         override
+        view
         returns (IHook.HookOutput memory)
     {
         // Custom logic that uses the parameters to ensure they're passed correctly
@@ -46,6 +47,7 @@ contract ConcreteHook is BaseHook {
     function onBeforeWithdraw(address token, address by, uint256 assets, address to, address owner)
         public
         override
+        view
         returns (IHook.HookOutput memory)
     {
         // Custom logic that uses the parameters to ensure they're passed correctly
@@ -62,6 +64,7 @@ contract ConcreteHook is BaseHook {
     function onBeforeTransfer(address token, address from, address to, uint256 amount)
         public
         override
+        view
         returns (IHook.HookOutput memory)
     {
         // Custom logic that uses the parameters to ensure they're passed correctly
@@ -174,21 +177,21 @@ contract BaseHookTest is Test {
                       CONCRETE DEPOSIT TESTS
     //////////////////////////////////////////////////////////////*/
 
-    function test_ConcreteOnBeforeDeposit_Approve() public {
+    function test_ConcreteOnBeforeDeposit_Approve() public view {
         // Test approving hook
         IHook.HookOutput memory output = approveHook.onBeforeDeposit(TOKEN, USER, AMOUNT, RECEIVER);
         assertTrue(output.approved, "Concrete onBeforeDeposit should approve when configured to");
         assertEq(output.reason, "", "Concrete onBeforeDeposit should have empty reason when approving");
     }
 
-    function test_ConcreteOnBeforeDeposit_Reject() public {
+    function test_ConcreteOnBeforeDeposit_Reject() public view {
         // Test rejecting hook
         IHook.HookOutput memory output = rejectHook.onBeforeDeposit(TOKEN, USER, AMOUNT, RECEIVER);
         assertFalse(output.approved, "Concrete onBeforeDeposit should reject when configured to");
         assertEq(output.reason, "Operation rejected by hook", "Concrete onBeforeDeposit should have rejection reason");
     }
 
-    function test_ConcreteOnBeforeDeposit_InvalidParams() public {
+    function test_ConcreteOnBeforeDeposit_InvalidParams() public view {
         // Test with invalid parameters
         IHook.HookOutput memory output = approveHook.onBeforeDeposit(address(0), USER, AMOUNT, RECEIVER);
         assertFalse(output.approved, "Should reject with zero token address");
@@ -211,21 +214,21 @@ contract BaseHookTest is Test {
                      CONCRETE WITHDRAW TESTS
     //////////////////////////////////////////////////////////////*/
 
-    function test_ConcreteOnBeforeWithdraw_Approve() public {
+    function test_ConcreteOnBeforeWithdraw_Approve() public view {
         // Test approving hook
         IHook.HookOutput memory output = approveHook.onBeforeWithdraw(TOKEN, USER, AMOUNT, RECEIVER, OWNER);
         assertTrue(output.approved, "Concrete onBeforeWithdraw should approve when configured to");
         assertEq(output.reason, "", "Concrete onBeforeWithdraw should have empty reason when approving");
     }
 
-    function test_ConcreteOnBeforeWithdraw_Reject() public {
+    function test_ConcreteOnBeforeWithdraw_Reject() public view {
         // Test rejecting hook
         IHook.HookOutput memory output = rejectHook.onBeforeWithdraw(TOKEN, USER, AMOUNT, RECEIVER, OWNER);
         assertFalse(output.approved, "Concrete onBeforeWithdraw should reject when configured to");
         assertEq(output.reason, "Operation rejected by hook", "Concrete onBeforeWithdraw should have rejection reason");
     }
 
-    function test_ConcreteOnBeforeWithdraw_InvalidParams() public {
+    function test_ConcreteOnBeforeWithdraw_InvalidParams() public view {
         // Test with invalid parameters
         IHook.HookOutput memory output = approveHook.onBeforeWithdraw(address(0), USER, AMOUNT, RECEIVER, OWNER);
         assertFalse(output.approved, "Should reject with zero token address");
@@ -252,21 +255,21 @@ contract BaseHookTest is Test {
                      CONCRETE TRANSFER TESTS
     //////////////////////////////////////////////////////////////*/
 
-    function test_ConcreteOnBeforeTransfer_Approve() public {
+    function test_ConcreteOnBeforeTransfer_Approve() public view {
         // Test approving hook
         IHook.HookOutput memory output = approveHook.onBeforeTransfer(TOKEN, USER, RECEIVER, AMOUNT);
         assertTrue(output.approved, "Concrete onBeforeTransfer should approve when configured to");
         assertEq(output.reason, "", "Concrete onBeforeTransfer should have empty reason when approving");
     }
 
-    function test_ConcreteOnBeforeTransfer_Reject() public {
+    function test_ConcreteOnBeforeTransfer_Reject() public view {
         // Test rejecting hook
         IHook.HookOutput memory output = rejectHook.onBeforeTransfer(TOKEN, USER, RECEIVER, AMOUNT);
         assertFalse(output.approved, "Concrete onBeforeTransfer should reject when configured to");
         assertEq(output.reason, "Operation rejected by hook", "Concrete onBeforeTransfer should have rejection reason");
     }
 
-    function test_ConcreteOnBeforeTransfer_InvalidParams() public {
+    function test_ConcreteOnBeforeTransfer_InvalidParams() public view {
         // Test with invalid parameters
         IHook.HookOutput memory output = approveHook.onBeforeTransfer(address(0), USER, RECEIVER, AMOUNT);
         assertFalse(output.approved, "Should reject with zero token address");

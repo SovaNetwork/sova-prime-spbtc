@@ -37,8 +37,6 @@ contract DeployStrategyScript is Script {
         priceOracle = PriceOracleReporter(priceOracleAddress);
 
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        address deployer = vm.addr(deployerPrivateKey);
-
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy ManagedWithdrawRWAStrategy implementation
