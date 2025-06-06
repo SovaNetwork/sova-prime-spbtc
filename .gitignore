@@ -7,23 +7,28 @@ out/
 /broadcast/*/31337/
 /broadcast/**/dry-run/
 
-# Docs
-docs/
-
 # Dotenv file
 .env
 
 # Forge files
 .forge/
 
+# IDE files
+.vscode/
+
 # Build files
 bin/
 out/
 
+# Coverage files
 lcov.info
 coverage.lcov
 coverage/
 coverage-report/
-**/.claude/settings.local.json
 
+# AI Assistant files
+**/.claude/settings.local.json
+.cursor/
+
+# OS files
 .DS_Store

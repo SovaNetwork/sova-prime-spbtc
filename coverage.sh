@@ -1,4 +1,5 @@
 #!/bin/bash
+
 echo "Generating coverage data..."
 forge coverage --report lcov --report-file coverage.lcov
 
