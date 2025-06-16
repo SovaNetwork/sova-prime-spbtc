@@ -56,7 +56,7 @@ contract MockERC20 is ERC20, Ownable {
      * @param to Address to mint tokens to
      * @param amount Amount of tokens to mint
      */
-    function mint(address to, uint256 amount) external onlyOwner {
+    function mint(address to, uint256 amount) external {
         _mint(to, amount);
     }
 
@@ -65,7 +65,7 @@ contract MockERC20 is ERC20, Ownable {
      * @param from Address to burn tokens from
      * @param amount Amount of tokens to burn
      */
-    function burn(address from, uint256 amount) external onlyOwner {
+    function burn(address from, uint256 amount) external {
         _burn(from, amount);
     }
 }
