@@ -11,41 +11,6 @@ import {IRoleManager} from "./IRoleManager.sol";
  */
 contract RoleManager is OwnableRoles, IRoleManager {
     /*//////////////////////////////////////////////////////////////
-                            ERRORS
-    //////////////////////////////////////////////////////////////*/
-
-    /// @notice Emitted for 0 role in arguments
-    error InvalidRole();
-
-    /*//////////////////////////////////////////////////////////////
-                            EVENTS
-    //////////////////////////////////////////////////////////////*/
-
-    /**
-     * @notice Emitted when a role is granted to a user
-     * @param user The address of the user
-     * @param role The role that was granted
-     * @param sender The address that granted the role
-     */
-    event RoleGranted(address indexed user, uint256 indexed role, address indexed sender);
-
-    /**
-     * @notice Emitted when a role is revoked from a user
-     * @param user The address of the user
-     * @param role The role that was revoked
-     * @param sender The address that revoked the role
-     */
-    event RoleRevoked(address indexed user, uint256 indexed role, address indexed sender);
-
-    /**
-     * @notice Emitted when the admin role for a target role is updated.
-     * @param targetRole The role whose admin is being changed.
-     * @param adminRole The new role required to manage the targetRole (0 means revert to owner/PROTOCOL_ADMIN).
-     * @param sender The address that performed the change.
-     */
-    event RoleAdminSet(uint256 indexed targetRole, uint256 indexed adminRole, address indexed sender);
-
-    /*//////////////////////////////////////////////////////////////
                             ROLE DEFINITIONS
     //////////////////////////////////////////////////////////////*/
 
@@ -103,6 +68,7 @@ contract RoleManager is OwnableRoles, IRoleManager {
     function initializeRegistry(address _registry) external {
         if (msg.sender != owner()) revert Unauthorized();
         if (registry != address(0)) revert AlreadyInitialized();
+        if (_registry == address(0)) revert ZeroAddress();
 
         registry = _registry;
     }

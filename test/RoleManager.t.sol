@@ -2,6 +2,7 @@
 pragma solidity 0.8.25;
 
 import {Test} from "forge-std/Test.sol";
+import {IRoleManager} from "../src/auth/IRoleManager.sol";
 import {RoleManager} from "../src/auth/RoleManager.sol";
 import {RoleManaged} from "../src/auth/RoleManaged.sol";
 import {LibRoleManaged} from "../src/auth/LibRoleManaged.sol";
@@ -111,7 +112,7 @@ contract RoleManagerTest is Test {
     function test_InvalidRoleReverts() public {
         vm.startPrank(admin);
         // Try to grant role 0, which is invalid
-        vm.expectRevert(abi.encodeWithSelector(RoleManager.InvalidRole.selector));
+        vm.expectRevert(abi.encodeWithSelector(IRoleManager.InvalidRole.selector));
         roleManager.grantRole(user, 0);
         vm.stopPrank();
     }
@@ -174,7 +175,7 @@ contract RoleManagerTest is Test {
     function test_InvalidRoleRevokeReverts() public {
         vm.startPrank(admin);
         // Try to revoke role 0, which is invalid
-        vm.expectRevert(abi.encodeWithSelector(RoleManager.InvalidRole.selector));
+        vm.expectRevert(abi.encodeWithSelector(IRoleManager.InvalidRole.selector));
         roleManager.revokeRole(kycOperator, 0);
         vm.stopPrank();
     }
@@ -501,6 +502,14 @@ contract RoleManagerTest is Test {
         newRoleManager.initializeRegistry(mockRegistry2);
     }
 
+    function test_InitializeRegistry_ZeroAddress() public {
+        RoleManager newRoleManager = new RoleManager();
+
+        // Trying to initialize with zero address should fail
+        vm.expectRevert(abi.encodeWithSelector(IRoleManager.ZeroAddress.selector));
+        newRoleManager.initializeRegistry(address(0));
+    }
+
     /**
      * @notice Test role constant values and hierarchy
      * @dev Verify the role bit patterns are set up correctly
@@ -669,10 +678,10 @@ contract RoleManagerTest is Test {
 
         // Test 3: Role validation in setRoleAdmin
         vm.startPrank(admin);
-        vm.expectRevert(abi.encodeWithSelector(RoleManager.InvalidRole.selector));
+        vm.expectRevert(abi.encodeWithSelector(IRoleManager.InvalidRole.selector));
         roleManager.setRoleAdmin(0, strategyAdminRole);
 
-        vm.expectRevert(abi.encodeWithSelector(RoleManager.InvalidRole.selector));
+        vm.expectRevert(abi.encodeWithSelector(IRoleManager.InvalidRole.selector));
         roleManager.setRoleAdmin(protocolAdminRole, strategyAdminRole);
         vm.stopPrank();
     }
