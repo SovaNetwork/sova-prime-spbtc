@@ -245,17 +245,12 @@ contract GatedMintRWA is tRWA {
             }
         }
 
-        // Resize array to fit only pending deposits
-        bytes32[] memory result = new bytes32[](count);
-        for (uint256 i = 0; i < count;) {
-            result[i] = userDeposits[i];
-
-            unchecked {
-                ++i;
-            }
+        // Use assembly to resize the array in-place
+        assembly {
+            mstore(userDeposits, count)
         }
 
-        return result;
+        return userDeposits;
     }
 
     /**
