@@ -44,9 +44,6 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
         "WithdrawalRequest(address owner,address to,uint256 shares,uint256 minAssets,uint96 nonce,uint96 expirationTime)"
     );
 
-    // Domain separator for signatures
-    bytes32 private DOMAIN_SEPARATOR;
-
     /*//////////////////////////////////////////////////////////////
                             STATE
     //////////////////////////////////////////////////////////////*/
@@ -88,17 +85,6 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
         bytes memory initData
     ) public override {
         super.initialize(name_, symbol_, roleManager_, manager_, asset_, assetDecimals_, initData);
-
-        // Initialize EIP-712 domain separator
-        DOMAIN_SEPARATOR = keccak256(
-            abi.encode(
-                EIP712_DOMAIN_TYPEHASH,
-                keccak256(bytes("ManagedWithdrawReportedStrategy")),
-                keccak256(bytes("V1")),
-                block.chainid,
-                address(this)
-            )
-        );
     }
 
     /**
@@ -215,12 +201,28 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
             )
         );
 
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR, structHash));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", _domainSeparator(), structHash));
 
         // Recover signer address from signature
         address signer = ECDSA.recover(digest, signature.v, signature.r, signature.s);
 
         // Verify the signer is the owner of the shares
         if (signer != request.owner) revert WithdrawInvalidSignature();
+    }
+
+    /**
+     * @notice Calculate the EIP-712 domain separator
+     * @return The domain separator
+     */
+    function _domainSeparator() internal view returns (bytes32) {
+        return keccak256(
+            abi.encode(
+                EIP712_DOMAIN_TYPEHASH,
+                keccak256(bytes("ManagedWithdrawReportedStrategy")),
+                keccak256(bytes("V1")),
+                block.chainid,
+                address(this)
+            )
+        );
     }
 }
