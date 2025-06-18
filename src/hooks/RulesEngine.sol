@@ -251,11 +251,6 @@ contract RulesEngine is BaseHook, RoleManaged {
             bytes32 hookId = sortedHookIds[i];
             HookInfo memory hook = _hooks[hookId];
 
-            // Check hook is active, if not, break loop - we've processed all active hooks
-            if (!hook.active) {
-                break;
-            }
-
             // Call the sub-hook with the appropriate evaluation function - use call instead of staticcall
             // to allow hooks to modify state (emit events, track interactions, etc.)
             (bool success, bytes memory returnData) = hook.hookAddress.call(callData);
@@ -321,6 +316,11 @@ contract RulesEngine is BaseHook, RoleManaged {
             unchecked {
                 ++i;
             }
+        }
+
+        // Truncate array length to the actual number of active hooks
+        assembly {
+            mstore(sortedActiveIds, activeHooksCount)
         }
 
         return sortedActiveIds;

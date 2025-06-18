@@ -177,6 +177,7 @@ contract UniqueHook3 is IHook {
     }
 }
 
+
 /**
  * @title RulesEngineTests
  * @notice Test contract for the RulesEngine implementation
@@ -608,15 +609,13 @@ contract RulesEngineTests is BaseFountfiTest {
         bytes32[] memory sortedIds = rulesEngine.getAllActiveHookIdsSorted();
 
         // Should have 2 active hooks (hook3 is disabled)
-        assertEq(sortedIds.length, 3);
+        // After the fix, the array is truncated to only contain active hooks
+        assertEq(sortedIds.length, 2);
 
         // Verify they are sorted by priority (ascending)
         // hook2 (50) < hook1 (100)
         assertEq(sortedIds[0], keccak256("UniqueHook2ForRulesEngine"));
         assertEq(sortedIds[1], keccak256("UniqueHook1ForRulesEngine"));
-
-        // Third element should be empty, since hook3 is disabled
-        assertEq(sortedIds[2], bytes32(0));
     }
 
     /**
@@ -682,5 +681,128 @@ contract RulesEngineTests is BaseFountfiTest {
         // Try to call onBeforeTransfer - should revert with HookEvaluationFailed
         vm.expectRevert(abi.encodeWithSelector(RulesEngine.HookEvaluationFailed.selector, failingHookId, bytes4(0)));
         rulesEngine.onBeforeTransfer(address(0), alice, bob, 100);
+    }
+
+    /**
+     * @notice Test that array truncation works through getAllActiveHookIdsSorted
+     * @dev This verifies the fix for the audit finding about zero-value entries
+     */
+    function test_ArrayTruncation_ProperlyTruncated() public {
+        vm.startPrank(owner);
+
+        // Add multiple hooks with unique names
+        CustomMockHook hook1 = new CustomMockHook(true, "", "TruncateTest1");
+        CustomMockHook hook2 = new CustomMockHook(true, "", "TruncateTest2");
+        CustomMockHook hook3 = new CustomMockHook(true, "", "TruncateTest3");
+        
+        bytes32 hookId1 = rulesEngine.addHook(address(hook1), 10);
+        bytes32 hookId2 = rulesEngine.addHook(address(hook2), 20);
+        bytes32 hookId3 = rulesEngine.addHook(address(hook3), 30);
+
+        // Disable one hook
+        rulesEngine.disableHook(hookId2);
+
+        // Get sorted active hook IDs through public function
+        bytes32[] memory activeHookIds = rulesEngine.getAllActiveHookIdsSorted();
+
+        // Should only have 2 active hooks, not 3
+        assertEq(activeHookIds.length, 2, "Array should be truncated to active hooks only");
+        
+        // Verify the hooks are the active ones (hookId1 and hookId3)
+        assertEq(activeHookIds[0], hookId1, "First hook should be hookId1");
+        assertEq(activeHookIds[1], hookId3, "Second hook should be hookId3");
+        
+        // Verify no zero entries
+        for (uint256 i = 0; i < activeHookIds.length; i++) {
+            assertTrue(activeHookIds[i] != bytes32(0), "No zero entries should exist");
+        }
+
+        vm.stopPrank();
+    }
+
+    /**
+     * @notice Test that hooks are properly sorted by priority
+     * @dev This verifies the sorting still works correctly after truncation
+     */
+    function test_ArrayTruncation_CorrectlySorted() public {
+        vm.startPrank(owner);
+
+        // Add hooks with different priorities (add in reverse order)
+        CustomMockHook hook1 = new CustomMockHook(true, "", "SortTest1");
+        CustomMockHook hook2 = new CustomMockHook(true, "", "SortTest2");
+        CustomMockHook hook3 = new CustomMockHook(true, "", "SortTest3");
+        
+        bytes32 hookId1 = rulesEngine.addHook(address(hook1), 30); // Highest priority
+        bytes32 hookId2 = rulesEngine.addHook(address(hook2), 10); // Lowest priority
+        bytes32 hookId3 = rulesEngine.addHook(address(hook3), 20); // Middle priority
+
+        // Get sorted active hook IDs through public function
+        bytes32[] memory activeHookIds = rulesEngine.getAllActiveHookIdsSorted();
+
+        // Should have all 3 hooks sorted by priority (ascending)
+        assertEq(activeHookIds.length, 3, "Should have all active hooks");
+        assertEq(activeHookIds[0], hookId2, "First should be lowest priority (10)");
+        assertEq(activeHookIds[1], hookId3, "Second should be middle priority (20)");
+        assertEq(activeHookIds[2], hookId1, "Third should be highest priority (30)");
+
+        vm.stopPrank();
+    }
+
+    /**
+     * @notice Test edge case with all hooks disabled
+     * @dev Ensures empty array is returned when no hooks are active
+     */
+    function test_ArrayTruncation_AllDisabled() public {
+        vm.startPrank(owner);
+
+        // Add hooks and disable them all
+        CustomMockHook hook1 = new CustomMockHook(true, "", "DisableTest1");
+        CustomMockHook hook2 = new CustomMockHook(true, "", "DisableTest2");
+        
+        bytes32 hookId1 = rulesEngine.addHook(address(hook1), 10);
+        bytes32 hookId2 = rulesEngine.addHook(address(hook2), 20);
+        
+        rulesEngine.disableHook(hookId1);
+        rulesEngine.disableHook(hookId2);
+
+        // Get sorted active hook IDs through public function
+        bytes32[] memory activeHookIds = rulesEngine.getAllActiveHookIdsSorted();
+
+        // Should return empty array
+        assertEq(activeHookIds.length, 0, "Should return empty array when no hooks are active");
+
+        vm.stopPrank();
+    }
+
+    /**
+     * @notice Test to ensure no repetitive evaluation of zero hook ID
+     * @dev This specifically addresses the audit finding about zero-value entries
+     */
+    function test_NoZeroHookIdEvaluation() public {
+        vm.startPrank(owner);
+
+        // Add some hooks with one disabled
+        CustomMockHook hook1 = new CustomMockHook(true, "", "ZeroTest1");
+        CustomMockHook hook2 = new CustomMockHook(true, "", "ZeroTest2");
+        CustomMockHook hook3 = new CustomMockHook(true, "", "ZeroTest3");
+        
+        rulesEngine.addHook(address(hook1), 10);
+        bytes32 hookId2 = rulesEngine.addHook(address(hook2), 20);
+        rulesEngine.addHook(address(hook3), 30);
+        
+        // Disable the middle hook
+        rulesEngine.disableHook(hookId2);
+
+        // Execute a hook evaluation
+        IHook.HookOutput memory result = rulesEngine.onBeforeTransfer(address(0), alice, bob, 100);
+        
+        // Should pass because all active hooks approve
+        assertTrue(result.approved);
+        
+        // With the fix, only active hooks are evaluated, so no zero entries exist
+        // If there were zero entries, and a hook with ID 0 existed and was active,
+        // it would be evaluated multiple times, which this fix prevents
+        
+        vm.stopPrank();
     }
 }
