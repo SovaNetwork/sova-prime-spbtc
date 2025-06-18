@@ -4,6 +4,10 @@ pragma solidity 0.8.25;
 import {IHook} from "./IHook.sol";
 
 /**
+ * NOTE: For future stateful hooks, consider access control on the hook functions.
+ */
+
+/**
  * @title BaseHook
  * @notice Base contract for all hooks
  * @dev This contract is used to implement the IHook interface
