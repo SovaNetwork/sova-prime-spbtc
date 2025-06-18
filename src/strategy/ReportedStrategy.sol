@@ -2,7 +2,7 @@
 pragma solidity 0.8.25;
 
 import {BasicStrategy} from "./BasicStrategy.sol";
-import {BaseReporter} from "../reporter/BaseReporter.sol";
+import {IReporter} from "../reporter/IReporter.sol";
 import {ERC20} from "solady/tokens/ERC20.sol";
 import {FixedPointMathLib} from "solady/utils/FixedPointMathLib.sol";
 
@@ -30,7 +30,7 @@ contract ReportedStrategy is BasicStrategy {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice The reporter contract
-    BaseReporter public reporter;
+    IReporter public reporter;
 
     /*//////////////////////////////////////////////////////////////
                             INITIALIZATION
@@ -59,7 +59,7 @@ contract ReportedStrategy is BasicStrategy {
 
         address reporter_ = abi.decode(initData, (address));
         if (reporter_ == address(0)) revert InvalidReporter();
-        reporter = BaseReporter(reporter_);
+        reporter = IReporter(reporter_);
 
         emit SetReporter(reporter_);
     }
@@ -99,7 +99,7 @@ contract ReportedStrategy is BasicStrategy {
     function setReporter(address _reporter) external onlyManager {
         if (_reporter == address(0)) revert InvalidReporter();
 
-        reporter = BaseReporter(_reporter);
+        reporter = IReporter(_reporter);
 
         emit SetReporter(_reporter);
     }

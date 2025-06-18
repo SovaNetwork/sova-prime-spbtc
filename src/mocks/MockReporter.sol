@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {BaseReporter} from "../reporter/BaseReporter.sol";
+import {IReporter} from "../reporter/IReporter.sol";
 
 /**
  * @title MockReporter
  * @notice A simple reporter implementation for testing
  */
-contract MockReporter is BaseReporter {
+contract MockReporter is IReporter {
     uint256 private _value;
 
     constructor(uint256 initialValue) {

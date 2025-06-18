@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.25;
 
-import {BaseReporter} from "./BaseReporter.sol";
+import {IReporter} from "./IReporter.sol";
 import {Ownable} from "solady/auth/Ownable.sol";
 
 /**
  * @title PriceOracleReporter
  * @notice A reporter contract that allows a trusted party to report the price per share of the strategy
  */
-contract PriceOracleReporter is BaseReporter, Ownable {
+contract PriceOracleReporter is IReporter, Ownable {
     /*//////////////////////////////////////////////////////////////
                                 ERRORS
     //////////////////////////////////////////////////////////////*/

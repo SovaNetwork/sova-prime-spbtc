@@ -10,7 +10,7 @@ import {RoleManager} from "../src/auth/RoleManager.sol";
 import {MockHook} from "../src/mocks/hooks/MockHook.sol";
 import {MockERC20} from "../src/mocks/MockERC20.sol";
 import {MockReporter} from "../src/mocks/MockReporter.sol";
-import {BaseReporter} from "../src/reporter/BaseReporter.sol";
+import {IReporter} from "../src/reporter/IReporter.sol";
 import {Registry} from "../src/registry/Registry.sol";
 
 /**
