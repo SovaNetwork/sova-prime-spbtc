@@ -112,6 +112,11 @@ contract ManagedWithdrawRWA is tRWA {
             address recipient = to[i];
             address shareOwner = owner[i];
 
+            // Accounting and transfers (mirrors _withdraw logic sans nonReentrant)
+            if (strategy != shareOwner) _spendAllowance(shareOwner, strategy, userShares);
+            _beforeWithdraw(userAssets, userShares);
+            _burn(shareOwner, userShares);
+
             // Call hooks (same logic as in _withdraw)
             for (uint256 j; j < opHooks.length; ++j) {
                 IHook.HookOutput memory hookOut =
@@ -119,11 +124,6 @@ contract ManagedWithdrawRWA is tRWA {
                 if (!hookOut.approved) revert HookCheckFailed(hookOut.reason);
                 opHooks[j].hasProcessedOperations = true;
             }
-
-            // Accounting and transfers (mirrors _withdraw logic sans nonReentrant)
-            if (strategy != shareOwner) _spendAllowance(shareOwner, strategy, userShares);
-            _beforeWithdraw(userAssets, userShares);
-            _burn(shareOwner, userShares);
 
             SafeTransferLib.safeTransfer(asset(), recipient, userAssets);
             emit Withdraw(strategy, recipient, shareOwner, userAssets, userShares);
