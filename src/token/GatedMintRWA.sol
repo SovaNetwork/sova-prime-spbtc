@@ -224,11 +224,14 @@ contract GatedMintRWA is tRWA {
      * @return Array of deposit IDs that are still pending
      */
     function getUserPendingDeposits(address user) external view returns (bytes32[] memory) {
-        bytes32[] memory userDeposits = new bytes32[](userDepositIds[user].length);
+        uint256 numUserDeposits = userDepositIds[user].length;
+        bytes32[] memory userDeposits = new bytes32[](numUserDeposits);
         uint256 count = 0;
 
-        for (uint256 i = 0; i < userDepositIds[user].length;) {
-            bytes32 depositId = userDepositIds[user][i];
+        bytes32[] memory allUserDeposits = userDepositIds[user];
+
+        for (uint256 i = 0; i < numUserDeposits;) {
+            bytes32 depositId = allUserDeposits[i];
 
             // Query the escrow for deposit status
             (,,,, uint8 state) = getDepositDetails(depositId);
