@@ -10,6 +10,8 @@ import {GatedMintRWA} from "../token/GatedMintRWA.sol";
  * @dev Deployed alongside each GatedMintRWA token to manage pending deposits
  */
 contract GatedMintEscrow {
+    using SafeTransferLib for address;
+
     /*//////////////////////////////////////////////////////////////
                             ERRORS
     //////////////////////////////////////////////////////////////*/
@@ -160,7 +162,7 @@ contract GatedMintEscrow {
         currentRound++;
 
         // Transfer assets to the strategy
-        SafeTransferLib.safeTransfer(asset, strategy, deposit.assetAmount);
+        asset.safeTransfer(strategy, deposit.assetAmount);
 
         // Tell the GatedMintRWA token to mint shares
         GatedMintRWA(token).mintShares(deposit.recipient, deposit.assetAmount);
@@ -214,7 +216,7 @@ contract GatedMintEscrow {
         currentRound++;
 
         // Transfer all assets to the strategy in one transaction
-        SafeTransferLib.safeTransfer(asset, strategy, totalBatchAssets);
+        asset.safeTransfer(strategy, totalBatchAssets);
 
         // Tell the GatedMintRWA token to mint shares for all deposits with equal treatment
         GatedMintRWA(token).batchMintShares(recipients, assetAmounts, totalBatchAssets);
@@ -242,7 +244,7 @@ contract GatedMintEscrow {
         userPendingAssets[deposit.depositor] -= deposit.assetAmount;
 
         // Return assets to the depositor
-        SafeTransferLib.safeTransfer(asset, deposit.depositor, deposit.assetAmount);
+        asset.safeTransfer(deposit.depositor, deposit.assetAmount);
 
         emit DepositRefunded(depositId, deposit.depositor, deposit.assetAmount);
     }
@@ -275,7 +277,7 @@ contract GatedMintEscrow {
             totalRefundedAssets += deposit.assetAmount;
 
             // Return assets to the depositor (individual transfers for each depositor)
-            SafeTransferLib.safeTransfer(asset, deposit.depositor, deposit.assetAmount);
+            asset.safeTransfer(deposit.depositor, deposit.assetAmount);
 
             // Emit individual refund event
             emit DepositRefunded(depositId, deposit.depositor, deposit.assetAmount);
@@ -313,7 +315,7 @@ contract GatedMintEscrow {
         userPendingAssets[deposit.depositor] -= deposit.assetAmount;
 
         // Return assets to the depositor
-        SafeTransferLib.safeTransfer(asset, deposit.depositor, deposit.assetAmount);
+        asset.safeTransfer(deposit.depositor, deposit.assetAmount);
 
         emit DepositReclaimed(depositId, deposit.depositor, deposit.assetAmount);
     }
