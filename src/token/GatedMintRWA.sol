@@ -10,6 +10,10 @@ import {Conduit} from "../conduit/Conduit.sol";
 import {GatedMintEscrow} from "../strategy/GatedMintEscrow.sol";
 
 /**
+ * FIXME: Add slippage protection before using in production!
+ */
+
+/**
  * @title GatedMintRWA
  * @notice Extension of tRWA that implements a two-phase deposit process using an Escrow
  * @dev Deposits are first collected and stored in Escrow; shares are only minted upon acceptance
