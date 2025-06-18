@@ -94,10 +94,11 @@ contract Registry is IRegistry, RoleManaged {
      * @return bool True if the token is a tRWA token, false otherwise
      */
     function isStrategyToken(address token) external view override returns (bool) {
-        ItRWA tokenContract = ItRWA(token);
-        address strategy = address(tokenContract.strategy());
+        address strategy = ItRWA(token).strategy();
 
-        return isStrategy[strategy];
+        if (!isStrategy[strategy]) return false;
+
+        return IStrategy(strategy).sToken() == token;
     }
 
     /**

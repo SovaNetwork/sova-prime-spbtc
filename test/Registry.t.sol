@@ -9,6 +9,7 @@ import {MockERC20} from "../src/mocks/MockERC20.sol";
 import {RoleManager} from "../src/auth/RoleManager.sol";
 import {RoleManaged} from "../src/auth/RoleManaged.sol";
 import {IStrategy} from "../src/strategy/IStrategy.sol";
+import {ItRWA} from "../src/token/ItRWA.sol";
 import {LibRoleManaged} from "../src/auth/LibRoleManaged.sol";
 
 /**
@@ -197,6 +198,74 @@ contract RegistryTest is Test {
 
         // Check that it's not a strategy token
         assertFalse(registry.isStrategyToken(randomToken));
+    }
+
+    function test_IsStrategyToken_RegisteredStrategyButTokenMismatch() public {
+        vm.startPrank(owner);
+
+        // Deploy a strategy
+        (address strategy,) = registry.deploy(address(strategyImpl), "Test RWA Token", "tRWA", address(usdc), owner, "");
+
+        // Create a different token that claims to use the same strategy
+        address fakeToken = makeAddr("fakeToken");
+        
+        // Mock the strategy() call on the fake token to return the registered strategy
+        vm.mockCall(
+            fakeToken, abi.encodeWithSelector(bytes4(keccak256("strategy()"))), abi.encode(strategy)
+        );
+
+        // The strategy is registered, but the check compares IStrategy(strategy).asset() with the token
+        // Since asset() returns the underlying asset (USDC), not the token, this will be false
+        assertFalse(registry.isStrategyToken(fakeToken));
+
+        vm.stopPrank();
+    }
+
+    function test_IsStrategyToken_BidirectionalValidation() public {
+        vm.startPrank(owner);
+
+        // Deploy a strategy to get the real token
+        (address strategy, address token) = registry.deploy(address(strategyImpl), "Test RWA Token", "tRWA", address(usdc), owner, "");
+
+        // This test verifies the bidirectional validation:
+        // 1. The token must report a strategy that is registered
+        // 2. The strategy must report the token as its sToken
+        
+        // Verify the strategy is registered
+        assertTrue(registry.isStrategy(strategy));
+        
+        // Verify the token's strategy() returns the correct strategy
+        assertEq(ItRWA(token).strategy(), strategy);
+        
+        // Verify the strategy's sToken() returns the token
+        assertEq(IStrategy(strategy).sToken(), token);
+        
+        // With bidirectional validation, this should return true
+        assertTrue(registry.isStrategyToken(token));
+
+        vm.stopPrank();
+    }
+
+    function test_IsStrategyToken_WithSpoofedToken() public {
+        vm.startPrank(owner);
+
+        // Deploy a legitimate strategy
+        (address strategy,) = registry.deploy(address(strategyImpl), "Test RWA Token", "tRWA", address(usdc), owner, "");
+
+        // Create a fake token that claims to use the same strategy
+        address fakeToken = makeAddr("fakeToken");
+        
+        // Mock the strategy() call on the fake token to return the registered strategy
+        vm.mockCall(
+            fakeToken, abi.encodeWithSelector(bytes4(keccak256("strategy()"))), abi.encode(strategy)
+        );
+
+        // Even though the strategy is registered and the fake token claims to use it,
+        // the fake token should not pass because IStrategy(strategy).sToken() != fakeToken
+        // This prevents malicious contracts from impersonating legitimate tRWA tokens
+        assertFalse(registry.isStrategyToken(fakeToken));
+
+        vm.stopPrank();
     }
 
     function test_ZeroAddressChecks() public {
