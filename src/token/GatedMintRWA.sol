@@ -38,7 +38,7 @@ contract GatedMintRWA is tRWA {
 
     event DepositExpirationPeriodUpdated(uint256 oldPeriod, uint256 newPeriod);
 
-    event BatchSharesMinted(bytes32[] depositIds, uint256 totalAssets, uint256 totalShares);
+    event BatchSharesMinted(uint256 totalAssets, uint256 totalShares);
 
     /*//////////////////////////////////////////////////////////////
                             STATE
@@ -170,13 +170,11 @@ contract GatedMintRWA is tRWA {
 
     /**
      * @notice Mint shares for a batch of accepted deposits with equal share pricing
-     * @param ids Array of deposit IDs being processed in this batch
-     * @param recipients Array of recipient addresses aligned with ids
-     * @param assetAmounts Array of asset amounts aligned with ids
+     * @param recipients Array of recipient addresses
+     * @param assetAmounts Array of asset amounts aligned with recipients
      * @param totalAssets Total assets in the batch (sum of assetAmounts)
      */
     function batchMintShares(
-        bytes32[] calldata ids,
         address[] calldata recipients,
         uint256[] calldata assetAmounts,
         uint256 totalAssets
@@ -185,7 +183,7 @@ contract GatedMintRWA is tRWA {
         if (msg.sender != escrow) revert NotEscrow();
 
         // Validate array lengths match
-        if (ids.length != recipients.length || recipients.length != assetAmounts.length) {
+        if (recipients.length != assetAmounts.length) {
             revert InvalidArrayLengths();
         }
 
@@ -213,7 +211,7 @@ contract GatedMintRWA is tRWA {
             }
         }
 
-        emit BatchSharesMinted(ids, totalAssets, totalShares);
+        emit BatchSharesMinted(totalAssets, totalShares);
     }
 
     /*//////////////////////////////////////////////////////////////

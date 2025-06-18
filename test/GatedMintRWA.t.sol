@@ -277,7 +277,7 @@ contract GatedMintRWATest is BaseFountfiTest {
         vm.prank(actualEscrow);
 
         // Call batchMintShares - this should emit the event
-        gatedToken.batchMintShares(depositIds, recipients, assetAmounts, totalAssets);
+        gatedToken.batchMintShares(recipients, assetAmounts, totalAssets);
 
         // Verify shares were minted correctly
         // For the first batch mint, shares should equal assets * decimal conversion (6 to 18)
@@ -287,36 +287,33 @@ contract GatedMintRWATest is BaseFountfiTest {
     }
 
     function test_BatchMintShares_InvalidArrayLengths() public {
-        bytes32[] memory depositIds = new bytes32[](2);
         address[] memory recipients = new address[](3); // Different length
         uint256[] memory assetAmounts = new uint256[](2);
         uint256 totalAssets = 1000;
 
         vm.prank(address(escrow));
         vm.expectRevert(GatedMintRWA.InvalidArrayLengths.selector);
-        gatedToken.batchMintShares(depositIds, recipients, assetAmounts, totalAssets);
+        gatedToken.batchMintShares(recipients, assetAmounts, totalAssets);
     }
 
     function test_BatchMintShares_InvalidArrayLengthsAssets() public {
-        bytes32[] memory depositIds = new bytes32[](2);
         address[] memory recipients = new address[](2);
         uint256[] memory assetAmounts = new uint256[](1); // Different length
         uint256 totalAssets = 1000;
 
         vm.prank(address(escrow));
         vm.expectRevert(GatedMintRWA.InvalidArrayLengths.selector);
-        gatedToken.batchMintShares(depositIds, recipients, assetAmounts, totalAssets);
+        gatedToken.batchMintShares(recipients, assetAmounts, totalAssets);
     }
 
     function test_BatchMintShares_UnauthorizedCaller() public {
-        bytes32[] memory depositIds = new bytes32[](1);
         address[] memory recipients = new address[](1);
         uint256[] memory assetAmounts = new uint256[](1);
         uint256 totalAssets = 1000;
 
         vm.prank(alice);
         vm.expectRevert(GatedMintRWA.NotEscrow.selector);
-        gatedToken.batchMintShares(depositIds, recipients, assetAmounts, totalAssets);
+        gatedToken.batchMintShares(recipients, assetAmounts, totalAssets);
     }
 
     // ============ View Function Tests ============
@@ -434,13 +431,12 @@ contract GatedMintRWATest is BaseFountfiTest {
     // ============ Additional Coverage Tests ============
 
     function test_BatchMintShares_EmptyArrays() public {
-        bytes32[] memory depositIds = new bytes32[](0);
         address[] memory recipients = new address[](0);
         uint256[] memory assetAmounts = new uint256[](0);
         uint256 totalAssets = 0;
 
         vm.prank(address(escrow));
-        gatedToken.batchMintShares(depositIds, recipients, assetAmounts, totalAssets);
+        gatedToken.batchMintShares(recipients, assetAmounts, totalAssets);
 
         // Should not revert on empty arrays
     }
@@ -462,9 +458,9 @@ contract GatedMintRWATest is BaseFountfiTest {
 
         vm.prank(address(escrow));
         vm.expectEmit(true, true, true, true);
-        emit GatedMintRWA.BatchSharesMinted(depositIds, totalAssets, expectedShares);
+        emit GatedMintRWA.BatchSharesMinted(totalAssets, expectedShares);
 
-        gatedToken.batchMintShares(depositIds, recipients, assetAmounts, totalAssets);
+        gatedToken.batchMintShares(recipients, assetAmounts, totalAssets);
     }
 
     function test_GetUserPendingDeposits_MixedStates() public {
@@ -553,7 +549,7 @@ contract GatedMintRWATest is BaseFountfiTest {
         uint256 totalShares = gatedToken.previewDeposit(totalAssets);
 
         vm.prank(address(escrow));
-        gatedToken.batchMintShares(depositIds, recipients, assetAmounts, totalAssets);
+        gatedToken.batchMintShares(recipients, assetAmounts, totalAssets);
 
         // Check proportional distribution
         uint256 aliceExpected = (amount1 * totalShares) / totalAssets;
@@ -599,7 +595,7 @@ contract GatedMintRWATest is BaseFountfiTest {
 
         vm.prank(address(escrow));
         // This should succeed but mint 0 shares
-        gatedToken.batchMintShares(depositIds, recipients, assetAmounts, totalAssets);
+        gatedToken.batchMintShares(recipients, assetAmounts, totalAssets);
 
         // Verify no shares were minted
         assertEq(gatedToken.balanceOf(alice), aliceBalanceBefore);

@@ -217,7 +217,7 @@ contract GatedMintEscrow {
         SafeTransferLib.safeTransfer(asset, strategy, totalBatchAssets);
 
         // Tell the GatedMintRWA token to mint shares for all deposits with equal treatment
-        GatedMintRWA(token).batchMintShares(depositIds, recipients, assetAmounts, totalBatchAssets);
+        GatedMintRWA(token).batchMintShares(recipients, assetAmounts, totalBatchAssets);
 
         emit BatchDepositsAccepted(depositIds, totalBatchAssets);
     }
