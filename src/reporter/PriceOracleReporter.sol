@@ -68,12 +68,13 @@ contract PriceOracleReporter is IReporter, Ownable {
         if (!authorizedUpdaters[msg.sender]) revert Unauthorized();
         if (bytes(source_).length == 0) revert InvalidSource();
 
-        // Create new price update
-        currentRound++;
+        // Cache currentRound to memory and increment
+        uint256 newRound = currentRound + 1;
+        currentRound = newRound;
         pricePerShare = newPricePerShare;
         lastUpdateAt = block.timestamp;
 
-        emit PricePerShareUpdated(currentRound, pricePerShare, source_);
+        emit PricePerShareUpdated(newRound, newPricePerShare, source_);
     }
 
     /**
