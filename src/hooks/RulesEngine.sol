@@ -103,7 +103,10 @@ contract RulesEngine is BaseHook, RoleManaged {
         uint256 hookIdsLength = _hookIds.length;
         for (uint256 i = 0; i < hookIdsLength;) {
             if (_hookIds[i] == hookId) {
-                _hookIds[i] = _hookIds[hookIdsLength - 1];
+                // Only perform assignment if not removing the last element
+                if (i != hookIdsLength - 1) {
+                    _hookIds[i] = _hookIds[hookIdsLength - 1];
+                }
                 _hookIds.pop();
                 break;
             }

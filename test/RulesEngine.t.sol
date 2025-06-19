@@ -805,4 +805,67 @@ contract RulesEngineTests is BaseFountfiTest {
         
         vm.stopPrank();
     }
+
+    function test_RemoveHook_LastElement() public {
+        vm.startPrank(owner);
+        
+        // Add multiple hooks to the engine
+        bytes32 hookId1 = rulesEngine.addHook(address(allowHook), 100);
+        bytes32 hookId2 = rulesEngine.addHook(address(denyHook), 200);
+        bytes32 hookId3 = rulesEngine.addHook(address(transferHook), 300);
+        
+        // Verify all hooks are present
+        bytes32[] memory allHookIds = rulesEngine.getAllHookIds();
+        assertEq(allHookIds.length, 3);
+        assertEq(allHookIds[0], hookId1);
+        assertEq(allHookIds[1], hookId2);
+        assertEq(allHookIds[2], hookId3);
+        
+        // Remove the last hook (hookId3) - this tests the new optimization branch
+        rulesEngine.removeHook(hookId3);
+        
+        // Verify the hook was removed correctly
+        allHookIds = rulesEngine.getAllHookIds();
+        assertEq(allHookIds.length, 2);
+        assertEq(allHookIds[0], hookId1);
+        assertEq(allHookIds[1], hookId2);
+        assertEq(rulesEngine.getHookAddress(hookId3), address(0));
+        
+        // Verify the remaining hooks still function correctly
+        IHook.HookOutput memory result = rulesEngine.onBeforeTransfer(address(0), alice, bob, 100);
+        assertFalse(result.approved); // denyHook should still deny
+        
+        vm.stopPrank();
+    }
+
+    function test_RemoveHook_MiddleElement() public {
+        vm.startPrank(owner);
+        
+        // Add multiple hooks to the engine
+        bytes32 hookId1 = rulesEngine.addHook(address(allowHook), 100);
+        bytes32 hookId2 = rulesEngine.addHook(address(denyHook), 200);
+        bytes32 hookId3 = rulesEngine.addHook(address(transferHook), 300);
+        
+        // Verify all hooks are present
+        bytes32[] memory allHookIds = rulesEngine.getAllHookIds();
+        assertEq(allHookIds.length, 3);
+        
+        // Remove the middle hook (hookId2) - this tests the swap-and-pop logic
+        rulesEngine.removeHook(hookId2);
+        
+        // Verify the hook was removed correctly
+        allHookIds = rulesEngine.getAllHookIds();
+        assertEq(allHookIds.length, 2);
+        
+        // The last element (hookId3) should have been swapped to the middle position
+        assertEq(allHookIds[0], hookId1);
+        assertEq(allHookIds[1], hookId3); // hookId3 moved to where hookId2 was
+        assertEq(rulesEngine.getHookAddress(hookId2), address(0));
+        
+        // Verify the remaining hooks still function correctly
+        assertTrue(rulesEngine.isHookActive(hookId1));
+        assertTrue(rulesEngine.isHookActive(hookId3));
+        
+        vm.stopPrank();
+    }
 }
