@@ -57,12 +57,7 @@ contract KycRulesHook is BaseHook, RoleManaged {
      * @param account Address to allow
      */
     function allow(address account) external onlyRoles(roleManager.KYC_OPERATOR()) {
-        if (account == address(0)) revert ZeroAddress();
-        if (isAddressDenied[account]) revert AddressAlreadyDenied();
-
-        isAddressAllowed[account] = true;
-
-        emit AddressAllowed(account, msg.sender);
+        _allow(account);
     }
 
     /**
@@ -70,12 +65,7 @@ contract KycRulesHook is BaseHook, RoleManaged {
      * @param account Address to deny
      */
     function deny(address account) external onlyRoles(roleManager.KYC_OPERATOR()) {
-        if (account == address(0)) revert ZeroAddress();
-
-        isAddressAllowed[account] = false;
-        isAddressDenied[account] = true;
-
-        emit AddressDenied(account, msg.sender);
+        _deny(account);
     }
 
     /**
@@ -83,12 +73,7 @@ contract KycRulesHook is BaseHook, RoleManaged {
      * @param account Address to reset
      */
     function reset(address account) external onlyRoles(roleManager.KYC_OPERATOR()) {
-        if (account == address(0)) revert ZeroAddress();
-
-        isAddressAllowed[account] = false;
-        isAddressDenied[account] = false;
-
-        emit AddressRestrictionRemoved(account, msg.sender);
+        _reset(account);
     }
 
     /**
@@ -100,13 +85,7 @@ contract KycRulesHook is BaseHook, RoleManaged {
         if (length == 0) revert InvalidArrayLength();
 
         for (uint256 i = 0; i < length;) {
-            address account = accounts[i];
-            if (account == address(0)) revert ZeroAddress();
-            if (isAddressDenied[account]) revert AddressAlreadyDenied();
-
-            isAddressAllowed[account] = true;
-
-            emit AddressAllowed(account, msg.sender);
+            _allow(accounts[i]);
 
             unchecked {
                 ++i;
@@ -125,13 +104,7 @@ contract KycRulesHook is BaseHook, RoleManaged {
         if (length == 0) revert InvalidArrayLength();
 
         for (uint256 i = 0; i < length;) {
-            address account = accounts[i];
-            if (account == address(0)) revert ZeroAddress();
-
-            isAddressAllowed[account] = false;
-            isAddressDenied[account] = true;
-
-            emit AddressDenied(account, msg.sender);
+            _deny(accounts[i]);
 
             unchecked {
                 ++i;
@@ -150,13 +123,7 @@ contract KycRulesHook is BaseHook, RoleManaged {
         if (length == 0) revert InvalidArrayLength();
 
         for (uint256 i = 0; i < length;) {
-            address account = accounts[i];
-            if (account == address(0)) revert ZeroAddress();
-
-            isAddressAllowed[account] = false;
-            isAddressDenied[account] = false;
-
-            emit AddressRestrictionRemoved(account, msg.sender);
+            _reset(accounts[i]);
 
             unchecked {
                 ++i;
@@ -177,6 +144,49 @@ contract KycRulesHook is BaseHook, RoleManaged {
      */
     function isAllowed(address account) public view returns (bool) {
         return !isAddressDenied[account] && isAddressAllowed[account];
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                            INTERNAL FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Internal function to allow an address
+     * @param account Address to allow
+     */
+    function _allow(address account) internal {
+        if (account == address(0)) revert ZeroAddress();
+        if (isAddressDenied[account]) revert AddressAlreadyDenied();
+
+        isAddressAllowed[account] = true;
+
+        emit AddressAllowed(account, msg.sender);
+    }
+
+    /**
+     * @notice Internal function to deny an address
+     * @param account Address to deny
+     */
+    function _deny(address account) internal {
+        if (account == address(0)) revert ZeroAddress();
+
+        isAddressAllowed[account] = false;
+        isAddressDenied[account] = true;
+
+        emit AddressDenied(account, msg.sender);
+    }
+
+    /**
+     * @notice Internal function to reset an address
+     * @param account Address to reset
+     */
+    function _reset(address account) internal {
+        if (account == address(0)) revert ZeroAddress();
+
+        isAddressAllowed[account] = false;
+        isAddressDenied[account] = false;
+
+        emit AddressRestrictionRemoved(account, msg.sender);
     }
 
     /*//////////////////////////////////////////////////////////////
