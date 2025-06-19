@@ -21,10 +21,6 @@ contract RoleManager is OwnableRoles, IRoleManager {
     uint256 public constant STRATEGY_OPERATOR = 1 << 4; // Bit 4 = Strategy Operator Authority
     uint256 public constant KYC_OPERATOR = 1 << 5; // Bit 5 = KYC Operator Authority
 
-    // Not meant to be granted, but used for role checks
-    uint256 public constant STRATEGY_ANY = PROTOCOL_ADMIN | STRATEGY_ADMIN | STRATEGY_OPERATOR;
-    uint256 public constant RULES_ANY = PROTOCOL_ADMIN | RULES_ADMIN | KYC_OPERATOR;
-
     /*//////////////////////////////////////////////////////////////
                                STATE
     //////////////////////////////////////////////////////////////*/
@@ -48,7 +44,7 @@ contract RoleManager is OwnableRoles, IRoleManager {
         _initializeOwner(msg.sender);
 
         // Grant all roles to deployer
-        uint256 rolesAll = PROTOCOL_ADMIN | STRATEGY_ANY | RULES_ANY;
+        uint256 rolesAll = PROTOCOL_ADMIN | STRATEGY_ADMIN | RULES_ADMIN;
         _grantRoles(msg.sender, rolesAll);
 
         // Emit event for easier off-chain tracking

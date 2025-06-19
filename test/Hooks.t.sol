@@ -43,6 +43,7 @@ contract HooksTest is BaseFountfiTest {
         roleManager = new RoleManager();
         roleManager.initializeRegistry(address(this));
 
+        roleManager.grantRole(owner, roleManager.STRATEGY_OPERATOR());
         roleManager.grantRole(owner, roleManager.KYC_OPERATOR());
 
         rulesEngine = new RulesEngine(address(roleManager));
@@ -55,6 +56,9 @@ contract HooksTest is BaseFountfiTest {
         removalTestRoleManager = new RoleManager();
         removalTestRegistry = new Registry(address(removalTestRoleManager));
         removalTestRoleManager.initializeRegistry(address(removalTestRegistry));
+
+        removalTestRoleManager.grantRole(owner, removalTestRoleManager.STRATEGY_OPERATOR());
+        removalTestRoleManager.grantRole(owner, removalTestRoleManager.KYC_OPERATOR());
 
         // Deploy asset and register it
         removalTestAsset = new MockERC20("Test Asset", "TEST", 18);

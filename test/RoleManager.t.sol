@@ -521,32 +521,6 @@ contract RoleManagerTest is Test {
         assertEq(roleManager.RULES_ADMIN(), 1 << 3);
         assertEq(roleManager.STRATEGY_OPERATOR(), 1 << 4);
         assertEq(roleManager.KYC_OPERATOR(), 1 << 5);
-
-        // Test composite role constants
-        assertEq(
-            roleManager.STRATEGY_ANY(),
-            roleManager.PROTOCOL_ADMIN() | roleManager.STRATEGY_ADMIN() | roleManager.STRATEGY_OPERATOR()
-        );
-        assertEq(
-            roleManager.RULES_ANY(),
-            roleManager.PROTOCOL_ADMIN() | roleManager.RULES_ADMIN() | roleManager.KYC_OPERATOR()
-        );
-    }
-
-    /**
-     * @notice Test role hierarchy in practice
-     * @dev Verify that higher roles include lower role permissions
-     */
-    function test_RoleHierarchy() public {
-        vm.startPrank(admin);
-
-        // PROTOCOL_ADMIN should include all role bits
-        assertTrue(roleManager.hasAllRoles(admin, roleManager.STRATEGY_ADMIN()));
-        assertTrue(roleManager.hasAllRoles(admin, roleManager.RULES_ADMIN()));
-        assertTrue(roleManager.hasAllRoles(admin, roleManager.STRATEGY_OPERATOR()));
-        assertTrue(roleManager.hasAllRoles(admin, roleManager.KYC_OPERATOR()));
-
-        vm.stopPrank();
     }
 
     /**

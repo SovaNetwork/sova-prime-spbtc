@@ -39,6 +39,9 @@ contract ReportedStrategyTest is BaseFountfiTest {
         // Deploy RoleManager first
         roleManager = new RoleManager();
 
+        roleManager.grantRole(owner, roleManager.STRATEGY_OPERATOR());
+        roleManager.grantRole(owner, roleManager.KYC_OPERATOR());
+
         // Deploy Registry with RoleManager address
         registry = new Registry(address(roleManager));
 
