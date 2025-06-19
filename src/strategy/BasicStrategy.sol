@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.25;
 
-import {ERC20} from "solady/tokens/ERC20.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {IStrategy} from "./IStrategy.sol";
 import {tRWA} from "../token/tRWA.sol";
@@ -148,7 +147,7 @@ abstract contract BasicStrategy is IStrategy, CloneableRoleManaged {
      * @param amount The amount of allowance to set
      */
     function setAllowance(address tokenAddr, address spender, uint256 amount) external onlyManager {
-        ERC20(tokenAddr).approve(spender, amount);
+        tokenAddr.safeApproveWithRetry(spender, amount);
     }
 
     /**
