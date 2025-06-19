@@ -309,7 +309,10 @@ contract RulesEngine is BaseHook, RoleManaged {
 
             while (j > 0 && _hooks[sortedActiveIds[j - 1]].priority > keyPriority) {
                 sortedActiveIds[j] = sortedActiveIds[j - 1];
-                j--;
+
+                unchecked {
+                    --j;
+                }
             }
             sortedActiveIds[j] = key;
 
