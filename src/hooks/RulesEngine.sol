@@ -122,9 +122,10 @@ contract RulesEngine is BaseHook, RoleManaged {
      * @param newPriority New priority for the hook
      */
     function changeHookPriority(bytes32 hookId, uint256 newPriority) external onlyRoles(roleManager.RULES_ADMIN()) {
-        if (_hooks[hookId].hookAddress == address(0)) revert HookNotFound(hookId);
+        HookInfo storage hook = _hooks[hookId];
+        if (hook.hookAddress == address(0)) revert HookNotFound(hookId);
 
-        _hooks[hookId].priority = newPriority;
+        hook.priority = newPriority;
 
         emit HookPriorityChanged(hookId, newPriority);
     }
@@ -134,9 +135,10 @@ contract RulesEngine is BaseHook, RoleManaged {
      * @param hookId Identifier of the hook to enable
      */
     function enableHook(bytes32 hookId) external onlyRoles(roleManager.RULES_ADMIN()) {
-        if (_hooks[hookId].hookAddress == address(0)) revert HookNotFound(hookId);
+        HookInfo storage hook = _hooks[hookId];
+        if (hook.hookAddress == address(0)) revert HookNotFound(hookId);
 
-        _hooks[hookId].active = true;
+        hook.active = true;
 
         emit HookEnabled(hookId);
     }
@@ -146,9 +148,10 @@ contract RulesEngine is BaseHook, RoleManaged {
      * @param hookId Identifier of the hook to disable
      */
     function disableHook(bytes32 hookId) external onlyRoles(roleManager.RULES_ADMIN()) {
-        if (_hooks[hookId].hookAddress == address(0)) revert HookNotFound(hookId);
+        HookInfo storage hook = _hooks[hookId];
+        if (hook.hookAddress == address(0)) revert HookNotFound(hookId);
 
-        _hooks[hookId].active = false;
+        hook.active = false;
 
         emit HookDisabled(hookId);
     }
