@@ -284,7 +284,10 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
         address removedHookAddress = address(opHooks[index].hook);
 
         // Remove by swapping with last element and popping (more gas efficient)
-        opHooks[index] = opHooks[opHooks.length - 1];
+        uint256 lastIndex = opHooks.length - 1;
+        if (index != lastIndex) {
+            opHooks[index] = opHooks[lastIndex];
+        }
         opHooks.pop();
 
         emit HookRemoved(operationType, removedHookAddress);

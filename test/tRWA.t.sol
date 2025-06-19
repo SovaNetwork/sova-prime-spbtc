@@ -833,4 +833,65 @@ contract TRWATest is BaseFountfiTest {
         // The line 194 path (by != owner) is tested indirectly through ERC4626 mechanics
         // This test confirms the allowance infrastructure that enables line 194
     }
+
+    function test_RemoveOperationHook_LastElement() public {
+        vm.startPrank(address(strategy));
+        
+        // Add multiple hooks
+        AlwaysApprovingHook hook1 = new AlwaysApprovingHook();
+        AlwaysApprovingHook hook2 = new AlwaysApprovingHook();
+        AlwaysApprovingHook hook3 = new AlwaysApprovingHook();
+        
+        token.addOperationHook(OP_DEPOSIT, address(hook1));
+        token.addOperationHook(OP_DEPOSIT, address(hook2));
+        token.addOperationHook(OP_DEPOSIT, address(hook3));
+        
+        // Verify all hooks are present
+        address[] memory hooks = token.getHooksForOperation(OP_DEPOSIT);
+        assertEq(hooks.length, 3);
+        assertEq(hooks[0], address(hook1));
+        assertEq(hooks[1], address(hook2));
+        assertEq(hooks[2], address(hook3));
+        
+        // Remove the last hook (index 2) - this tests the optimization branch
+        token.removeOperationHook(OP_DEPOSIT, 2);
+        
+        // Verify the hook was removed correctly
+        hooks = token.getHooksForOperation(OP_DEPOSIT);
+        assertEq(hooks.length, 2);
+        assertEq(hooks[0], address(hook1));
+        assertEq(hooks[1], address(hook2));
+        
+        vm.stopPrank();
+    }
+
+    function test_RemoveOperationHook_MiddleElement() public {
+        vm.startPrank(address(strategy));
+        
+        // Add multiple hooks
+        AlwaysApprovingHook hook1 = new AlwaysApprovingHook();
+        AlwaysApprovingHook hook2 = new AlwaysApprovingHook();
+        AlwaysApprovingHook hook3 = new AlwaysApprovingHook();
+        
+        token.addOperationHook(OP_DEPOSIT, address(hook1));
+        token.addOperationHook(OP_DEPOSIT, address(hook2));
+        token.addOperationHook(OP_DEPOSIT, address(hook3));
+        
+        // Verify all hooks are present
+        address[] memory hooks = token.getHooksForOperation(OP_DEPOSIT);
+        assertEq(hooks.length, 3);
+        
+        // Remove the middle hook (index 1) - this tests the swap-and-pop logic
+        token.removeOperationHook(OP_DEPOSIT, 1);
+        
+        // Verify the hook was removed correctly
+        hooks = token.getHooksForOperation(OP_DEPOSIT);
+        assertEq(hooks.length, 2);
+        
+        // The last element (hook3) should have been swapped to the middle position
+        assertEq(hooks[0], address(hook1));
+        assertEq(hooks[1], address(hook3)); // hook3 moved to where hook2 was
+        
+        vm.stopPrank();
+    }
 }
