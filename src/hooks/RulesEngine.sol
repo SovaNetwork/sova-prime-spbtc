@@ -100,9 +100,10 @@ contract RulesEngine is BaseHook, RoleManaged {
 
         delete _hooks[hookId];
 
-        for (uint256 i = 0; i < _hookIds.length;) {
+        uint256 hookIdsLength = _hookIds.length;
+        for (uint256 i = 0; i < hookIdsLength;) {
             if (_hookIds[i] == hookId) {
-                _hookIds[i] = _hookIds[_hookIds.length - 1];
+                _hookIds[i] = _hookIds[hookIdsLength - 1];
                 _hookIds.pop();
                 break;
             }
@@ -247,7 +248,8 @@ contract RulesEngine is BaseHook, RoleManaged {
     function _evaluateSubHooks(bytes memory callData) internal returns (IHook.HookOutput memory) {
         bytes32[] memory sortedHookIds = _getSortedActiveHookIds();
 
-        for (uint256 i = 0; i < sortedHookIds.length;) {
+        uint256 sortedHookIdsLength = sortedHookIds.length;
+        for (uint256 i = 0; i < sortedHookIdsLength;) {
             bytes32 hookId = sortedHookIds[i];
             HookInfo memory hook = _hooks[hookId];
 
