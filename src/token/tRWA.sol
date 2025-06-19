@@ -76,7 +76,7 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
 
     /// @notice Mapping of operation type to hook information
     mapping(bytes32 => HookInfo[]) public operationHooks;
-    
+
     /// @notice Mapping of operation type to the last block number it was executed
     mapping(bytes32 => uint256) public lastExecutedBlock;
 
@@ -185,7 +185,7 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
                 ++i;
             }
         }
-        
+
         // Update last executed block for this operation type if hooks were called
         if (opHooks.length > 0) {
             lastExecutedBlock[OP_DEPOSIT] = block.number;
@@ -232,14 +232,14 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
                 ++i;
             }
         }
-        
+
         // Update last executed block for this operation type if hooks were called
         if (opHooks.length > 0) {
             lastExecutedBlock[OP_WITHDRAW] = block.number;
         }
 
         // Transfer the assets to the recipient
-        SafeTransferLib.safeTransfer(asset(), to, assets);
+        _asset.safeTransfer(to, assets);
 
         emit Withdraw(by, to, owner, assets, shares);
     }
@@ -275,7 +275,7 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
         HookInfo[] storage opHooks = operationHooks[operationType];
 
         if (index >= opHooks.length) revert HookIndexOutOfBounds();
-        
+
         // Check if this hook was added before the last execution of this operation type
         if (opHooks[index].addedAtBlock <= lastExecutedBlock[operationType]) {
             revert HookHasProcessedOperations();
@@ -391,7 +391,7 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
                     ++i;
                 }
             }
-            
+
             // Update last executed block for this operation type
             lastExecutedBlock[OP_TRANSFER] = block.number;
         }
@@ -406,7 +406,7 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
      * @param assets The amount of assets to collect
      */
     function _collect(uint256 assets) internal {
-        SafeTransferLib.safeTransferFrom(asset(), strategy, address(this), assets);
+        _asset.safeTransferFrom(strategy, address(this), assets);
     }
 
     modifier onlyStrategy() {
