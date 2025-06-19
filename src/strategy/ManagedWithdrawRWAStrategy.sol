@@ -125,10 +125,6 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
         // Verify signature
         _verifySignature(request, userSig);
 
-        // Mark nonce as used
-        usedNonces[request.owner][request.nonce] = true;
-        emit WithdrawalNonceUsed(request.owner, request.nonce);
-
         assets = ManagedWithdrawRWA(sToken).redeem(request.shares, request.to, request.owner, request.minAssets);
     }
 
@@ -153,8 +149,6 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
         for (uint256 i = 0; i < requests.length;) {
             _validateRedeem(requests[i]);
             _verifySignature(requests[i], signatures[i]);
-            usedNonces[requests[i].owner][requests[i].nonce] = true;
-            emit WithdrawalNonceUsed(requests[i].owner, requests[i].nonce);
 
             shares[i] = requests[i].shares;
             recipients[i] = requests[i].to;
@@ -174,12 +168,19 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * @notice Validate a withdrawal request's arguments
+     * @notice Validate a withdrawal request's arguments and consume the nonce
      * @param request The withdrawal request
      */
-    function _validateRedeem(WithdrawalRequest calldata request) internal view {
+    function _validateRedeem(WithdrawalRequest calldata request) internal {
         if (request.expirationTime < block.timestamp) revert WithdrawalRequestExpired();
-        if (usedNonces[request.owner][request.nonce]) revert WithdrawNonceReuse();
+
+        // Cache the nonce status to avoid duplicate storage read
+        mapping(uint96 => bool) storage userNonces = usedNonces[request.owner];
+        if (userNonces[request.nonce]) revert WithdrawNonceReuse();
+
+        // Consume the nonce
+        userNonces[request.nonce] = true;
+        emit WithdrawalNonceUsed(request.owner, request.nonce);
     }
 
     /**
