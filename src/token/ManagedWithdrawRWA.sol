@@ -103,7 +103,7 @@ contract ManagedWithdrawRWA is tRWA {
         _collect(totalAssets);
 
         // Cache the OP_WITHDRAW hooks once to save gas / avoid stack depth issues
-        HookInfo[] storage opHooks = operationHooks[OP_WITHDRAW];
+        HookInfo[] memory opHooks = operationHooks[OP_WITHDRAW];
 
         // Execute each individual withdrawal (includes hooks)
         for (uint256 i; i < len; ++i) {
@@ -122,7 +122,9 @@ contract ManagedWithdrawRWA is tRWA {
                 IHook.HookOutput memory hookOut =
                     opHooks[j].hook.onBeforeWithdraw(address(this), strategy, userAssets, recipient, shareOwner);
                 if (!hookOut.approved) revert HookCheckFailed(hookOut.reason);
-                opHooks[j].hasProcessedOperations = true;
+
+                // Update storage
+                operationHooks[OP_WITHDRAW][j].hasProcessedOperations = true;
             }
 
             SafeTransferLib.safeTransfer(asset(), recipient, userAssets);
