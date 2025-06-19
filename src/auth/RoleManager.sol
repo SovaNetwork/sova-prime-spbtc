@@ -163,16 +163,7 @@ contract RoleManager is OwnableRoles, IRoleManager {
         // --- Check Explicit Mapping ---
         uint256 requiredAdminRole = roleAdminRole[role];
 
-        if (requiredAdminRole != 0) {
-            // If an explicit admin role is defined, the manager MUST have that specific role.
-            // Use hasAllRoles for strict check against the required composite admin role.
-            return hasAllRoles(manager, requiredAdminRole);
-        }
-
-        // If no explicit admin role is set in the mapping (requiredAdminRole == 0),
-        // management is denied (as owner/PROTOCOL_ADMIN cases were handled).
-        // This covers roles not explicitly configured or roles whose admin was set to 0.
-        return false;
+        return requiredAdminRole != 0 && hasAllRoles(manager, requiredAdminRole);
     }
 
     /**
