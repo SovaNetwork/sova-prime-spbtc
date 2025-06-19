@@ -96,7 +96,7 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
         // Validate configuration parameters
         if (asset_ == address(0)) revert InvalidAddress();
         if (strategy_ == address(0)) revert InvalidAddress();
-        if (assetDecimals_ > 18) revert InvalidDecimals();
+        if (assetDecimals_ > _DEFAULT_UNDERLYING_DECIMALS) revert InvalidDecimals();
 
         _name = name_;
         _symbol = symbol_;
