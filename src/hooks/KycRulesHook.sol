@@ -176,13 +176,7 @@ contract KycRulesHook is BaseHook, RoleManaged {
      * @return Whether the address is allowed
      */
     function isAllowed(address account) public view returns (bool) {
-        // If explicitly denied, always return false (blacklist supersedes whitelist)
-        if (isAddressDenied[account] || !isAddressAllowed[account]) {
-            return false;
-        }
-
-        // If explicitly allowed, return true
-        return true;
+        return !isAddressDenied[account] && isAddressAllowed[account];
     }
 
     /*//////////////////////////////////////////////////////////////
