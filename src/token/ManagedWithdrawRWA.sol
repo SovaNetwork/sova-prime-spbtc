@@ -57,9 +57,6 @@ contract ManagedWithdrawRWA is tRWA {
 
         if (assets < minAssets) revert InsufficientOutputAssets();
 
-        // Collect assets from strategy
-        _collect(assets);
-
         // User must token-approve strategy for withdrawal
         _withdraw(strategy, to, owner, assets, shares);
     }
@@ -155,48 +152,7 @@ contract ManagedWithdrawRWA is tRWA {
         if (shares > maxRedeem(owner)) revert RedeemMoreThanMax();
         assets = previewRedeem(shares);
 
-        // Collect assets from strategy
-        _collect(assets);
-
         // User must token-approve strategy for withdrawal
         _withdraw(strategy, to, owner, assets, shares);
-    }
-
-    /**
-     * @notice Override _withdraw to skip transferAssets since we already collected
-     * @param by Address initiating the withdrawal
-     * @param to Address receiving the assets
-     * @param owner Address that owns the shares
-     * @param assets Amount of assets to withdraw
-     * @param shares Amount of shares to burn
-     */
-    function _withdraw(address by, address to, address owner, uint256 assets, uint256 shares)
-        internal
-        override
-        nonReentrant
-    {
-        if (by != owner) _spendAllowance(owner, by, shares);
-        _beforeWithdraw(assets, shares);
-        _burn(owner, shares);
-
-        // Call hooks after state changes but before final transfer
-        HookInfo[] storage opHooks = operationHooks[OP_WITHDRAW];
-        for (uint256 i = 0; i < opHooks.length;) {
-            IHook.HookOutput memory hookOutput = opHooks[i].hook.onBeforeWithdraw(address(this), by, assets, to, owner);
-            if (!hookOutput.approved) {
-                revert HookCheckFailed(hookOutput.reason);
-            }
-            // Mark hook as having processed operations
-            opHooks[i].hasProcessedOperations = true;
-
-            unchecked {
-                ++i;
-            }
-        }
-
-        // Transfer the assets to the recipient
-        SafeTransferLib.safeTransfer(asset(), to, assets);
-
-        emit Withdraw(by, to, owner, assets, shares);
     }
 }
