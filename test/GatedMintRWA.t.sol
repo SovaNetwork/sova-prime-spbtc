@@ -142,14 +142,14 @@ contract GatedMintRWATest is BaseFountfiTest {
         assertEq(pendingDeposits.length, 1);
 
         // Verify deposit details
-        (address depositor, address recipient, uint256 amount, uint256 expTime, uint8 state) =
+        (address depositor, address recipient, uint256 amount, uint256 expTime, GatedMintEscrow.DepositState state) =
             gatedToken.getDepositDetails(pendingDeposits[0]);
 
         assertEq(depositor, alice);
         assertEq(recipient, alice);
         assertEq(amount, DEPOSIT_AMOUNT);
         assertGt(expTime, block.timestamp);
-        assertEq(state, 0); // PENDING
+        assertEq(uint8(state), 0); // PENDING
     }
 
     function test_Deposit_WithDifferentRecipient() public {
@@ -187,14 +187,14 @@ contract GatedMintRWATest is BaseFountfiTest {
         assertEq(pendingDeposits.length, 1);
 
         // Verify deposit details
-        (address depositor, address recipient, uint256 amount, uint256 expTime, uint8 state) =
+        (address depositor, address recipient, uint256 amount, uint256 expTime, GatedMintEscrow.DepositState state) =
             gatedToken.getDepositDetails(pendingDeposits[0]);
 
         assertEq(depositor, alice);
         assertEq(recipient, alice);
         assertEq(amount, DEPOSIT_AMOUNT);
         assertGt(expTime, block.timestamp);
-        assertEq(state, 0); // PENDING
+        assertEq(uint8(state), 0); // PENDING
     }
 
     function test_Deposit_WithFailingHook() public {
@@ -340,27 +340,27 @@ contract GatedMintRWATest is BaseFountfiTest {
     function test_GetDepositDetails() public {
         bytes32 depositId = _createPendingDeposit(alice, bob, DEPOSIT_AMOUNT);
 
-        (address depositor, address recipient, uint256 amount, uint256 expTime, uint8 state) =
+        (address depositor, address recipient, uint256 amount, uint256 expTime, GatedMintEscrow.DepositState state) =
             gatedToken.getDepositDetails(depositId);
 
         assertEq(depositor, alice);
         assertEq(recipient, bob);
         assertEq(amount, DEPOSIT_AMOUNT);
         assertGt(expTime, block.timestamp);
-        assertEq(state, 0); // PENDING
+        assertEq(uint8(state), 0); // PENDING
     }
 
     function test_GetDepositDetails_NonExistent() public view {
         bytes32 invalidDepositId = keccak256("invalid");
 
-        (address depositor, address recipient, uint256 amount, uint256 expTime, uint8 state) =
+        (address depositor, address recipient, uint256 amount, uint256 expTime, GatedMintEscrow.DepositState state) =
             gatedToken.getDepositDetails(invalidDepositId);
 
         assertEq(depositor, address(0));
         assertEq(recipient, address(0));
         assertEq(amount, 0);
         assertEq(expTime, 0);
-        assertEq(state, 0);
+        assertEq(uint8(state), 0);
     }
 
     // ============ Integration Tests ============

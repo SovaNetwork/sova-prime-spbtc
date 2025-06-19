@@ -234,11 +234,10 @@ contract GatedMintRWA is tRWA {
             bytes32 depositId = allUserDeposits[i];
 
             // Query the escrow for deposit status
-            (,,,, uint8 state) = getDepositDetails(depositId);
+            (,,,, GatedMintEscrow.DepositState state) = getDepositDetails(depositId);
 
-            // Only include if state is PENDING (0)
-            if (state == 0) {
-                // 0 = PENDING in the DepositState enum
+            // Only include if state is PENDING
+            if (state == GatedMintEscrow.DepositState.PENDING) {
                 userDeposits[count] = depositId;
                 count++;
             }
@@ -268,9 +267,9 @@ contract GatedMintRWA is tRWA {
     function getDepositDetails(bytes32 depositId)
         public
         view
-        returns (address depositor, address recipient, uint256 assetAmount, uint256 expirationTime, uint8 state)
+        returns (address depositor, address recipient, uint256 assetAmount, uint256 expirationTime, GatedMintEscrow.DepositState state)
     {
         GatedMintEscrow.PendingDeposit memory deposit = GatedMintEscrow(escrow).getPendingDeposit(depositId);
-        return (deposit.depositor, deposit.recipient, deposit.assetAmount, deposit.expirationTime, uint8(deposit.state));
+        return (deposit.depositor, deposit.recipient, deposit.assetAmount, deposit.expirationTime, deposit.state);
     }
 }
