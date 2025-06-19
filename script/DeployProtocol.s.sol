@@ -92,7 +92,8 @@ contract DeployProtocolScript is Script {
 
         // Deploy Price Oracle Reporter with initial price of 1 USD
         uint256 initialPrice = 1_000_000; // $1.00 with 6 decimals
-        priceOracle = new PriceOracleReporter(initialPrice, address(roleManager));
+        priceOracle = new PriceOracleReporter(initialPrice, MANAGER_1);
+        priceOracle.setUpdater(MANAGER_2, true);
         console.log("Price Oracle Reporter deployed.");
 
         // Deploy ReportedStrategy implementation to be used as a template
