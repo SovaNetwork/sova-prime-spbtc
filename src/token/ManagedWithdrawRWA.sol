@@ -113,7 +113,6 @@ contract ManagedWithdrawRWA is tRWA {
             address shareOwner = owner[i];
 
             // Accounting and transfers (mirrors _withdraw logic sans nonReentrant)
-            if (strategy != shareOwner) _spendAllowance(shareOwner, strategy, userShares);
             _beforeWithdraw(userAssets, userShares);
             _burn(shareOwner, userShares);
 
