@@ -412,13 +412,13 @@ contract TRWATest is BaseFountfiTest {
         vm.prank(address(strategy));
         token.addOperationHook(OP_DEPOSIT, address(hook));
 
-        // Process a deposit to mark hook as having processed operations
+        // Process a deposit to update lastExecutedBlock for this operation type
         vm.startPrank(alice);
         usdc.approve(address(mockConduit), 100 * 10 ** 6);
         token.deposit(100 * 10 ** 6, alice);
         vm.stopPrank();
 
-        // Try to remove the hook
+        // Try to remove the hook - should fail because it was added before the last execution
         vm.prank(address(strategy));
         vm.expectRevert(tRWA.HookHasProcessedOperations.selector);
         token.removeOperationHook(OP_DEPOSIT, 0);
@@ -694,7 +694,6 @@ contract TRWATest is BaseFountfiTest {
         assertEq(hookInfo.length, 1);
         assertEq(address(hookInfo[0].hook), address(hook));
         assertEq(hookInfo[0].addedAtBlock, block.number);
-        assertEq(hookInfo[0].hasProcessedOperations, false);
     }
 
     function test_RemoveOperationHook_Success() public {

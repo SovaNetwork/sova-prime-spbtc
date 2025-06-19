@@ -118,9 +118,11 @@ contract ManagedWithdrawRWA is tRWA {
                 IHook.HookOutput memory hookOut =
                     opHooks[j].hook.onBeforeWithdraw(address(this), strategy, userAssets, recipient, shareOwner);
                 if (!hookOut.approved) revert HookCheckFailed(hookOut.reason);
-
-                // Update storage
-                operationHooks[OP_WITHDRAW][j].hasProcessedOperations = true;
+            }
+            
+            // Update last executed block for this operation type if hooks were called
+            if (opHooks.length > 0) {
+                lastExecutedBlock[OP_WITHDRAW] = block.number;
             }
 
             SafeTransferLib.safeTransfer(asset(), recipient, userAssets);

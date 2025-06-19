@@ -122,8 +122,6 @@ contract GatedMintRWA is tRWA {
             if (!hookOutput.approved) {
                 revert HookCheckFailed(hookOutput.reason);
             }
-            // Mark hook as having processed operations
-            opHooks[i].hasProcessedOperations = true;
 
             unchecked {
                 ++i;

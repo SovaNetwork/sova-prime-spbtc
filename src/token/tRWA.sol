@@ -72,11 +72,13 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
     struct HookInfo {
         IHook hook;
         uint256 addedAtBlock;
-        bool hasProcessedOperations;
     }
 
     /// @notice Mapping of operation type to hook information
     mapping(bytes32 => HookInfo[]) public operationHooks;
+    
+    /// @notice Mapping of operation type to the last block number it was executed
+    mapping(bytes32 => uint256) public lastExecutedBlock;
 
     /*//////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -178,12 +180,15 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
             if (!hookOutput.approved) {
                 revert HookCheckFailed(hookOutput.reason);
             }
-            // Mark hook as having processed operations
-            opHooks[i].hasProcessedOperations = true;
 
             unchecked {
                 ++i;
             }
+        }
+        
+        // Update last executed block for this operation type if hooks were called
+        if (opHooks.length > 0) {
+            lastExecutedBlock[OP_DEPOSIT] = block.number;
         }
 
         Conduit(IRegistry(RoleManaged(strategy).registry()).conduit()).collectDeposit(asset(), by, strategy, assets);
@@ -222,12 +227,15 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
             if (!hookOutput.approved) {
                 revert HookCheckFailed(hookOutput.reason);
             }
-            // Mark hook as having processed operations
-            opHooks[i].hasProcessedOperations = true;
 
             unchecked {
                 ++i;
             }
+        }
+        
+        // Update last executed block for this operation type if hooks were called
+        if (opHooks.length > 0) {
+            lastExecutedBlock[OP_WITHDRAW] = block.number;
         }
 
         // Transfer the assets to the recipient
@@ -250,7 +258,7 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
         if (newHookAddress == address(0)) revert HookAddressZero();
 
         HookInfo memory newHookInfo =
-            HookInfo({hook: IHook(newHookAddress), addedAtBlock: block.number, hasProcessedOperations: false});
+            HookInfo({hook: IHook(newHookAddress), addedAtBlock: block.number});
 
         operationHooks[operationType].push(newHookInfo);
         emit HookAdded(operationType, newHookAddress, operationHooks[operationType].length - 1);
@@ -266,7 +274,11 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
         HookInfo[] storage opHooks = operationHooks[operationType];
 
         if (index >= opHooks.length) revert HookIndexOutOfBounds();
-        if (opHooks[index].hasProcessedOperations) revert HookHasProcessedOperations();
+        
+        // Check if this hook was added before the last execution of this operation type
+        if (opHooks[index].addedAtBlock <= lastExecutedBlock[operationType]) {
+            revert HookHasProcessedOperations();
+        }
 
         address removedHookAddress = address(opHooks[index].hook);
 
@@ -373,13 +385,14 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
                 if (!hookOutput.approved) {
                     revert HookCheckFailed(hookOutput.reason);
                 }
-                // Mark hook as having processed operations
-                opHooks[i].hasProcessedOperations = true;
 
                 unchecked {
                     ++i;
                 }
             }
+            
+            // Update last executed block for this operation type
+            lastExecutedBlock[OP_TRANSFER] = block.number;
         }
     }
 

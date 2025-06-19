@@ -426,7 +426,6 @@ contract HooksTest is BaseFountfiTest {
         assertEq(hookInfos.length, 1);
         assertEq(address(hookInfos[0].hook), address(hook1));
         assertEq(hookInfos[0].addedAtBlock, blockNumber);
-        assertFalse(hookInfos[0].hasProcessedOperations);
 
         vm.stopPrank();
 
@@ -438,9 +437,8 @@ contract HooksTest is BaseFountfiTest {
         removalTestToken.deposit(1000e18, alice);
         vm.stopPrank();
 
-        // Check that hook is now marked as having processed operations
-        hookInfos = removalTestToken.getHookInfoForOperation(removalTestToken.OP_DEPOSIT());
-        assertTrue(hookInfos[0].hasProcessedOperations);
+        // Check that the operation type has been executed (lastExecutedBlock should be set)
+        assertGt(removalTestToken.lastExecutedBlock(removalTestToken.OP_DEPOSIT()), 0);
     }
 
     function test_RemoveHookIndexValidation() public {
