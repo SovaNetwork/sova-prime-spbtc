@@ -177,7 +177,6 @@ contract UniqueHook3 is IHook {
     }
 }
 
-
 /**
  * @title RulesEngineTests
  * @notice Test contract for the RulesEngine implementation
@@ -694,7 +693,7 @@ contract RulesEngineTests is BaseFountfiTest {
         CustomMockHook hook1 = new CustomMockHook(true, "", "TruncateTest1");
         CustomMockHook hook2 = new CustomMockHook(true, "", "TruncateTest2");
         CustomMockHook hook3 = new CustomMockHook(true, "", "TruncateTest3");
-        
+
         bytes32 hookId1 = rulesEngine.addHook(address(hook1), 10);
         bytes32 hookId2 = rulesEngine.addHook(address(hook2), 20);
         bytes32 hookId3 = rulesEngine.addHook(address(hook3), 30);
@@ -707,11 +706,11 @@ contract RulesEngineTests is BaseFountfiTest {
 
         // Should only have 2 active hooks, not 3
         assertEq(activeHookIds.length, 2, "Array should be truncated to active hooks only");
-        
+
         // Verify the hooks are the active ones (hookId1 and hookId3)
         assertEq(activeHookIds[0], hookId1, "First hook should be hookId1");
         assertEq(activeHookIds[1], hookId3, "Second hook should be hookId3");
-        
+
         // Verify no zero entries
         for (uint256 i = 0; i < activeHookIds.length; i++) {
             assertTrue(activeHookIds[i] != bytes32(0), "No zero entries should exist");
@@ -731,7 +730,7 @@ contract RulesEngineTests is BaseFountfiTest {
         CustomMockHook hook1 = new CustomMockHook(true, "", "SortTest1");
         CustomMockHook hook2 = new CustomMockHook(true, "", "SortTest2");
         CustomMockHook hook3 = new CustomMockHook(true, "", "SortTest3");
-        
+
         bytes32 hookId1 = rulesEngine.addHook(address(hook1), 30); // Highest priority
         bytes32 hookId2 = rulesEngine.addHook(address(hook2), 10); // Lowest priority
         bytes32 hookId3 = rulesEngine.addHook(address(hook3), 20); // Middle priority
@@ -758,10 +757,10 @@ contract RulesEngineTests is BaseFountfiTest {
         // Add hooks and disable them all
         CustomMockHook hook1 = new CustomMockHook(true, "", "DisableTest1");
         CustomMockHook hook2 = new CustomMockHook(true, "", "DisableTest2");
-        
+
         bytes32 hookId1 = rulesEngine.addHook(address(hook1), 10);
         bytes32 hookId2 = rulesEngine.addHook(address(hook2), 20);
-        
+
         rulesEngine.disableHook(hookId1);
         rulesEngine.disableHook(hookId2);
 
@@ -785,87 +784,87 @@ contract RulesEngineTests is BaseFountfiTest {
         CustomMockHook hook1 = new CustomMockHook(true, "", "ZeroTest1");
         CustomMockHook hook2 = new CustomMockHook(true, "", "ZeroTest2");
         CustomMockHook hook3 = new CustomMockHook(true, "", "ZeroTest3");
-        
+
         rulesEngine.addHook(address(hook1), 10);
         bytes32 hookId2 = rulesEngine.addHook(address(hook2), 20);
         rulesEngine.addHook(address(hook3), 30);
-        
+
         // Disable the middle hook
         rulesEngine.disableHook(hookId2);
 
         // Execute a hook evaluation
         IHook.HookOutput memory result = rulesEngine.onBeforeTransfer(address(0), alice, bob, 100);
-        
+
         // Should pass because all active hooks approve
         assertTrue(result.approved);
-        
+
         // With the fix, only active hooks are evaluated, so no zero entries exist
         // If there were zero entries, and a hook with ID 0 existed and was active,
         // it would be evaluated multiple times, which this fix prevents
-        
+
         vm.stopPrank();
     }
 
     function test_RemoveHook_LastElement() public {
         vm.startPrank(owner);
-        
+
         // Add multiple hooks to the engine
         bytes32 hookId1 = rulesEngine.addHook(address(allowHook), 100);
         bytes32 hookId2 = rulesEngine.addHook(address(denyHook), 200);
         bytes32 hookId3 = rulesEngine.addHook(address(transferHook), 300);
-        
+
         // Verify all hooks are present
         bytes32[] memory allHookIds = rulesEngine.getAllHookIds();
         assertEq(allHookIds.length, 3);
         assertEq(allHookIds[0], hookId1);
         assertEq(allHookIds[1], hookId2);
         assertEq(allHookIds[2], hookId3);
-        
+
         // Remove the last hook (hookId3) - this tests the new optimization branch
         rulesEngine.removeHook(hookId3);
-        
+
         // Verify the hook was removed correctly
         allHookIds = rulesEngine.getAllHookIds();
         assertEq(allHookIds.length, 2);
         assertEq(allHookIds[0], hookId1);
         assertEq(allHookIds[1], hookId2);
         assertEq(rulesEngine.getHookAddress(hookId3), address(0));
-        
+
         // Verify the remaining hooks still function correctly
         IHook.HookOutput memory result = rulesEngine.onBeforeTransfer(address(0), alice, bob, 100);
         assertFalse(result.approved); // denyHook should still deny
-        
+
         vm.stopPrank();
     }
 
     function test_RemoveHook_MiddleElement() public {
         vm.startPrank(owner);
-        
+
         // Add multiple hooks to the engine
         bytes32 hookId1 = rulesEngine.addHook(address(allowHook), 100);
         bytes32 hookId2 = rulesEngine.addHook(address(denyHook), 200);
         bytes32 hookId3 = rulesEngine.addHook(address(transferHook), 300);
-        
+
         // Verify all hooks are present
         bytes32[] memory allHookIds = rulesEngine.getAllHookIds();
         assertEq(allHookIds.length, 3);
-        
+
         // Remove the middle hook (hookId2) - this tests the swap-and-pop logic
         rulesEngine.removeHook(hookId2);
-        
+
         // Verify the hook was removed correctly
         allHookIds = rulesEngine.getAllHookIds();
         assertEq(allHookIds.length, 2);
-        
+
         // The last element (hookId3) should have been swapped to the middle position
         assertEq(allHookIds[0], hookId1);
         assertEq(allHookIds[1], hookId3); // hookId3 moved to where hookId2 was
         assertEq(rulesEngine.getHookAddress(hookId2), address(0));
-        
+
         // Verify the remaining hooks still function correctly
         assertTrue(rulesEngine.isHookActive(hookId1));
         assertTrue(rulesEngine.isHookActive(hookId3));
-        
+
         vm.stopPrank();
     }
 }

@@ -257,8 +257,7 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
     function addOperationHook(bytes32 operationType, address newHookAddress) external onlyStrategy {
         if (newHookAddress == address(0)) revert HookAddressZero();
 
-        HookInfo memory newHookInfo =
-            HookInfo({hook: IHook(newHookAddress), addedAtBlock: block.number});
+        HookInfo memory newHookInfo = HookInfo({hook: IHook(newHookAddress), addedAtBlock: block.number});
 
         HookInfo[] storage opHooks = operationHooks[operationType];
         opHooks.push(newHookInfo);

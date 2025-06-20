@@ -119,7 +119,7 @@ contract ManagedWithdrawRWA is tRWA {
                     opHooks[j].hook.onBeforeWithdraw(address(this), strategy, userAssets, recipient, shareOwner);
                 if (!hookOut.approved) revert HookCheckFailed(hookOut.reason);
             }
-            
+
             // Update last executed block for this operation type if hooks were called
             if (opHooks.length > 0) {
                 lastExecutedBlock[OP_WITHDRAW] = block.number;

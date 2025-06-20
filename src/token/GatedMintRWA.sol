@@ -172,11 +172,9 @@ contract GatedMintRWA is tRWA {
      * @param assetAmounts Array of asset amounts aligned with recipients
      * @param totalAssets Total assets in the batch (sum of assetAmounts)
      */
-    function batchMintShares(
-        address[] calldata recipients,
-        uint256[] calldata assetAmounts,
-        uint256 totalAssets
-    ) external {
+    function batchMintShares(address[] calldata recipients, uint256[] calldata assetAmounts, uint256 totalAssets)
+        external
+    {
         // Only escrow can call this
         if (msg.sender != escrow) revert NotEscrow();
 
@@ -265,7 +263,13 @@ contract GatedMintRWA is tRWA {
     function getDepositDetails(bytes32 depositId)
         public
         view
-        returns (address depositor, address recipient, uint256 assetAmount, uint256 expirationTime, GatedMintEscrow.DepositState state)
+        returns (
+            address depositor,
+            address recipient,
+            uint256 assetAmount,
+            uint256 expirationTime,
+            GatedMintEscrow.DepositState state
+        )
     {
         GatedMintEscrow.PendingDeposit memory deposit = GatedMintEscrow(escrow).getPendingDeposit(depositId);
         return (deposit.depositor, deposit.recipient, deposit.assetAmount, deposit.expirationTime, deposit.state);

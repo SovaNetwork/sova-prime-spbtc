@@ -208,11 +208,9 @@ contract RegistryTest is Test {
 
         // Create a different token that claims to use the same strategy
         address fakeToken = makeAddr("fakeToken");
-        
+
         // Mock the strategy() call on the fake token to return the registered strategy
-        vm.mockCall(
-            fakeToken, abi.encodeWithSelector(bytes4(keccak256("strategy()"))), abi.encode(strategy)
-        );
+        vm.mockCall(fakeToken, abi.encodeWithSelector(bytes4(keccak256("strategy()"))), abi.encode(strategy));
 
         // The strategy is registered, but the check compares IStrategy(strategy).asset() with the token
         // Since asset() returns the underlying asset (USDC), not the token, this will be false
@@ -225,21 +223,22 @@ contract RegistryTest is Test {
         vm.startPrank(owner);
 
         // Deploy a strategy to get the real token
-        (address strategy, address token) = registry.deploy(address(strategyImpl), "Test RWA Token", "tRWA", address(usdc), owner, "");
+        (address strategy, address token) =
+            registry.deploy(address(strategyImpl), "Test RWA Token", "tRWA", address(usdc), owner, "");
 
         // This test verifies the bidirectional validation:
         // 1. The token must report a strategy that is registered
         // 2. The strategy must report the token as its sToken
-        
+
         // Verify the strategy is registered
         assertTrue(registry.isStrategy(strategy));
-        
+
         // Verify the token's strategy() returns the correct strategy
         assertEq(ItRWA(token).strategy(), strategy);
-        
+
         // Verify the strategy's sToken() returns the token
         assertEq(IStrategy(strategy).sToken(), token);
-        
+
         // With bidirectional validation, this should return true
         assertTrue(registry.isStrategyToken(token));
 
@@ -254,11 +253,9 @@ contract RegistryTest is Test {
 
         // Create a fake token that claims to use the same strategy
         address fakeToken = makeAddr("fakeToken");
-        
+
         // Mock the strategy() call on the fake token to return the registered strategy
-        vm.mockCall(
-            fakeToken, abi.encodeWithSelector(bytes4(keccak256("strategy()"))), abi.encode(strategy)
-        );
+        vm.mockCall(fakeToken, abi.encodeWithSelector(bytes4(keccak256("strategy()"))), abi.encode(strategy));
 
         // Even though the strategy is registered and the fake token claims to use it,
         // the fake token should not pass because IStrategy(strategy).sToken() != fakeToken

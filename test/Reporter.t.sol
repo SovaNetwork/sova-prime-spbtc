@@ -14,7 +14,7 @@ contract ReporterTest is BaseFountfiTest {
         updater = makeAddr("updater");
 
         vm.startPrank(owner);
-        reporter = new PriceOracleReporter(1e18, updater); // 1 token per share
+        reporter = new PriceOracleReporter(1e18, updater, 1000, 60); // 1 token per share, 10% max change per minute
         vm.stopPrank();
     }
 
@@ -31,10 +31,15 @@ contract ReporterTest is BaseFountfiTest {
         vm.prank(updater);
         reporter.update(newPrice, "Test Source");
 
-        assertEq(reporter.pricePerShare(), newPrice);
+        // Price starts transitioning from current price
+        assertEq(reporter.pricePerShare(), 1e18);
+        assertEq(reporter.targetPricePerShare(), newPrice);
         assertEq(reporter.currentRound(), 2);
 
-        // Report should return the new price per share
+        // Move forward in time to complete transition (50% increase needs 5 periods)
+        vm.warp(block.timestamp + 300); // 5 minutes = 5 periods
+
+        // Report should return the new price per share after transition
         bytes memory reportData = reporter.report();
         uint256 reportedPrice = abi.decode(reportData, (uint256));
         assertEq(reportedPrice, newPrice);
@@ -62,7 +67,13 @@ contract ReporterTest is BaseFountfiTest {
         vm.prank(newUpdater);
         reporter.update(1.2e18, "Test Source");
 
-        assertEq(reporter.pricePerShare(), 1.2e18);
+        // Price starts transitioning
+        assertEq(reporter.pricePerShare(), 1e18);
+        assertEq(reporter.targetPricePerShare(), 1.2e18);
+
+        // Move forward to complete transition (20% increase needs 2 periods)
+        vm.warp(block.timestamp + 120); // 2 minutes
+        assertEq(reporter.getCurrentPrice(), 1.2e18);
 
         // Remove original updater
         vm.prank(owner);
