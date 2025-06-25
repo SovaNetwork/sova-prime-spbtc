@@ -1,9 +1,10 @@
 # Justfile for Fountfi Foundry Project
 
 # Global constants for verification
-rpc_url := "https://rpc.testnet.sova.io"
-verifier := "blockscout"
-verifier_url := "https://explorer.testnet.sova.io/api/"
+rpc_url := "https://testnet-rpc.sova.io/"
+verifier := "etherscan"
+verifier_url := "https://api.etherscan.io/v2/api?chainid=84532&module=contract&action=verifysourcecode"
+etherscan_api_key := "{{ETHERSCAN_API_KEY}}"
 
 # Default recipe
 default:
@@ -49,6 +50,7 @@ verify deployment_file="":
             --rpc-url {{rpc_url}} \
             --verifier {{verifier}} \
             --verifier-url "{{verifier_url}}" \
+            --etherscan-api-key "{{etherscan_api_key}}" \
             $address \
             $contract_path:$contract_name
 
@@ -119,41 +121,9 @@ verify deployment_file="":
                 contract_name=""
                 contract_path=""
 
-                # If parent function is deployWithController, we can infer contract types by position
-                if [[ "$parent_function" == *"deployWithController"* ]]; then
-                    case $position in
-                        0)
-                            # First contract in deployWithController is a delegate proxy
-                            contract_name="ReportedStrategy"
-                            contract_path="src/strategy/ReportedStrategy.sol"
-                            ;;
-                        1)
-                            # Second contract in deployWithController is the token
-                            contract_name="tRWA"
-                            contract_path="src/token/tRWA.sol"
-                            ;;
-                        2)
-                            # Third contract in deployWithController is the SubscriptionController
-                            contract_name="SubscriptionController"
-                            contract_path="src/controllers/SubscriptionController.sol"
-                            ;;
-                        3)
-                            # Fourth contract in deployWithController is the SubscriptionControllerRule
-                            contract_name="SubscriptionControllerRule"
-                            contract_path="src/rules/SubscriptionControllerRule.sol"
-                            ;;
-                        *)
-                            # For other positions, try to infer based on common patterns
-                            echo "Unknown position $position in additional contracts array"
-                            ;;
-                    esac
-                else
-                    # For other functions, try to infer based on common patterns
-                    echo "Non-deployWithController function: $parent_function"
-
-                    # Try to infer contract name by searching for implementations
-                    if [[ "$parent_function" == *"deploy"* ]]; then
-                        for name in "SubscriptionManager" "WithdrawalManager" "tRWA" "SubscriptionControllerRule"; do
+                # Try to infer contract name by searching for implementations
+                if [[ "$parent_function" == *"deploy"* ]]; then
+                    for name in "DirectDepositStrategy" "DirectDepositRWA" "ManagedWithdrawRWA" "ReportedStrategy" "GatedMintReportedStrategy" "ManagedWithdrawReportedStrategy"; do
                             potential_path=$(find_contract_path "$name")
                             if [ -n "$potential_path" ]; then
                                 contract_name="$name"
@@ -161,7 +131,6 @@ verify deployment_file="":
                                 break
                             fi
                         done
-                    fi
                 fi
 
                 # If we found a contract name and path, verify the contract

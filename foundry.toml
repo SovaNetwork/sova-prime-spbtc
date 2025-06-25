@@ -13,3 +13,9 @@ optimizer_runs = 200
 rpc_url = "https://rpc.testnet.sova.io"
 
 no_match_coverage = "(script/|test/|mocks/)"
+
+[rpc_endpoints]
+base-sepolia = "https://base-sepolia.drpc.org"
+
+[etherscan]
+base-sepolia = { key = "${ETHERSCAN_API_KEY}" }

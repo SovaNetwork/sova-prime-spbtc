@@ -59,9 +59,9 @@ contract DeployProtocolScript is Script {
         usdToken = new MockERC20("Mock USD", "USDC", 6);
 
         // Mint tokens to various addresses for testing
-        usdToken.mint(deployer, 1_000_000_000); // 1,000 USDC with 6 decimals
-        usdToken.mint(MANAGER_1, 1_000_000_000); // 1,000 USDC with 6 decimals
-        usdToken.mint(MANAGER_2, 1_000_000_000); // 1,000 USDC with 6 decimals
+        usdToken.mint(deployer, 50_000_000_000_000_000_000); // 50MM USDC with 6 decimals
+        usdToken.mint(MANAGER_1, 50_000_000_000_000_000_000); // 50MM USDC with 6 decimals
+        usdToken.mint(MANAGER_2, 50_000_000_000_000_000_000); // 50MM USDC with 6 decimals
 
         console.log("Mock USD Token deployed and minted to managers.");
 
@@ -88,11 +88,13 @@ contract DeployProtocolScript is Script {
         kycRulesHook.allow(deployer);
         kycRulesHook.allow(MANAGER_1);
         kycRulesHook.allow(MANAGER_2);
+        kycRulesHook.allow(0x75BbFf2206b6Ad50786Ee3ce8A81eDb72f3e381b);
+        kycRulesHook.allow(0x30C157C9749Df07f04e8170F5a529C89EF0a4639);
         console.log("Managers allowed in KYC rules.");
 
         // Deploy Price Oracle Reporter with initial price of 1 USD
         uint256 initialPrice = 1_000_000; // $1.00 with 6 decimals
-        priceOracle = new PriceOracleReporter(initialPrice, MANAGER_1, 100, 300); // 1% max change per 5 minutes
+        priceOracle = new PriceOracleReporter(initialPrice, MANAGER_1, 100, 3600); // 1% max change per hour
         priceOracle.setUpdater(MANAGER_2, true);
         console.log("Price Oracle Reporter deployed.");
 
