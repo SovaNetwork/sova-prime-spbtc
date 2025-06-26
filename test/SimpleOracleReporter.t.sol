@@ -252,7 +252,7 @@ contract SimpleOracleReporterTest is Test {
         for (uint256 i = 0; i < prices.length; i++) {
             vm.prank(updater);
             reporter.update(prices[i], "fuzz");
-            
+
             assertEq(reporter.pricePerShare(), prices[i]);
             assertEq(reporter.currentRound(), i + 2);
         }
@@ -264,7 +264,7 @@ contract SimpleOracleReporterTest is Test {
 
         bytes memory reportData = reporter.report();
         uint256 decodedPrice = abi.decode(reportData, (uint256));
-        
+
         assertEq(decodedPrice, price);
     }
 }

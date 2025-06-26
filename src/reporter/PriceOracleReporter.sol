@@ -174,7 +174,6 @@ contract PriceOracleReporter is IReporter, Ownable {
             uint256 maxPrice = transitionStartPrice + maxAllowedChange;
             return maxPrice >= targetPricePerShare ? targetPricePerShare : maxPrice;
         } else {
-
             // Prevent underflow
             if (maxAllowedChange >= transitionStartPrice) {
                 return targetPricePerShare;
