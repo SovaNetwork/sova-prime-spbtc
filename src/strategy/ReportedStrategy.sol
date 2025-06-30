@@ -3,7 +3,7 @@ pragma solidity 0.8.25;
 
 import {BasicStrategy} from "./BasicStrategy.sol";
 import {IReporter} from "../reporter/IReporter.sol";
-import {ERC20} from "solady/tokens/ERC20.sol";
+import {IERC20} from "forge-std/interfaces/IERC20.sol";
 import {FixedPointMathLib} from "solady/utils/FixedPointMathLib.sol";
 
 /**
@@ -74,7 +74,7 @@ contract ReportedStrategy is BasicStrategy {
      */
     function balance() external view override returns (uint256) {
         uint256 _pricePerShare = abi.decode(reporter.report(), (uint256));
-        uint256 totalSupply = ERC20(sToken).totalSupply();
+        uint256 totalSupply = IERC20(sToken).totalSupply();
 
         // Calculate total assets: pricePerShare * totalSupply / 1e18
         return _pricePerShare.mulWad(totalSupply);
