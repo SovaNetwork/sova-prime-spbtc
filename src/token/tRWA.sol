@@ -272,20 +272,23 @@ contract tRWA is ERC4626, ItRWA, ReentrancyGuard {
      */
     function removeOperationHook(bytes32 operationType, uint256 index) external onlyStrategy nonReentrant {
         HookInfo[] storage opHooks = operationHooks[operationType];
+        uint256 opHooksLen = opHooks.length;
 
-        if (index >= opHooks.length) revert HookIndexOutOfBounds();
+        if (index >= opHooksLen) revert HookIndexOutOfBounds();
+
+        // Cache the hook info to avoid multiple storage reads
+        HookInfo storage hookToRemove = opHooks[index];
 
         // Check if this hook was added before the last execution of this operation type
-        if (opHooks[index].addedAtBlock <= lastExecutedBlock[operationType]) {
+        if (hookToRemove.addedAtBlock <= lastExecutedBlock[operationType]) {
             revert HookHasProcessedOperations();
         }
 
-        address removedHookAddress = address(opHooks[index].hook);
+        address removedHookAddress = address(hookToRemove.hook);
 
         // Remove by swapping with last element and popping (more gas efficient)
-        uint256 lastIndex = opHooks.length - 1;
-        if (index != lastIndex) {
-            opHooks[index] = opHooks[lastIndex];
+        if (index != opHooksLen - 1) {
+            opHooks[index] = opHooks[opHooksLen - 1];
         }
         opHooks.pop();
 
