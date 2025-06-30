@@ -300,7 +300,7 @@ contract RulesEngine is BaseHook, RoleManaged {
         // Count active hooks
         for (uint256 i = 0; i < numHooks;) {
             if (_hooks[_hookIds[i]].active) {
-                activeHooksCount++;
+                unchecked { activeHooksCount++; }
                 sortedActiveIds[currentIndex++] = _hookIds[i];
             }
 
