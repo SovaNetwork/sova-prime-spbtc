@@ -19,7 +19,7 @@ contract ReporterTest is BaseFountfiTest {
     }
 
     function test_Initialization() public view {
-        assertEq(reporter.pricePerShare(), 1e18);
+        assertEq(reporter.getCurrentPrice(), 1e18);
         assertEq(reporter.currentRound(), 1);
         assertTrue(reporter.authorizedUpdaters(updater));
     }
@@ -32,7 +32,7 @@ contract ReporterTest is BaseFountfiTest {
         reporter.update(newPrice, "Test Source");
 
         // Price starts transitioning from current price
-        assertEq(reporter.pricePerShare(), 1e18);
+        assertEq(reporter.getCurrentPrice(), 1e18);
         assertEq(reporter.targetPricePerShare(), newPrice);
         assertEq(reporter.currentRound(), 2);
 
@@ -68,7 +68,7 @@ contract ReporterTest is BaseFountfiTest {
         reporter.update(1.2e18, "Test Source");
 
         // Price starts transitioning
-        assertEq(reporter.pricePerShare(), 1e18);
+        assertEq(reporter.getCurrentPrice(), 1e18);
         assertEq(reporter.targetPricePerShare(), 1.2e18);
 
         // Move forward to complete transition (20% increase needs 2 periods)

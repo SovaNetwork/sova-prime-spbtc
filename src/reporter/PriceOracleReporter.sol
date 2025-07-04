@@ -22,6 +22,7 @@ contract PriceOracleReporter is IReporter, Ownable {
                                 EVENTS
     //////////////////////////////////////////////////////////////*/
 
+    event ForceCompleteTransition(uint256 roundNumber, uint256 targetPricePerShare);
     event PricePerShareUpdated(
         uint256 roundNumber, uint256 targetPricePerShare, uint256 startPricePerShare, string source
     );
@@ -35,17 +36,11 @@ contract PriceOracleReporter is IReporter, Ownable {
     /// @notice Current round number
     uint256 public currentRound;
 
-    /// @notice The current price per share (in wei, 18 decimals)
-    uint256 public pricePerShare;
-
     /// @notice The target price per share that we're transitioning to
     uint256 public targetPricePerShare;
 
     /// @notice The price per share at the start of the current transition
     uint256 public transitionStartPrice;
-
-    /// @notice The timestamp when the current price transition started
-    uint256 public transitionStartTime;
 
     /// @notice The timestamp of the last update
     uint256 public lastUpdateAt;
@@ -55,6 +50,12 @@ contract PriceOracleReporter is IReporter, Ownable {
 
     /// @notice Time period for max deviation (in seconds, e.g., 300 = 5 minutes)
     uint256 public deviationTimePeriod;
+
+    /// @notice Tracks price changes that have been applied in current period (basis points)
+    uint256 public appliedChangeInPeriod;
+
+    /// @notice The timestamp when the current tracking period started
+    uint256 public periodStartTime;
 
     /// @notice Mapping of authorized updaters
     mapping(address => bool) public authorizedUpdaters;
@@ -83,14 +84,14 @@ contract PriceOracleReporter is IReporter, Ownable {
         if (_deviationTimePeriod == 0) revert InvalidTimePeriod();
 
         currentRound = 1;
-        pricePerShare = initialPricePerShare;
         targetPricePerShare = initialPricePerShare;
         transitionStartPrice = initialPricePerShare;
         lastUpdateAt = block.timestamp;
-        transitionStartTime = block.timestamp;
+        periodStartTime = block.timestamp;
 
         maxDeviationPerTimePeriod = _maxDeviationPerTimePeriod;
         deviationTimePeriod = _deviationTimePeriod;
+        appliedChangeInPeriod = 0;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -99,6 +100,7 @@ contract PriceOracleReporter is IReporter, Ownable {
 
     /**
      * @notice Update the reported price per share with gradual transition
+     * @dev If a transition is already in progress, it will stop the old transition and start a new one.
      * @param newTargetPricePerShare The new target price per share to transition to (18 decimals)
      * @param source_ The source of the price update
      */
@@ -109,35 +111,34 @@ contract PriceOracleReporter is IReporter, Ownable {
         // Update the current price based on the ongoing transition
         uint256 currentPrice = getCurrentPrice();
 
-        // Cache currentRound to memory and increment
         uint256 newRound = currentRound + 1;
         currentRound = newRound;
 
-        // Check if the new target is within the immediate allowed deviation
-        uint256 maxImmediateChange = (currentPrice * maxDeviationPerTimePeriod) / 10000;
-
-        bool withinDeviation = false;
-        if (newTargetPricePerShare > currentPrice) {
-            withinDeviation = (newTargetPricePerShare - currentPrice) <= maxImmediateChange;
-        } else {
-            withinDeviation = (currentPrice - newTargetPricePerShare) <= maxImmediateChange;
+        // Reset cumulative tracking if period expired
+        if (block.timestamp >= periodStartTime + deviationTimePeriod) {
+            periodStartTime = block.timestamp;
+            appliedChangeInPeriod = 0;
         }
+
+        // Calculate percentage change from current price
+        uint256 changePercent = _calculateChangePercent(currentPrice, newTargetPricePerShare);
+
+        // Check if this change plus previously applied changes would exceed period limit
+        uint256 newCumulativeChange = appliedChangeInPeriod + changePercent;
+        bool withinDeviation = newCumulativeChange <= maxDeviationPerTimePeriod;
+
+        // Always update target and last update time
+        targetPricePerShare = newTargetPricePerShare;
+        lastUpdateAt = block.timestamp;
 
         if (withinDeviation) {
             // Direct update without transition
-            pricePerShare = newTargetPricePerShare;
-            targetPricePerShare = newTargetPricePerShare;
             transitionStartPrice = newTargetPricePerShare;
+            appliedChangeInPeriod = newCumulativeChange;
         } else {
             // Set new target and restart transition from current price
-            pricePerShare = currentPrice;
             transitionStartPrice = currentPrice;
-            targetPricePerShare = newTargetPricePerShare;
         }
-
-        uint256 currentTimestamp = block.timestamp;
-        transitionStartTime = currentTimestamp;
-        lastUpdateAt = currentTimestamp;
 
         emit PricePerShareUpdated(newRound, newTargetPricePerShare, currentPrice, source_);
     }
@@ -151,18 +152,30 @@ contract PriceOracleReporter is IReporter, Ownable {
     }
 
     /**
+     * @notice Calculate percentage change between two prices
+     * @param fromPrice Starting price
+     * @param toPrice Target price
+     * @return Change percentage in basis points
+     */
+    function _calculateChangePercent(uint256 fromPrice, uint256 toPrice) private pure returns (uint256) {
+        if (toPrice > fromPrice) {
+            return ((toPrice - fromPrice) * 10000) / fromPrice;
+        } else {
+            return ((fromPrice - toPrice) * 10000) / fromPrice;
+        }
+    }
+
+    /**
      * @notice Get the current price, accounting for gradual transitions
      * @return The current price per share
      */
     function getCurrentPrice() public view returns (uint256) {
-        if (pricePerShare == targetPricePerShare) {
-            return pricePerShare;
+        if (transitionStartPrice == targetPricePerShare) {
+            return targetPricePerShare;
         }
 
-        uint256 currentTimestamp = block.timestamp;
-        uint256 timeElapsed = currentTimestamp - transitionStartTime;
-
         // Calculate fractional periods for continuous transitions (basis points precision)
+        uint256 timeElapsed = block.timestamp - lastUpdateAt;
         uint256 fractionalPeriods = (timeElapsed * 10000) / deviationTimePeriod;
         uint256 maxAllowedChangePercent = (fractionalPeriods * maxDeviationPerTimePeriod) / 10000;
 
@@ -178,7 +191,6 @@ contract PriceOracleReporter is IReporter, Ownable {
             if (maxAllowedChange >= transitionStartPrice) {
                 return targetPricePerShare;
             }
-
             uint256 minPrice = transitionStartPrice - maxAllowedChange;
             return minPrice <= targetPricePerShare ? targetPricePerShare : minPrice;
         }
@@ -189,7 +201,7 @@ contract PriceOracleReporter is IReporter, Ownable {
      * @return percentComplete The completion percentage in basis points (0-10000)
      */
     function getTransitionProgress() external view returns (uint256 percentComplete) {
-        if (pricePerShare == targetPricePerShare) {
+        if (transitionStartPrice == targetPricePerShare) {
             return 10000; // 100%
         }
 
@@ -229,6 +241,8 @@ contract PriceOracleReporter is IReporter, Ownable {
 
     /**
      * @notice Update the maximum deviation parameters
+     * @dev On calls to setMaxDeviation, the last deviation time period is considered to
+     *      have ended, and a new period starts immediately.
      * @param _maxDeviationPerTimePeriod New maximum percentage change per time period (basis points)
      * @param _deviationTimePeriod New time period in seconds
      */
@@ -236,12 +250,23 @@ contract PriceOracleReporter is IReporter, Ownable {
         if (_maxDeviationPerTimePeriod == 0) revert InvalidMaxDeviation();
         if (_deviationTimePeriod == 0) revert InvalidTimePeriod();
 
-        // Update current price before changing parameters
-        pricePerShare = getCurrentPrice();
+        // Get current price before changing parameters
+        uint256 currentPrice = getCurrentPrice();
 
+        // Update rate limit
         uint256 oldMaxDeviation = maxDeviationPerTimePeriod;
         maxDeviationPerTimePeriod = _maxDeviationPerTimePeriod;
         deviationTimePeriod = _deviationTimePeriod;
+
+        // If in transition, restart from current price to apply new rate
+        if (currentPrice != targetPricePerShare) {
+            transitionStartPrice = currentPrice;
+            lastUpdateAt = block.timestamp;
+        }
+
+        // Reset cumulative tracking
+        periodStartTime = block.timestamp;
+        appliedChangeInPeriod = 0;
 
         emit MaxDeviationUpdated(oldMaxDeviation, _maxDeviationPerTimePeriod, _deviationTimePeriod);
     }
@@ -251,9 +276,9 @@ contract PriceOracleReporter is IReporter, Ownable {
      * @dev Only callable by owner
      */
     function forceCompleteTransition() external onlyOwner {
-        pricePerShare = targetPricePerShare;
         transitionStartPrice = targetPricePerShare;
-        transitionStartTime = block.timestamp;
         lastUpdateAt = block.timestamp;
+
+        emit ForceCompleteTransition(currentRound, targetPricePerShare);
     }
 }
