@@ -8,6 +8,8 @@ Fountfi is a protocol for tokenizing Real World Assets (RWA) on-chain, providing
 
 __Git Tag:__ `deploy-2050707`
 
+__Audit:__ [Omniscia Audit Report](https://omniscia.io/reports/sova-network-fountfi-protocol-684adfa36579f5001821a219/)
+
 __Deployer:__ [`0x76F2DAD4741CB0f4C8C56361d8cF5E05Bc01Bf28`](https://basescan.org/address/0x76f2dad4741cb0f4c8c56361d8cf5e05bc01bf28)
 
 | Contract | Address |
