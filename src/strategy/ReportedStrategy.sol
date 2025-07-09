@@ -77,7 +77,10 @@ contract ReportedStrategy is BasicStrategy {
         uint256 totalSupply = IERC20(sToken).totalSupply();
 
         // Calculate total assets: pricePerShare * totalSupply / 1e18
-        return _pricePerShare.mulWad(totalSupply);
+        uint256 scalingFactor = 10 ** (18 - assetDecimals);
+
+        // Need to scale in terms of asset decimals
+        return _pricePerShare.mulDiv(totalSupply, scalingFactor);
     }
 
     /**
