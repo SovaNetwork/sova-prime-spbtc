@@ -44,13 +44,13 @@ contract BtcVaultStrategy is ReportedStrategy {
 
     /// @notice Inline asset registry - supported BTC collateral tokens
     mapping(address => bool) public supportedAssets;
-    
+
     /// @notice Decimals for each supported asset (typically 8 for BTC tokens)
     mapping(address => uint8) public collateralDecimals;
-    
+
     /// @notice Array of supported collateral addresses for enumeration
     address[] public collateralTokens;
-    
+
     /// @notice sovaBTC available for redemptions
     uint256 public availableLiquidity;
 
@@ -79,7 +79,7 @@ contract BtcVaultStrategy is ReportedStrategy {
     ) public virtual override {
         // Call parent initialization which sets up reporter and deploys token
         super.initialize(name_, symbol_, roleManager_, manager_, sovaBTC_, assetDecimals_, initData);
-        
+
         // sovaBTC is always a supported asset for liquidity
         supportedAssets[sovaBTC_] = true;
         collateralDecimals[sovaBTC_] = assetDecimals_;
@@ -90,20 +90,15 @@ contract BtcVaultStrategy is ReportedStrategy {
      * @notice Deploy a new BtcVaultToken for this strategy
      * @dev Override from BasicStrategy to deploy our custom token type
      */
-    function _deployToken(
-        string calldata name_,
-        string calldata symbol_,
-        address asset_,
-        uint8 assetDecimals_
-    ) internal virtual override returns (address) {
+    function _deployToken(string calldata name_, string calldata symbol_, address asset_, uint8 assetDecimals_)
+        internal
+        virtual
+        override
+        returns (address)
+    {
         // Deploy BtcVaultToken which supports multi-collateral deposits
-        BtcVaultToken newToken = new BtcVaultToken(
-            name_,
-            symbol_,
-            asset_,
-            address(this)
-        );
-        
+        BtcVaultToken newToken = new BtcVaultToken(name_, symbol_, asset_, address(this));
+
         return address(newToken);
     }
 
@@ -120,11 +115,11 @@ contract BtcVaultStrategy is ReportedStrategy {
         if (token == address(0)) revert InvalidAddress();
         if (supportedAssets[token]) revert AssetAlreadySupported();
         if (decimals_ != 8) revert InvalidDecimals(); // All BTC tokens should have 8 decimals
-        
+
         supportedAssets[token] = true;
         collateralDecimals[token] = decimals_;
         collateralTokens.push(token);
-        
+
         emit CollateralAdded(token, decimals_);
     }
 
@@ -135,10 +130,10 @@ contract BtcVaultStrategy is ReportedStrategy {
     function removeCollateral(address token) external onlyManager {
         if (!supportedAssets[token]) revert AssetNotSupported();
         if (token == asset) revert InvalidAddress(); // Cannot remove sovaBTC
-        
+
         supportedAssets[token] = false;
         delete collateralDecimals[token];
-        
+
         // Remove from array
         for (uint256 i = 0; i < collateralTokens.length; i++) {
             if (collateralTokens[i] == token) {
@@ -147,7 +142,7 @@ contract BtcVaultStrategy is ReportedStrategy {
                 break;
             }
         }
-        
+
         emit CollateralRemoved(token);
     }
 
@@ -159,15 +154,15 @@ contract BtcVaultStrategy is ReportedStrategy {
     function depositCollateral(address token, uint256 amount) external {
         if (!supportedAssets[token]) revert AssetNotSupported();
         if (amount == 0) revert InvalidAmount();
-        
+
         // Transfer collateral from sender to strategy
         token.safeTransferFrom(msg.sender, address(this), amount);
-        
+
         // If depositing sovaBTC, increase available liquidity
         if (token == asset) {
             availableLiquidity += amount;
         }
-        
+
         emit CollateralDeposited(msg.sender, token, amount);
     }
 
@@ -181,11 +176,11 @@ contract BtcVaultStrategy is ReportedStrategy {
      */
     function addLiquidity(uint256 amount) external onlyManager {
         if (amount == 0) revert InvalidAmount();
-        
+
         // Transfer sovaBTC from manager
         asset.safeTransferFrom(msg.sender, address(this), amount);
         availableLiquidity += amount;
-        
+
         emit LiquidityAdded(amount);
     }
 
@@ -198,10 +193,10 @@ contract BtcVaultStrategy is ReportedStrategy {
         if (amount == 0) revert InvalidAmount();
         if (amount > availableLiquidity) revert InsufficientLiquidity();
         if (to == address(0)) revert InvalidAddress();
-        
+
         availableLiquidity -= amount;
         asset.safeTransfer(to, amount);
-        
+
         emit LiquidityRemoved(amount);
     }
 
@@ -212,15 +207,11 @@ contract BtcVaultStrategy is ReportedStrategy {
      * @param toToken Token to rebalance to
      * @param amount Amount to rebalance
      */
-    function rebalanceCollateral(
-        address fromToken,
-        address toToken,
-        uint256 amount
-    ) external onlyManager {
+    function rebalanceCollateral(address fromToken, address toToken, uint256 amount) external onlyManager {
         if (!supportedAssets[fromToken]) revert AssetNotSupported();
         if (!supportedAssets[toToken]) revert AssetNotSupported();
         if (amount == 0) revert InvalidAmount();
-        
+
         // This is a placeholder - actual rebalancing would require swapping
         emit CollateralRebalanced(fromToken, toToken, amount);
     }
@@ -231,23 +222,19 @@ contract BtcVaultStrategy is ReportedStrategy {
      * @param amount Amount to withdraw
      * @param to Recipient address
      */
-    function withdrawCollateral(
-        address token,
-        uint256 amount,
-        address to
-    ) external onlyManager {
+    function withdrawCollateral(address token, uint256 amount, address to) external onlyManager {
         if (!supportedAssets[token]) revert AssetNotSupported();
         if (amount == 0) revert InvalidAmount();
         if (to == address(0)) revert InvalidAddress();
-        
+
         uint256 tokenBalance = IERC20(token).balanceOf(address(this));
         if (amount > tokenBalance) revert InsufficientLiquidity();
-        
+
         // If withdrawing sovaBTC, update liquidity tracking
         if (token == asset && amount <= availableLiquidity) {
             availableLiquidity -= amount;
         }
-        
+
         token.safeTransfer(to, amount);
         emit CollateralWithdrawn(token, amount, to);
     }
@@ -292,14 +279,14 @@ contract BtcVaultStrategy is ReportedStrategy {
      */
     function totalAssets() external view returns (uint256) {
         uint256 total = 0;
-        
+
         // Sum all collateral balances (all have 1:1 value with sovaBTC)
         for (uint256 i = 0; i < collateralTokens.length; i++) {
             address token = collateralTokens[i];
             uint256 tokenBalance = IERC20(token).balanceOf(address(this));
             total += tokenBalance; // All BTC tokens are 8 decimals, 1:1 with sovaBTC
         }
-        
+
         return total;
     }
 

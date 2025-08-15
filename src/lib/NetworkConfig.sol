@@ -255,14 +255,14 @@ library NetworkConfig {
      * @return true if network is supported, false otherwise
      */
     function isNetworkSupported(uint256 chainId) internal pure returns (bool) {
-        return chainId == 1 ||       // Ethereum
-               chainId == 42161 ||    // Arbitrum
-               chainId == 10 ||       // Optimism
-               chainId == 8453 ||     // Base
-               chainId == 137 ||      // Polygon
-               chainId == 43114 ||    // Avalanche
-               chainId == 84532 ||    // Base Sepolia
-               chainId == 11155111;   // Sepolia
+        return chainId == 1 // Ethereum
+            || chainId == 42161 // Arbitrum
+            || chainId == 10 // Optimism
+            || chainId == 8453 // Base
+            || chainId == 137 // Polygon
+            || chainId == 43114 // Avalanche
+            || chainId == 84532 // Base Sepolia
+            || chainId == 11155111; // Sepolia
     }
 
     /**

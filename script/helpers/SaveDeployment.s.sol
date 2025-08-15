@@ -23,14 +23,10 @@ contract SaveDeployment is Script {
         address deployer;
     }
 
-    function run(
-        address strategy,
-        address token,
-        address oracle
-    ) external {
+    function run(address strategy, address token, address oracle) external {
         uint256 chainId = block.chainid;
         string memory networkName = NetworkConfig.getNetworkName(chainId);
-        
+
         DeploymentInfo memory info = DeploymentInfo({
             chainId: chainId,
             networkName: networkName,
@@ -42,17 +38,17 @@ contract SaveDeployment is Script {
             timestamp: block.timestamp,
             deployer: msg.sender
         });
-        
+
         // Save to JSON file
         _saveToJson(info);
-        
+
         // Print summary
         _printSummary(info);
     }
 
     function _saveToJson(DeploymentInfo memory info) internal {
         string memory obj = "deployment";
-        
+
         // Build JSON object
         vm.serializeUint(obj, "chainId", info.chainId);
         vm.serializeString(obj, "networkName", info.networkName);
@@ -63,19 +59,15 @@ contract SaveDeployment is Script {
         vm.serializeString(obj, "version", info.version);
         vm.serializeUint(obj, "timestamp", info.timestamp);
         string memory json = vm.serializeAddress(obj, "deployer", info.deployer);
-        
+
         // Generate filename with network and timestamp
-        string memory filename = string(abi.encodePacked(
-            "deployment-",
-            _toLower(info.networkName),
-            "-",
-            vm.toString(info.timestamp),
-            ".json"
-        ));
-        
+        string memory filename = string(
+            abi.encodePacked("deployment-", _toLower(info.networkName), "-", vm.toString(info.timestamp), ".json")
+        );
+
         // Write to file
         vm.writeJson(json, filename);
-        
+
         console2.log("Deployment saved to:", filename);
     }
 
@@ -98,7 +90,7 @@ contract SaveDeployment is Script {
     function _toLower(string memory str) internal pure returns (string memory) {
         bytes memory strBytes = bytes(str);
         bytes memory result = new bytes(strBytes.length);
-        
+
         for (uint256 i = 0; i < strBytes.length; i++) {
             bytes1 char = strBytes[i];
             if (char >= 0x41 && char <= 0x5A) {
@@ -111,7 +103,7 @@ contract SaveDeployment is Script {
                 result[i] = char;
             }
         }
-        
+
         return string(result);
     }
 }

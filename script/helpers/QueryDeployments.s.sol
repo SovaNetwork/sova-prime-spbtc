@@ -12,30 +12,29 @@ import {NetworkConfig} from "../../src/lib/NetworkConfig.sol";
  * @dev Can query by network, deployment ID, or list all deployments
  */
 contract QueryDeployments is Script {
-    
     function run() external view {
         // Get registry address from environment or config
         address registryAddress = _getRegistryAddress();
-        
+
         if (registryAddress == address(0)) {
             console2.log("No deployment registry configured");
             return;
         }
-        
+
         DeploymentRegistry registry = DeploymentRegistry(registryAddress);
-        
+
         // Get current network
         uint256 currentChainId = block.chainid;
         string memory networkName = _getNetworkName(currentChainId);
-        
+
         console2.log("\n=== Deployment Query ===");
         console2.log("Registry Address:", registryAddress);
         console2.log("Current Network:", networkName);
         console2.log("Chain ID:", currentChainId);
-        
+
         // Query deployments for current network
         _queryNetworkDeployments(registry, currentChainId);
-        
+
         // Query all active deployments
         _queryAllActiveDeployments(registry);
     }
@@ -52,26 +51,26 @@ contract QueryDeployments is Script {
 
     function _queryNetworkDeployments(DeploymentRegistry registry, uint256 chainId) internal view {
         console2.log("\n--- Network Deployments ---");
-        
+
         // Get network info
         DeploymentRegistry.NetworkInfo memory info = registry.getNetworkInfo(chainId);
-        
+
         if (info.totalDeployments == 0) {
             console2.log("No deployments found for this network");
             return;
         }
-        
+
         console2.log("Network:", info.name);
         console2.log("Total Deployments:", info.totalDeployments);
         console2.log("Active Deployment ID:", info.activeDeployment);
-        
+
         // Get all deployment IDs for this network
         uint256[] memory deploymentIds = registry.getNetworkDeployments(chainId);
-        
+
         console2.log("\nDeployment History:");
         for (uint256 i = 0; i < deploymentIds.length; i++) {
             DeploymentRegistry.Deployment memory deployment = registry.getDeployment(deploymentIds[i]);
-            
+
             console2.log("\n  Deployment #", deploymentIds[i]);
             console2.log("    Version:", deployment.version);
             console2.log("    Strategy:", deployment.strategyAddress);
@@ -84,20 +83,20 @@ contract QueryDeployments is Script {
 
     function _queryAllActiveDeployments(DeploymentRegistry registry) internal view {
         console2.log("\n--- All Active Deployments ---");
-        
+
         DeploymentRegistry.Deployment[] memory activeDeployments = registry.getAllActiveDeployments();
-        
+
         if (activeDeployments.length == 0) {
             console2.log("No active deployments found");
             return;
         }
-        
+
         console2.log("Total Active:", activeDeployments.length);
-        
+
         for (uint256 i = 0; i < activeDeployments.length; i++) {
             DeploymentRegistry.Deployment memory deployment = activeDeployments[i];
             string memory networkName = _getNetworkName(deployment.chainId);
-            
+
             console2.log("\n  Network:", networkName);
             console2.log("    Chain ID:", deployment.chainId);
             console2.log("    Version:", deployment.version);
@@ -110,10 +109,10 @@ contract QueryDeployments is Script {
     function _queryDeploymentById(DeploymentRegistry registry, uint256 deploymentId) internal view {
         console2.log("\n--- Deployment Details ---");
         console2.log("Deployment ID:", deploymentId);
-        
+
         try registry.getDeployment(deploymentId) returns (DeploymentRegistry.Deployment memory deployment) {
             string memory networkName = _getNetworkName(deployment.chainId);
-            
+
             console2.log("Network:", networkName);
             console2.log("Chain ID:", deployment.chainId);
             console2.log("Version:", deployment.version);

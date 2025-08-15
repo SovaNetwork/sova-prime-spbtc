@@ -30,11 +30,7 @@ contract BtcVaultToken is ManagedWithdrawRWA {
     //////////////////////////////////////////////////////////////*/
 
     event CollateralDeposited(
-        address indexed depositor,
-        address indexed token,
-        uint256 amount,
-        uint256 shares,
-        address indexed receiver
+        address indexed depositor, address indexed token, uint256 amount, uint256 shares, address indexed receiver
     );
 
     /*//////////////////////////////////////////////////////////////
@@ -55,12 +51,9 @@ contract BtcVaultToken is ManagedWithdrawRWA {
      * @param sovaBTC_ Address of sovaBTC (redemption asset, 8 decimals)
      * @param strategy_ Address of BtcVaultStrategy
      */
-    constructor(
-        string memory name_,
-        string memory symbol_,
-        address sovaBTC_,
-        address strategy_
-    ) ManagedWithdrawRWA(name_, symbol_, sovaBTC_, 8, strategy_) {
+    constructor(string memory name_, string memory symbol_, address sovaBTC_, address strategy_)
+        ManagedWithdrawRWA(name_, symbol_, sovaBTC_, 8, strategy_)
+    {
         // ManagedWithdrawRWA handles all initialization
     }
 
@@ -75,18 +68,18 @@ contract BtcVaultToken is ManagedWithdrawRWA {
      * @param receiver Address to receive shares
      * @return shares Amount of shares minted (18 decimals)
      */
-    function depositCollateral(
-        address token,
-        uint256 amount,
-        address receiver
-    ) external nonReentrant returns (uint256 shares) {
+    function depositCollateral(address token, uint256 amount, address receiver)
+        external
+        nonReentrant
+        returns (uint256 shares)
+    {
         if (!IBtcVaultStrategy(strategy).isSupportedAsset(token)) revert TokenNotSupported();
         if (amount < MIN_DEPOSIT) revert InsufficientAmount();
         if (receiver == address(0)) revert InvalidAddress();
 
         // Calculate shares based on 1:1 conversion (all BTC variants = 1 sovaBTC)
         // Handle decimal conversion: collateral is 8 decimals, shares are 18 decimals
-        shares = amount * 10**10; // Scale from 8 to 18 decimals
+        shares = amount * 10 ** 10; // Scale from 8 to 18 decimals
 
         if (shares == 0) revert ZeroShares();
 
@@ -105,15 +98,12 @@ contract BtcVaultToken is ManagedWithdrawRWA {
      * @param amount Amount of collateral to deposit
      * @return shares Amount of shares that would be minted
      */
-    function previewDepositCollateral(
-        address token,
-        uint256 amount
-    ) external view returns (uint256 shares) {
+    function previewDepositCollateral(address token, uint256 amount) external view returns (uint256 shares) {
         if (!IBtcVaultStrategy(strategy).isSupportedAsset(token)) return 0;
         if (amount < MIN_DEPOSIT) return 0;
-        
+
         // 1:1 conversion with decimal adjustment (8 -> 18)
-        shares = amount * 10**10;
+        shares = amount * 10 ** 10;
     }
 
     /*//////////////////////////////////////////////////////////////

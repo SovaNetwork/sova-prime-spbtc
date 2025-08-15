@@ -9,35 +9,35 @@ contract DeployMockBTC is Script {
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(deployerPrivateKey);
-        
+
         console.log("Deploying MockBTC with deployer:", deployer);
-        
+
         vm.startBroadcast(deployerPrivateKey);
-        
+
         // Deploy Mock BTC token
         MockBTC mockBTC = new MockBTC("Mock Bitcoin", "mBTC");
-        
+
         console.log("MockBTC deployed at:", address(mockBTC));
         console.log("Name:", mockBTC.name());
         console.log("Symbol:", mockBTC.symbol());
         console.log("Decimals:", mockBTC.decimals());
         console.log("Initial supply to deployer: 1000 mBTC");
-        
+
         // Test mint function
         console.log("\nTesting public mint function...");
-        mockBTC.mint(1 * 10**8); // Mint 1 BTC
+        mockBTC.mint(1 * 10 ** 8); // Mint 1 BTC
         console.log("Successfully minted 1 mBTC");
-        
+
         // Test faucet function
         console.log("\nTesting faucet function...");
         mockBTC.faucet(); // Get 1 BTC from faucet
         console.log("Successfully got 1 mBTC from faucet");
-        
+
         uint256 balance = mockBTC.balanceOf(deployer);
-        console.log("\nFinal deployer balance:", balance / 10**8, "mBTC");
-        
+        console.log("\nFinal deployer balance:", balance / 10 ** 8, "mBTC");
+
         vm.stopBroadcast();
-        
+
         console.log("\n=== Deployment Complete ===");
         console.log("MockBTC address:", address(mockBTC));
         console.log("\nTo add this token as supported collateral, run:");

@@ -13,11 +13,7 @@ interface IBtcVaultShareToken is IERC4626 {
     //////////////////////////////////////////////////////////////*/
 
     event CollateralDeposited(
-        address indexed depositor,
-        address indexed token,
-        uint256 amount,
-        uint256 shares,
-        address indexed receiver
+        address indexed depositor, address indexed token, uint256 amount, uint256 shares, address indexed receiver
     );
 
     /*//////////////////////////////////////////////////////////////
@@ -42,11 +38,7 @@ interface IBtcVaultShareToken is IERC4626 {
      * @param receiver Address to receive shares
      * @return shares Amount of shares minted
      */
-    function depositCollateral(
-        address token,
-        uint256 amount,
-        address receiver
-    ) external returns (uint256 shares);
+    function depositCollateral(address token, uint256 amount, address receiver) external returns (uint256 shares);
 
     /**
      * @notice Preview shares for collateral deposit
@@ -54,10 +46,7 @@ interface IBtcVaultShareToken is IERC4626 {
      * @param amount Amount of collateral to deposit
      * @return shares Amount of shares that would be minted
      */
-    function previewDepositCollateral(
-        address token,
-        uint256 amount
-    ) external view returns (uint256 shares);
+    function previewDepositCollateral(address token, uint256 amount) external view returns (uint256 shares);
 
     /**
      * @notice Pause the vault

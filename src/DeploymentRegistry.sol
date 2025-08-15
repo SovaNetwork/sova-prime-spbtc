@@ -9,10 +9,10 @@ pragma solidity 0.8.25;
 contract DeploymentRegistry {
     bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
     bytes32 public constant DEPLOYER_ROLE = keccak256("DEPLOYER_ROLE");
-    
+
     mapping(bytes32 => mapping(address => bool)) private _roles;
     mapping(bytes32 => address) private _roleAdmin;
-    
+
     struct Deployment {
         uint256 chainId;
         address strategyAddress;
@@ -31,16 +31,16 @@ contract DeploymentRegistry {
 
     // Mapping from deployment ID to Deployment struct
     mapping(uint256 => Deployment) public deployments;
-    
+
     // Mapping from chainId to array of deployment IDs
     mapping(uint256 => uint256[]) public networkDeployments;
-    
+
     // Mapping from chainId to NetworkInfo
     mapping(uint256 => NetworkInfo) public networks;
-    
+
     // Counter for deployment IDs
     uint256 public deploymentCounter;
-    
+
     // Events
     event DeploymentRegistered(
         uint256 indexed deploymentId,
@@ -49,9 +49,9 @@ contract DeploymentRegistry {
         address tokenAddress,
         string version
     );
-    
+
     event DeploymentDeactivated(uint256 indexed deploymentId, uint256 indexed chainId);
-    
+
     event DeploymentActivated(uint256 indexed deploymentId, uint256 indexed chainId);
 
     error InvalidChainId(uint256 chainId);
@@ -64,24 +64,24 @@ contract DeploymentRegistry {
         require(hasRole(role, msg.sender), "Access denied");
         _;
     }
-    
+
     constructor() {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(DEPLOYER_ROLE, msg.sender);
     }
-    
+
     function hasRole(bytes32 role, address account) public view returns (bool) {
         return _roles[role][account];
     }
-    
+
     function grantRole(bytes32 role, address account) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _grantRole(role, account);
     }
-    
+
     function revokeRole(bytes32 role, address account) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _roles[role][account] = false;
     }
-    
+
     function _grantRole(bytes32 role, address account) internal {
         _roles[role][account] = true;
     }
@@ -107,9 +107,9 @@ contract DeploymentRegistry {
         if (chainId == 0) revert InvalidChainId(chainId);
         if (strategyAddress == address(0)) revert InvalidAddress(strategyAddress);
         if (tokenAddress == address(0)) revert InvalidAddress(tokenAddress);
-        
+
         deploymentId = ++deploymentCounter;
-        
+
         deployments[deploymentId] = Deployment({
             chainId: chainId,
             strategyAddress: strategyAddress,
@@ -119,17 +119,17 @@ contract DeploymentRegistry {
             timestamp: block.timestamp,
             isActive: true
         });
-        
+
         // Add to network deployments
         networkDeployments[chainId].push(deploymentId);
-        
+
         // Update network info
         if (networks[chainId].totalDeployments == 0) {
             networks[chainId].name = networkName;
         }
         networks[chainId].totalDeployments++;
         networks[chainId].activeDeployment = deploymentId;
-        
+
         emit DeploymentRegistered(deploymentId, chainId, strategyAddress, tokenAddress, version);
     }
 
@@ -141,18 +141,18 @@ contract DeploymentRegistry {
         if (deploymentId == 0 || deploymentId > deploymentCounter) {
             revert DeploymentNotFound(deploymentId);
         }
-        
+
         Deployment storage deployment = deployments[deploymentId];
         if (!deployment.isActive) revert DeploymentAlreadyInactive();
-        
+
         deployment.isActive = false;
-        
+
         // Update active deployment for network
         uint256 chainId = deployment.chainId;
         if (networks[chainId].activeDeployment == deploymentId) {
             networks[chainId].activeDeployment = 0;
         }
-        
+
         emit DeploymentDeactivated(deploymentId, chainId);
     }
 
@@ -164,13 +164,13 @@ contract DeploymentRegistry {
         if (deploymentId == 0 || deploymentId > deploymentCounter) {
             revert DeploymentNotFound(deploymentId);
         }
-        
+
         Deployment storage deployment = deployments[deploymentId];
         if (deployment.isActive) revert DeploymentAlreadyActive();
-        
+
         deployment.isActive = true;
         networks[deployment.chainId].activeDeployment = deploymentId;
-        
+
         emit DeploymentActivated(deploymentId, deployment.chainId);
     }
 
@@ -212,14 +212,14 @@ contract DeploymentRegistry {
      */
     function getAllActiveDeployments() external view returns (Deployment[] memory activeDeployments) {
         uint256 activeCount = 0;
-        
+
         // Count active deployments
         for (uint256 i = 1; i <= deploymentCounter; i++) {
             if (deployments[i].isActive) {
                 activeCount++;
             }
         }
-        
+
         // Collect active deployments
         activeDeployments = new Deployment[](activeCount);
         uint256 index = 0;

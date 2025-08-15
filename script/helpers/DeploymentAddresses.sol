@@ -19,7 +19,7 @@ contract DeploymentAddresses is Script {
 
     function saveDeployment(uint256 chainId, Addresses memory addrs) external {
         deployments[chainId] = addrs;
-        
+
         // Check if file write should be skipped (for tests)
         bool skipWrite = false;
         try vm.envBool("SKIP_FILE_WRITE") returns (bool skip) {
@@ -27,7 +27,7 @@ contract DeploymentAddresses is Script {
         } catch {
             // If env var doesn't exist, don't skip
         }
-        
+
         if (!skipWrite) {
             _writeToFile(chainId, addrs);
         }
