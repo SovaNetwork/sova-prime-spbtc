@@ -1,0 +1,178 @@
+{
+  "baseMainnet": {
+    "network": "base",
+    "chainId": 8453,
+    "rpcUrl": "${BASE_MAINNET_RPC_URL}",
+    "multisig": {
+      "safe": "${MAINNET_SAFE_ADDRESS}",
+      "threshold": 3,
+      "owners": [
+        "${MAINNET_OWNER_1}",
+        "${MAINNET_OWNER_2}",
+        "${MAINNET_OWNER_3}",
+        "${MAINNET_OWNER_4}",
+        "${MAINNET_OWNER_5}"
+      ]
+    },
+    "contracts": {
+      "roleManager": "${MAINNET_ROLE_MANAGER}",
+      "sovaBTC": "${MAINNET_SOVABTC_ADDRESS}",
+      "wBTC": "0x1ceA84203673764244E05693e42E6Ace62bE9BA5",
+      "tBTC": "0x236aa50979D5f3De3Bd1Eeb40E81137F22ab794b",
+      "cbBTC": "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf"
+    },
+    "deployment": {
+      "deployer": "${MAINNET_DEPLOYER_ADDRESS}",
+      "initialLiquidity": "10000000000",
+      "minDeposit": "1000000",
+      "maxDeviation": 300,
+      "updateInterval": 3600,
+      "collaterals": [
+        {
+          "token": "wBTC",
+          "decimals": 8,
+          "chainlinkFeed": "0xCCADC697c55bbB68dc5bCdf8d3CBe83CdD4E071E"
+        },
+        {
+          "token": "tBTC",
+          "decimals": 18,
+          "chainlinkFeed": "0xCCADC697c55bbB68dc5bCdf8d3CBe83CdD4E071E"
+        },
+        {
+          "token": "cbBTC",
+          "decimals": 8,
+          "chainlinkFeed": "0x07DA0E54543a844a80ABE69c8A12F22B3aA59f9D"
+        }
+      ]
+    },
+    "roles": {
+      "admin": {
+        "addresses": ["${MAINNET_SAFE_ADDRESS}"],
+        "description": "Full admin control via multisig"
+      },
+      "manager": {
+        "addresses": [
+          "${MAINNET_MANAGER_1}",
+          "${MAINNET_MANAGER_2}"
+        ],
+        "description": "Can approve withdrawals and update NAV"
+      },
+      "operator": {
+        "addresses": [
+          "${MAINNET_OPERATOR_1}",
+          "${MAINNET_OPERATOR_2}",
+          "${MAINNET_OPERATOR_3}"
+        ],
+        "description": "Can manage liquidity and collateral settings"
+      },
+      "reporter": {
+        "addresses": [
+          "${MAINNET_REPORTER_1}",
+          "${MAINNET_PRICE_ORACLE}"
+        ],
+        "description": "Can update price feeds and NAV"
+      }
+    },
+    "verification": {
+      "etherscanApiKey": "${BASESCAN_API_KEY}",
+      "verifyContracts": true,
+      "blockExplorer": "https://basescan.org",
+      "delayBetweenVerifications": 30000
+    },
+    "monitoring": {
+      "tenderly": {
+        "projectSlug": "${TENDERLY_PROJECT}",
+        "username": "${TENDERLY_USERNAME}",
+        "apiKey": "${TENDERLY_API_KEY}",
+        "alerts": [
+          {
+            "name": "Large Deposit",
+            "condition": "depositAmount > 1000000000",
+            "severity": "INFO"
+          },
+          {
+            "name": "Large Withdrawal",
+            "condition": "withdrawalAmount > 1000000000",
+            "severity": "WARNING"
+          },
+          {
+            "name": "Low Liquidity",
+            "condition": "availableLiquidity < 10000000000",
+            "severity": "CRITICAL"
+          },
+          {
+            "name": "Price Deviation",
+            "condition": "priceDeviation > 500",
+            "severity": "WARNING"
+          }
+        ]
+      },
+      "datadog": {
+        "apiKey": "${DATADOG_API_KEY}",
+        "appKey": "${DATADOG_APP_KEY}",
+        "dashboardId": "${DATADOG_DASHBOARD_ID}"
+      }
+    },
+    "gasSettings": {
+      "maxFeePerGas": "1000000000",
+      "maxPriorityFeePerGas": "1000000",
+      "gasLimit": {
+        "deployment": 5000000,
+        "addLiquidity": 200000,
+        "deposit": 300000,
+        "withdrawal": 400000
+      }
+    },
+    "security": {
+      "requireMultisigForAdmin": true,
+      "pauseEnabled": true,
+      "emergencyWithdrawalDelay": 86400,
+      "maxSingleDeposit": "100000000000",
+      "maxSingleWithdrawal": "100000000000",
+      "dailyDepositLimit": "1000000000000",
+      "dailyWithdrawalLimit": "500000000000"
+    },
+    "postDeployment": {
+      "transferOwnership": true,
+      "setupRoles": true,
+      "addInitialLiquidity": true,
+      "enableCollaterals": true,
+      "setInitialNav": true,
+      "verifyDeployment": true,
+      "runSmokeTests": true
+    }
+  },
+  "emergencyContacts": {
+    "primary": {
+      "name": "${EMERGENCY_CONTACT_NAME_1}",
+      "email": "${EMERGENCY_CONTACT_EMAIL_1}",
+      "phone": "${EMERGENCY_CONTACT_PHONE_1}",
+      "telegram": "${EMERGENCY_CONTACT_TELEGRAM_1}"
+    },
+    "secondary": {
+      "name": "${EMERGENCY_CONTACT_NAME_2}",
+      "email": "${EMERGENCY_CONTACT_EMAIL_2}",
+      "phone": "${EMERGENCY_CONTACT_PHONE_2}",
+      "telegram": "${EMERGENCY_CONTACT_TELEGRAM_2}"
+    },
+    "escalation": {
+      "warRoom": "${WAR_ROOM_LINK}",
+      "incidentChannel": "${INCIDENT_SLACK_CHANNEL}"
+    }
+  },
+  "rollback": {
+    "enabled": true,
+    "previousVersion": {
+      "strategy": "",
+      "token": ""
+    },
+    "procedure": [
+      "1. Pause current contracts",
+      "2. Snapshot current state",
+      "3. Deploy rollback contracts",
+      "4. Migrate user balances",
+      "5. Update frontend pointers",
+      "6. Verify rollback success"
+    ]
+  }
+}

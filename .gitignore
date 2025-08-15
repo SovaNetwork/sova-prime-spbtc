@@ -2,13 +2,67 @@
 cache/
 out/
 
+# Claude files
+**/.claude/settings.local.json
+.cursor/
+NEXT_SESSION_*
+SESSION_*
+ASSESSTMENT_*
+
 # Ignores development broadcast logs
 !/broadcast
 /broadcast/*/31337/
 /broadcast/**/dry-run/
 
+# Ignore all markdown files
+*.md
+
+# But don't ignore README files
+!README.md
+!readme.md
+!Readme.md
+
 # Dotenv file
 .env
+
+# Frontend files
+/frontend/.env
+/frontend/node_modules
+/frontend/sovabtc-yield-frontend/
+
+# Indexer files
+/services/indexer/.env
+/services/indexer/node_modules
+/services/indexer/dist
+/services/indexer/build
+/services/indexer/coverage
+/services/indexer/coverage-report
+/services/indexer/.ponder
+/services/indexer/ponder.db
+/services/indexer/ponder.db-shm
+/services/indexer/ponder.db-wal
+/services/indexer/ponder.db-journal
+/services/indexer/ponder.db-lock
+/services/indexer/ponder.db-lock.lock
+
+# Services files
+/services/scheduler/.env
+/services/scheduler/node_modules
+/services/scheduler/dist
+/services/scheduler/build
+/services/scheduler/coverage
+/services/scheduler/coverage-report
+/services/scheduler/.ponder
+/services/scheduler/ponder.db
+/services/scheduler/ponder.db-shm
+/services/scheduler/ponder.db-wal
+/services/scheduler/ponder.db-journal
+/services/scheduler/ponder.db-lock
+/services/scheduler/ponder.db-lock.lock
+
+# Scripts files
+/scripts/node_modules
+
 
 # Forge files
 .forge/

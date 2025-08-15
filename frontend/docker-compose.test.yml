@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  # Ponder indexer for blockchain events (SQLite mode for testing)
+  indexer-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.indexer
+    container_name: sovabtc-indexer-test
+    environment:
+      NODE_ENV: development
+      NETWORK: baseSepolia
+      BASE_SEPOLIA_RPC_URL: https://sepolia.base.org
+      BASE_VAULT_TOKEN_ADDRESS: 0xfF09B2B0AfEe51E29941091C4dd6B635780BC34a
+      BASE_VAULT_STRATEGY_ADDRESS: 0x0A039085Ca2AD68a3FC77A9C5191C22B309126F8
+      BASE_START_BLOCK: 19500000
+      PORT: 42069
+    ports:
+      - "42069:42069"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:42069/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - sovabtc-network
+
+networks:
+  sovabtc-network:
+    driver: bridge

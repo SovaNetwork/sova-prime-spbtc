@@ -1,0 +1,240 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+}
+
+model SovaBtcNetwork {
+  id            String       @id @default(cuid())
+  chainId       Int          @unique
+  name          String
+  rpcUrl        String
+  blockExplorer String
+  nativeCurrency Json        // {name, symbol, decimals}
+  isTestnet     Boolean      @default(false)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  
+  deployments   SovaBtcDeployment[]
+  metrics       SovaBtcNetworkMetrics[]
+  
+  @@map("sovabtc_networks")
+}
+
+model SovaBtcDeployment {
+  id                String      @id @default(cuid())
+  chainId           Int
+  network           SovaBtcNetwork     @relation(fields: [chainId], references: [chainId])
+  
+  // Contract addresses
+  vaultStrategy     String
+  vaultToken        String
+  priceOracle       String?
+  
+  // Deployment info
+  status            DeploymentStatus @default(NOT_DEPLOYED)
+  deployer          String?
+  blockNumber       Int?
+  transactionHash   String?
+  verified          Boolean     @default(false)
+  
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  
+  collaterals       SovaBtcCollateral[]
+  metrics           SovaBtcDeploymentMetrics[]
+  activities        SovaBtcActivity[]
+  redemptionRequests RedemptionRequest[]
+  
+  @@unique([chainId])
+  @@map("sovabtc_deployments")
+}
+
+enum DeploymentStatus {
+  NOT_DEPLOYED
+  PENDING
+  ACTIVE
+  DEPRECATED
+}
+
+model SovaBtcCollateral {
+  id            String      @id @default(cuid())
+  deploymentId  String
+  deployment    SovaBtcDeployment  @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+  
+  // Token identification
+  symbol        String      // e.g., "WBTC"
+  name          String      // e.g., "Wrapped Bitcoin"
+  
+  // Network-specific address
+  chainId       Int         // Network this collateral is on
+  address       String      // Network-specific address
+  
+  // Token metadata
+  decimals      Int
+  oracleId      String?
+  logoUri       String?     // Token logo URL
+  coingeckoId   String?     // For price data
+  
+  // Status
+  isActive      Boolean     @default(true)
+  isVerified    Boolean     @default(false)
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
+  @@unique([chainId, address])  // Unique per network
+  @@unique([deploymentId, symbol, chainId])  // Unique symbol per deployment per network
+  @@map("sovabtc_collaterals")
+}
+
+// Global token registry for multi-network token tracking
+model SovaBtcTokenRegistry {
+  id            String      @id @default(cuid())
+  
+  // Token identification
+  symbol        String      // e.g., "WBTC"
+  name          String      // e.g., "Wrapped Bitcoin"
+  
+  // Network addresses (JSON object)
+  // Example: { "1": "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599", "8453": "0x03C7054BCB39f7b2e5B2c7AcB37583e32D70Cfa3" }
+  addresses     Json        // { [chainId]: address }
+  
+  // Metadata
+  decimals      Int         // Usually consistent across networks
+  logoUri       String?
+  coingeckoId   String?
+  category      String?     // "btc", "stablecoin", etc.
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
+  @@unique([symbol])
+  @@map("sovabtc_token_registry")
+}
+
+model SovaBtcDeploymentMetrics {
+  id            String      @id @default(cuid())
+  deploymentId  String
+  deployment    SovaBtcDeployment  @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+  
+  tvl           Decimal     @db.Decimal(30, 10)
+  totalSupply   Decimal     @db.Decimal(30, 10)
+  totalAssets   Decimal     @db.Decimal(30, 10)
+  sharePrice    Decimal     @db.Decimal(30, 10)
+  apy           Decimal?    @db.Decimal(10, 4)
+  users         Int         @default(0)
+  transactions  Int         @default(0)
+  
+  timestamp     DateTime    @default(now())
+  
+  @@index([deploymentId, timestamp])
+  @@map("sovabtc_deployment_metrics")
+}
+
+model SovaBtcNetworkMetrics {
+  id            String      @id @default(cuid())
+  chainId       Int
+  network       SovaBtcNetwork     @relation(fields: [chainId], references: [chainId])
+  
+  blockHeight   BigInt
+  gasPrice      BigInt
+  isOnline      Boolean     @default(true)
+  latency       Int?        // milliseconds
+  
+  timestamp     DateTime    @default(now())
+  
+  @@index([chainId, timestamp])
+  @@map("sovabtc_network_metrics")
+}
+
+model SovaBtcActivity {
+  id            String      @id @default(cuid())
+  deploymentId  String
+  deployment    SovaBtcDeployment  @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+  
+  type          ActivityType
+  description   String
+  metadata      Json?       // Additional data
+  txHash        String?
+  
+  createdAt     DateTime    @default(now())
+  
+  @@index([deploymentId, createdAt])
+  @@map("sovabtc_activities")
+}
+
+enum ActivityType {
+  DEPLOYMENT_CREATED
+  DEPLOYMENT_UPDATED
+  COLLATERAL_ADDED
+  COLLATERAL_REMOVED
+  STATUS_CHANGED
+  METRICS_UPDATED
+  USER_DEPOSIT
+  USER_WITHDRAWAL
+  REDEMPTION_REQUESTED
+  REDEMPTION_PROCESSED
+  REDEMPTION_CANCELLED
+}
+
+model RedemptionRequest {
+  id                String      @id @default(cuid())
+  deploymentId      String
+  deployment        SovaBtcDeployment  @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+  
+  // User information
+  userAddress       String      // Ethereum address of the user
+  
+  // Redemption details
+  shareAmount       Decimal     @db.Decimal(30, 10)  // Amount of vault shares to redeem
+  expectedAssets    Decimal     @db.Decimal(30, 10)  // Expected underlying assets
+  minAssetsOut      Decimal     @db.Decimal(30, 10)  // Minimum assets to accept
+  
+  // EIP-712 signature data
+  signature         String      // EIP-712 signature from user
+  nonce             BigInt      // Unique nonce for this request
+  deadline          DateTime    // Expiration time for the signature
+  
+  // Queue management
+  status            RedemptionStatus @default(PENDING)
+  priority          Int         @default(0)          // Higher number = higher priority
+  queuePosition     Int?        // Position in the queue (null if not in queue)
+  
+  // Processing information
+  processedAt       DateTime?   // When the redemption was processed
+  txHash            String?     // Transaction hash of the redemption
+  actualAssets      Decimal?    @db.Decimal(30, 10)  // Actual assets received
+  gasCost           Decimal?    @db.Decimal(30, 10)  // Gas cost in native token
+  
+  // Admin notes and reason for rejection/cancellation
+  adminNotes        String?
+  rejectionReason   String?
+  
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  
+  @@index([deploymentId, status, createdAt])
+  @@index([userAddress, status, createdAt])
+  @@index([status, queuePosition])
+  @@index([nonce])
+  @@unique([deploymentId, nonce])  // Ensure nonces are unique per deployment
+  @@map("redemption_requests")
+}
+
+enum RedemptionStatus {
+  PENDING           // Waiting in queue for admin approval
+  APPROVED          // Approved by admin, ready for processing
+  PROCESSING        // Currently being processed on-chain
+  COMPLETED         // Successfully processed
+  FAILED            // Processing failed (can be retried)
+  CANCELLED         // Cancelled by user or admin
+  REJECTED          // Rejected by admin
+  EXPIRED           // Signature expired
+}

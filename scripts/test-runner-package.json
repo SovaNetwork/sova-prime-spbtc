@@ -1,0 +1,38 @@
+{
+  "name": "redemption-system-tests",
+  "version": "1.0.0",
+  "description": "Comprehensive test suite for the SovaBTC redemption system",
+  "main": "run-all-redemption-tests.ts",
+  "scripts": {
+    "test:all": "tsx run-all-redemption-tests.ts",
+    "test:crypto": "tsx run-all-redemption-tests.ts --category crypto",
+    "test:database": "tsx run-all-redemption-tests.ts --category database",
+    "test:api": "tsx run-all-redemption-tests.ts --category api",
+    "test:admin": "tsx run-all-redemption-tests.ts --category admin",
+    "test:e2e": "tsx run-all-redemption-tests.ts --category e2e",
+    "test:individual:crypto": "tsx test-eip712-signatures.ts",
+    "test:individual:database": "tsx test-database-integration.ts",
+    "test:individual:api": "tsx test-redemption-api-comprehensive.ts",
+    "test:individual:admin": "tsx test-admin-queue-management.ts",
+    "test:individual:e2e": "tsx test-e2e-redemption-flow.ts"
+  },
+  "dependencies": {
+    "viem": "^2.0.0",
+    "@prisma/client": "^5.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  },
+  "keywords": [
+    "web3",
+    "ethereum",
+    "erc4626",
+    "eip712",
+    "redemption",
+    "testing"
+  ],
+  "author": "Claude Code",
+  "license": "MIT"
+}

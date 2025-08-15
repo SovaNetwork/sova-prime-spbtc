@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  # Ponder Indexer with SQLite
+  indexer:
+    build:
+      context: .
+      dockerfile: Dockerfile.indexer
+    ports:
+      - "42069:42069"
+    environment:
+      - BASE_SEPOLIA_RPC_URL=${BASE_SEPOLIA_RPC_URL:-https://sepolia.base.org}
+      - NETWORK=baseSepolia
+      - NODE_ENV=development
+    volumes:
+      - ./indexer/ponder.config.local.ts:/app/indexer/ponder.config.ts
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:42069/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # PostgreSQL for scheduler only
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: sovabtc
+      POSTGRES_PASSWORD: sovabtc123
+      POSTGRES_DB: sovabtc
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sovabtc"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Scheduler Service
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile.scheduler
+    ports:
+      - "3001:3001"
+    environment:
+      - DATABASE_URL=postgresql://sovabtc:sovabtc123@postgres:5432/sovabtc
+      - BASE_SEPOLIA_RPC_URL=${BASE_SEPOLIA_RPC_URL:-https://sepolia.base.org}
+      - BASE_VAULT_TOKEN_ADDRESS=0xfF09B2B0AfEe51E29941091C4dd6B635780BC34a
+      - BASE_VAULT_STRATEGY_ADDRESS=0x0A039085Ca2AD68a3FC77A9C5191C22B309126F8
+      - NETWORK=baseSepolia
+      - NODE_ENV=development
+      - PORT=3001
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  postgres_data:

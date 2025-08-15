@@ -1,0 +1,45 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "services": {
+    "ponder-indexer": {
+      "build": {
+        "builder": "DOCKERFILE",
+        "dockerfilePath": "frontend/Dockerfile.indexer.root"
+      },
+      "deploy": {
+        "numReplicas": 1,
+        "healthcheckPath": "/health",
+        "healthcheckTimeout": 30,
+        "restartPolicyType": "ON_FAILURE",
+        "restartPolicyMaxRetries": 3,
+        "port": 42069,
+        "region": "us-west1"
+      },
+      "envVars": {
+        "NODE_ENV": "production",
+        "PORT": "42069",
+        "NETWORK": "baseSepolia"
+      }
+    },
+    "scheduler": {
+      "build": {
+        "builder": "DOCKERFILE", 
+        "dockerfilePath": "frontend/Dockerfile.scheduler.root"
+      },
+      "deploy": {
+        "numReplicas": 1,
+        "healthcheckPath": "/health",
+        "healthcheckTimeout": 10,
+        "restartPolicyType": "ON_FAILURE",
+        "restartPolicyMaxRetries": 3,
+        "port": 3001,
+        "region": "us-west1"
+      },
+      "envVars": {
+        "NODE_ENV": "production",
+        "PORT": "3001",
+        "CRON_ENABLED": "true"
+      }
+    }
+  }
+}

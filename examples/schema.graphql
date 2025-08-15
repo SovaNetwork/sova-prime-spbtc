@@ -1,0 +1,280 @@
+# Multi-Collateral BTC Vault Subgraph Schema
+
+type Vault @entity {
+  id: ID! # Vault address
+  totalAssets: BigInt!
+  totalShares: BigInt!
+  totalDeposits: BigInt!
+  totalRedemptions: BigInt!
+  depositCount: BigInt!
+  redemptionCount: BigInt!
+  userCount: BigInt!
+  currentNAV: BigInt!
+  lastUpdateTimestamp: BigInt!
+  deposits: [Deposit!]! @derivedFrom(field: "vault")
+  redemptions: [Redemption!]! @derivedFrom(field: "vault")
+  users: [User!]! @derivedFrom(field: "vault")
+  dailySnapshots: [DailySnapshot!]! @derivedFrom(field: "vault")
+}
+
+type User @entity {
+  id: ID! # User address
+  vault: Vault!
+  shareBalance: BigInt!
+  totalDeposited: BigInt!
+  totalRedeemed: BigInt!
+  depositCount: BigInt!
+  redemptionCount: BigInt!
+  firstDepositTimestamp: BigInt
+  lastActivityTimestamp: BigInt!
+  deposits: [Deposit!]! @derivedFrom(field: "user")
+  redemptions: [Redemption!]! @derivedFrom(field: "user")
+  redemptionRequests: [RedemptionRequest!]! @derivedFrom(field: "requester")
+  transfers: [Transfer!]! @derivedFrom(field: "from")
+  receivedTransfers: [Transfer!]! @derivedFrom(field: "to")
+}
+
+type Deposit @entity {
+  id: ID! # Transaction hash + log index
+  vault: Vault!
+  user: User!
+  sender: Bytes!
+  receiver: Bytes!
+  collateralToken: Collateral!
+  collateralAmount: BigInt!
+  sharesReceived: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+  gasPrice: BigInt!
+  gasUsed: BigInt!
+}
+
+type Redemption @entity {
+  id: ID! # Transaction hash + log index
+  vault: Vault!
+  user: User!
+  requestId: BigInt!
+  shares: BigInt!
+  assetsReceived: BigInt!
+  requestTimestamp: BigInt!
+  processTimestamp: BigInt!
+  maturityTimestamp: BigInt!
+  status: RedemptionStatus!
+  transactionHash: Bytes!
+}
+
+enum RedemptionStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FORCE_PROCESSED
+}
+
+type RedemptionRequest @entity {
+  id: ID! # Request ID
+  requester: User!
+  receiver: Bytes!
+  shares: BigInt!
+  requestTimestamp: BigInt!
+  maturityTimestamp: BigInt!
+  processedTimestamp: BigInt
+  status: RedemptionStatus!
+  processedTxHash: Bytes
+  queue: RedemptionQueue!
+}
+
+type RedemptionQueue @entity {
+  id: ID! # Queue contract address
+  totalQueued: BigInt!
+  totalProcessed: BigInt!
+  currentQueueLength: BigInt!
+  totalSharesQueued: BigInt!
+  averageWaitTime: BigInt!
+  requests: [RedemptionRequest!]! @derivedFrom(field: "queue")
+}
+
+type Transfer @entity {
+  id: ID! # Transaction hash + log index
+  from: User!
+  to: User!
+  value: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+type Collateral @entity {
+  id: ID! # Token address
+  symbol: String!
+  name: String!
+  decimals: Int!
+  isActive: Boolean!
+  conversionRate: BigInt!
+  totalDeposited: BigInt!
+  depositCount: BigInt!
+  lastDepositTimestamp: BigInt
+  deposits: [Deposit!]! @derivedFrom(field: "collateralToken")
+}
+
+type CollateralConfig @entity {
+  id: ID! # Registry address + token address
+  token: Collateral!
+  isActive: Boolean!
+  addedTimestamp: BigInt!
+  removedTimestamp: BigInt
+  updateCount: BigInt!
+}
+
+type PriceUpdate @entity {
+  id: ID! # Transaction hash + log index
+  oldPrice: BigInt!
+  newPrice: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  reporter: Bytes!
+  transactionHash: Bytes!
+}
+
+type NAVHistory @entity {
+  id: ID! # Timestamp (daily)
+  date: BigInt!
+  openNAV: BigInt!
+  closeNAV: BigInt!
+  highNAV: BigInt!
+  lowNAV: BigInt!
+  avgNAV: BigInt!
+  updateCount: BigInt!
+}
+
+type DailySnapshot @entity {
+  id: ID! # Vault address + timestamp (daily)
+  vault: Vault!
+  date: BigInt!
+  totalAssets: BigInt!
+  totalShares: BigInt!
+  totalUsers: BigInt!
+  dailyDeposits: BigInt!
+  dailyRedemptions: BigInt!
+  dailyDepositCount: BigInt!
+  dailyRedemptionCount: BigInt!
+  dailyActiveUsers: BigInt!
+  currentNAV: BigInt!
+  dailyYield: BigInt!
+  cumulativeYield: BigInt!
+}
+
+type GlobalStats @entity {
+  id: ID! # "global"
+  totalVaults: BigInt!
+  totalUsers: BigInt!
+  totalDeposited: BigInt!
+  totalRedeemed: BigInt!
+  totalShares: BigInt!
+  totalTransactions: BigInt!
+  lastUpdateTimestamp: BigInt!
+}
+
+type Transaction @entity {
+  id: ID! # Transaction hash
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  gasUsed: BigInt!
+  gasPrice: BigInt!
+  from: Bytes!
+  to: Bytes!
+  value: BigInt!
+  type: TransactionType!
+}
+
+enum TransactionType {
+  DEPOSIT
+  REDEMPTION_REQUEST
+  REDEMPTION_PROCESS
+  TRANSFER
+  APPROVAL
+  PRICE_UPDATE
+  ADMIN_ACTION
+}
+
+type HourlyMetrics @entity {
+  id: ID! # Vault address + hourly timestamp
+  vault: Vault!
+  timestamp: BigInt!
+  deposits: BigInt!
+  redemptions: BigInt!
+  netFlow: BigInt!
+  avgDepositSize: BigInt!
+  avgRedemptionSize: BigInt!
+  uniqueUsers: BigInt!
+  gasPrice: BigInt!
+}
+
+type UserActivity @entity {
+  id: ID! # User address + action type + timestamp
+  user: User!
+  action: ActivityType!
+  timestamp: BigInt!
+  amount: BigInt
+  details: String
+  transactionHash: Bytes!
+}
+
+enum ActivityType {
+  DEPOSIT
+  REDEMPTION_REQUEST
+  REDEMPTION_COMPLETE
+  TRANSFER_IN
+  TRANSFER_OUT
+}
+
+type ProtocolMetrics @entity {
+  id: ID! # "metrics"
+  totalValueLocked: BigInt!
+  totalSharesIssued: BigInt!
+  averageNAV: BigInt!
+  totalYieldGenerated: BigInt!
+  totalFeesCollected: BigInt!
+  utilizationRate: BigDecimal!
+  redemptionQueueDepth: BigInt!
+  averageRedemptionTime: BigInt!
+  lastUpdateBlock: BigInt!
+  lastUpdateTimestamp: BigInt!
+}
+
+# Collateral-specific metrics
+type CollateralMetrics @entity {
+  id: ID! # Collateral address + daily timestamp
+  collateral: Collateral!
+  date: BigInt!
+  dailyVolume: BigInt!
+  dailyDepositCount: BigInt!
+  totalLocked: BigInt!
+  percentOfTVL: BigDecimal!
+}
+
+# User position tracking
+type Position @entity {
+  id: ID! # User address + vault address
+  user: User!
+  vault: Vault!
+  shares: BigInt!
+  costBasis: BigInt! # Total assets deposited
+  realizedGains: BigInt!
+  unrealizedGains: BigInt!
+  lastUpdateTimestamp: BigInt!
+  isActive: Boolean!
+}
+
+# Event log for audit trail
+type EventLog @entity {
+  id: ID! # Transaction hash + log index
+  eventType: String!
+  contractAddress: Bytes!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+  topics: [Bytes!]!
+  data: Bytes!
+  decoded: String # JSON string of decoded event data
+}

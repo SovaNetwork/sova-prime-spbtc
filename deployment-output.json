@@ -1,0 +1,39 @@
+{
+  "network": "Base Sepolia",
+  "chainId": 84532,
+  "deploymentDate": "2025-08-12",
+  "deployedBy": "0x1f53aA5d3b5743BD0D41884124bC07f4d7682Fc1",
+  "contracts": {
+    "btcVaultStrategy": {
+      "address": "0x0A039085Ca2AD68a3FC77A9C5191C22B309126F8",
+      "verified": true,
+      "etherscanUrl": "https://sepolia.basescan.org/address/0x0a039085ca2ad68a3fc77a9c5191c22b309126f8"
+    },
+    "btcVaultToken": {
+      "address": "0xfF09B2B0AfEe51E29941091C4dd6B635780BC34a",
+      "verified": true,
+      "etherscanUrl": "https://sepolia.basescan.org/address/0xff09b2b0afee51e29941091c4dd6b635780bc34a"
+    },
+    "priceOracleReporter": {
+      "address": "0x698FBBde2c9FF3aF64C0ec48f174d5e8231FAacF",
+      "verified": true,
+      "etherscanUrl": "https://sepolia.basescan.org/address/0x698fbbde2c9ff3af64c0ec48f174d5e8231faacf"
+    }
+  },
+  "supportingContracts": {
+    "roleManager": "0x15502fC5e872c8B22BA6dD5e01A7A5bd4f9A3d72",
+    "registry": "0x6F0fecBC276de8fC69257065fE47C5a03d986394",
+    "wbtc": "0xe44b2870eFcd6Bb3C9305808012621f438e9636D",
+    "tbtc": "0xE2b47f0dD766834b9DD2612D2d3632B05Ca89802",
+    "sovaBTC": "0x05aB19d77516414f7333a8fd52cC1F49FF8eAFA9"
+  },
+  "deploymentBlock": 29623849,
+  "deploymentTimestamp": 1755015986,
+  "configuration": {
+    "initialPrice": "1000000000000000000",
+    "maxDeviation": 500,
+    "deviationTimePeriod": 3600,
+    "supportedCollaterals": ["WBTC", "TBTC", "sovaBTC"],
+    "decimals": 8
+  }
+}

@@ -1,0 +1,42 @@
+# Scheduler Service Dockerfile - Simplified
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install wget for healthcheck
+RUN apk add --no-cache wget
+
+# Copy frontend package files for Prisma
+COPY package*.json ./
+COPY prisma ./prisma/
+
+# Install main dependencies (includes Prisma)
+RUN npm ci --legacy-peer-deps && \
+    npx prisma generate
+
+# Copy scheduler service
+COPY services/scheduler ./services/scheduler
+COPY lib ./lib
+
+# Install scheduler dependencies
+WORKDIR /app/services/scheduler
+RUN npm install
+
+# Build TypeScript (simplified)
+RUN npx tsc || true
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001 && \
+    chown -R nodejs:nodejs /app
+
+USER nodejs
+
+EXPOSE 3001
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1
+
+# Start the scheduler (adjust path if needed)
+CMD ["node", "dist/services/scheduler/src/index.js"]

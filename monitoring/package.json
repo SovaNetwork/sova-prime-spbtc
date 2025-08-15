@@ -1,0 +1,25 @@
+{
+  "name": "btc-vault-monitoring",
+  "version": "1.0.0",
+  "description": "Monitoring and metrics collection for BTC Vault",
+  "main": "healthCheck.js",
+  "scripts": {
+    "health": "node healthCheck.js",
+    "metrics": "node metricsCollector.js",
+    "monitor": "npm run health && npm run metrics",
+    "health:watch": "watch -n 60 node healthCheck.js",
+    "setup": "npm install"
+  },
+  "dependencies": {
+    "ethers": "^6.9.0",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "eslint": "^8.54.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "author": "",
+  "license": "MIT"
+}
