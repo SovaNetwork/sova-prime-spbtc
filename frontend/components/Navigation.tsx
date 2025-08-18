@@ -55,12 +55,12 @@ export function Navigation() {
             <Link href="/" className="relative">
               <div className="flex items-center justify-center transform hover:scale-105 transition-all duration-300">
                 <Image 
-                  src="/SOVA_LOGO_WHITE.svg" 
+                  src="/SOVA_BTC_LOGO_LIGHT.svg" 
                   alt="Sova Logo" 
-                  width={100} 
-                  height={40} 
+                  width={70} 
+                  height={28} 
                   className="text-white"
-                  style={{ width: 'auto', height: '40px' }}
+                  style={{ width: 'auto', height: '28px' }}
                 />
               </div>
             </Link>
