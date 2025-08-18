@@ -88,7 +88,7 @@ export function MobileWalletConnect({ isOpen, onClose }: MobileWalletConnectProp
       />
       
       {/* Modal */}
-      <div className="relative bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] max-w-md w-full overflow-hidden">
+      <div className="relative bg-mint-600/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] max-w-md w-full overflow-hidden">
         {/* Header */}
         <div className="p-6 border-b border-white/10">
           <div className="flex items-center justify-between">
@@ -112,7 +112,7 @@ export function MobileWalletConnect({ isOpen, onClose }: MobileWalletConnectProp
           {showQR && !isMobile ? (
             <div className="text-center space-y-4">
               <div className="bg-white p-4 rounded-xl inline-block">
-                <QrCode className="w-48 h-48 text-slate-900" />
+                <QrCode className="w-48 h-48 text-mint-600" />
               </div>
               <p className="text-white/60 text-sm">
                 Scan with your mobile wallet to connect
@@ -149,7 +149,7 @@ export function MobileWalletConnect({ isOpen, onClose }: MobileWalletConnectProp
               {walletConnectConnector && (
                 <button
                   onClick={() => setShowQR(true)}
-                  className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-blue-600/10 to-purple-600/10 hover:from-blue-600/20 hover:to-purple-600/20 border border-white/10 rounded-xl transition-all duration-300 group mt-4"
+                  className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-blue-600/10 to-mint-600/10 hover:from-blue-600/20 hover:to-mint-600/20 border border-white/10 rounded-xl transition-all duration-300 group mt-4"
                 >
                   <div className="flex items-center space-x-3">
                     <span className="text-2xl">🔗</span>

@@ -97,7 +97,7 @@ export default function SchedulerStatus() {
                 <div key={jobName} className="p-4 bg-white/5 rounded-lg">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <ActivityIcon className="w-4 h-4 text-violet-400" />
+                      <ActivityIcon className="w-4 h-4 text-mint-400" />
                       <span className="text-white font-medium capitalize">
                         {jobName.replace(/([A-Z])/g, ' $1').trim()}
                       </span>
@@ -105,7 +105,7 @@ export default function SchedulerStatus() {
                     <button
                       onClick={() => handleTrigger(jobName as any)}
                       disabled={triggering === jobName}
-                      className="px-3 py-1 bg-violet-500/20 hover:bg-violet-500/30 text-violet-400 rounded-lg text-sm flex items-center gap-1 transition-colors disabled:opacity-50"
+                      className="px-3 py-1 bg-mint-500/20 hover:bg-mint-500/30 text-mint-400 rounded-lg text-sm flex items-center gap-1 transition-colors disabled:opacity-50"
                     >
                       <PlayIcon className="w-3 h-3" />
                       {triggering === jobName ? 'Running...' : 'Run Now'}
@@ -151,21 +151,21 @@ export default function SchedulerStatus() {
               <button
                 onClick={() => handleTrigger('metrics')}
                 disabled={triggering === 'metrics'}
-                className="px-4 py-2 bg-violet-500/20 hover:bg-violet-500/30 text-violet-400 rounded-lg text-sm transition-colors disabled:opacity-50"
+                className="px-4 py-2 bg-mint-500/20 hover:bg-mint-500/30 text-mint-400 rounded-lg text-sm transition-colors disabled:opacity-50"
               >
                 Collect Metrics
               </button>
               <button
                 onClick={() => handleTrigger('collaterals')}
                 disabled={triggering === 'collaterals'}
-                className="px-4 py-2 bg-violet-500/20 hover:bg-violet-500/30 text-violet-400 rounded-lg text-sm transition-colors disabled:opacity-50"
+                className="px-4 py-2 bg-mint-500/20 hover:bg-mint-500/30 text-mint-400 rounded-lg text-sm transition-colors disabled:opacity-50"
               >
                 Sync Collaterals
               </button>
               <button
                 onClick={() => handleTrigger('daily-summary')}
                 disabled={triggering === 'daily-summary'}
-                className="px-4 py-2 bg-violet-500/20 hover:bg-violet-500/30 text-violet-400 rounded-lg text-sm transition-colors disabled:opacity-50"
+                className="px-4 py-2 bg-mint-500/20 hover:bg-mint-500/30 text-mint-400 rounded-lg text-sm transition-colors disabled:opacity-50"
               >
                 Generate Summary
               </button>

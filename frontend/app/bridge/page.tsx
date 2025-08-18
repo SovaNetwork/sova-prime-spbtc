@@ -22,7 +22,7 @@ export default function BridgePage() {
     <main className="container mx-auto px-6 py-12">
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full mb-6">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-blue-500 to-mint-500 rounded-full mb-6">
             <ArrowLeftRight className="w-10 h-10 text-white" />
           </div>
           <h1 className="text-5xl font-bold text-white mb-4">Cross-Chain Bridge</h1>
@@ -53,7 +53,7 @@ export default function BridgePage() {
               </div>
               
               <div className="p-6 bg-white/5 rounded-xl">
-                <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center mx-auto mb-3">
+                <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-mint-500 rounded-lg flex items-center justify-center mx-auto mb-3">
                   <span className="text-white text-xl">🔒</span>
                 </div>
                 <h3 className="text-white font-semibold mb-2">Secure</h3>
@@ -97,7 +97,7 @@ export default function BridgePage() {
                 />
                 <button
                   type="submit"
-                  className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl hover:shadow-[0_8px_25px_0_rgba(59,130,246,0.4)] transition-all duration-300"
+                  className="px-6 py-3 bg-gradient-to-r from-blue-500 to-mint-500 text-white rounded-xl hover:shadow-[0_8px_25px_0_rgba(59,130,246,0.4)] transition-all duration-300"
                 >
                   <Mail className="w-5 h-5" />
                 </button>

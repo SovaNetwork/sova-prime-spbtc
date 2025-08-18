@@ -42,7 +42,7 @@ const mockTVLData = [
 const mockCollateralDistribution = [
   { name: 'sovaBTC', value: 45, color: 'bg-orange-500' },
   { name: 'WBTC', value: 30, color: 'bg-blue-500' },
-  { name: 'tBTC', value: 25, color: 'bg-purple-500' },
+  { name: 'tBTC', value: 25, color: 'bg-mint-500' },
 ];
 
 export default function DashboardPage() {
@@ -148,14 +148,14 @@ export default function DashboardPage() {
           <ChainSelector showAll onChainSelect={setSelectedChain} />
           <button
             onClick={() => setShowCrossChain(!showCrossChain)}
-            className="px-4 py-2 bg-violet-500/20 hover:bg-violet-500/30 text-violet-400 rounded-lg flex items-center gap-2 transition-colors"
+            className="px-4 py-2 bg-mint-500/20 hover:bg-mint-500/30 text-mint-400 rounded-lg flex items-center gap-2 transition-colors"
           >
             <Layers className="w-4 h-4" />
             {showCrossChain ? 'Hide' : 'Show'} Cross-Chain
           </button>
           <button
             onClick={() => setShowScheduler(!showScheduler)}
-            className="px-4 py-2 bg-violet-500/20 hover:bg-violet-500/30 text-violet-400 rounded-lg flex items-center gap-2 transition-colors"
+            className="px-4 py-2 bg-mint-500/20 hover:bg-mint-500/30 text-mint-400 rounded-lg flex items-center gap-2 transition-colors"
           >
             <Activity className="w-4 h-4" />
             {showScheduler ? 'Hide' : 'Show'} Services
@@ -255,7 +255,7 @@ export default function DashboardPage() {
               </p>
               <p className="text-white/40 text-xs">BTC per share</p>
             </div>
-            <Coins className="w-8 h-8 text-purple-400" />
+            <Coins className="w-8 h-8 text-mint-400" />
           </div>
         </GlassCard>
       </div>
@@ -304,10 +304,10 @@ export default function DashboardPage() {
             {mockTVLData.map((item, index) => (
               <div key={index} className="flex-1 flex flex-col items-center gap-2">
                 <div 
-                  className="w-full bg-gradient-to-t from-blue-500 to-purple-500 rounded-t-lg hover:opacity-80 transition-opacity relative group"
+                  className="w-full bg-gradient-to-t from-blue-500 to-mint-500 rounded-t-lg hover:opacity-80 transition-opacity relative group"
                   style={{ height: `${(item.value / 175) * 100}%` }}
                 >
-                  <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 px-2 py-1 rounded text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                  <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-mint-500 px-2 py-1 rounded text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
                     {item.value} BTC
                   </div>
                 </div>

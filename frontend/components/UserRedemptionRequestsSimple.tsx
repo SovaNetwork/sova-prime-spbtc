@@ -66,7 +66,7 @@ export function UserRedemptionRequests({
       case RedemptionStatus.APPROVED:
         return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
       case RedemptionStatus.PROCESSING:
-        return 'bg-purple-500/20 text-purple-400 border-purple-500/30'
+        return 'bg-mint-500/20 text-mint-400 border-mint-500/30'
       case RedemptionStatus.COMPLETED:
         return 'bg-green-500/20 text-green-400 border-green-500/30'
       case RedemptionStatus.FAILED:
@@ -81,7 +81,7 @@ export function UserRedemptionRequests({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+        <Loader2 className="h-8 w-8 animate-spin text-mint-500" />
       </div>
     )
   }

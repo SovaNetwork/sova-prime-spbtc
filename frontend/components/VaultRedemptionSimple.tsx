@@ -127,7 +127,7 @@ export function VaultRedemption({
               onClick={() => setActiveTab('request')}
               className={`px-4 py-2 rounded-lg font-semibold transition-all ${
                 activeTab === 'request'
-                  ? 'bg-purple-500 text-white'
+                  ? 'bg-mint-500 text-white'
                   : 'bg-white/10 text-gray-400 hover:bg-white/20'
               }`}
             >
@@ -137,7 +137,7 @@ export function VaultRedemption({
               onClick={() => setActiveTab('history')}
               className={`px-4 py-2 rounded-lg font-semibold transition-all ${
                 activeTab === 'history'
-                  ? 'bg-purple-500 text-white'
+                  ? 'bg-mint-500 text-white'
                   : 'bg-white/10 text-gray-400 hover:bg-white/20'
               }`}
             >

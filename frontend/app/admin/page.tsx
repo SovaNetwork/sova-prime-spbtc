@@ -308,7 +308,7 @@ export default function AdminPage() {
                     <p className="text-2xl font-bold text-white">{utilization.toFixed(1)}%</p>
                     <p className="text-white/40 text-xs">of liquidity</p>
                   </div>
-                  <BarChart3 className="w-8 h-8 text-purple-400" />
+                  <BarChart3 className="w-8 h-8 text-mint-400" />
                 </div>
               </GlassCard>
             </div>
@@ -324,7 +324,7 @@ export default function AdminPage() {
                   </div>
                   <div className="w-full bg-white/10 rounded-full h-2">
                     <div 
-                      className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full"
+                      className="bg-gradient-to-r from-blue-500 to-mint-500 h-2 rounded-full"
                       style={{ width: `${100 - utilization}%` }}
                     />
                   </div>

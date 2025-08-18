@@ -199,7 +199,7 @@ export default function PortfolioPage() {
               <p className="text-2xl font-bold text-white">{roi.toFixed(2)}%</p>
               <p className="text-white/40 text-xs">All time</p>
             </div>
-            <PieChart className="w-8 h-8 text-purple-400" />
+            <PieChart className="w-8 h-8 text-mint-400" />
           </div>
         </GlassCard>
 
@@ -246,7 +246,7 @@ export default function PortfolioPage() {
                   style={{ height: `${(data.value / 110) * 240}px` }}
                 />
                 <div 
-                  className="absolute bottom-0 w-full bg-gradient-to-t from-blue-500/50 to-purple-500/50 rounded-t-lg"
+                  className="absolute bottom-0 w-full bg-gradient-to-t from-blue-500/50 to-mint-500/50 rounded-t-lg"
                   style={{ height: `${(100 / 110) * 240}px` }}
                 />
               </div>
@@ -262,7 +262,7 @@ export default function PortfolioPage() {
               <span className="text-xs text-white/60">Portfolio Value</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full opacity-50" />
+              <div className="w-3 h-3 bg-gradient-to-r from-blue-500 to-mint-500 rounded-full opacity-50" />
               <span className="text-xs text-white/60">Initial Investment</span>
             </div>
           </div>

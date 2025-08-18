@@ -271,7 +271,7 @@ export function getStatusColor(status: RedemptionStatus): string {
     case RedemptionStatus.APPROVED:
       return 'text-blue-600 bg-blue-100'
     case RedemptionStatus.PROCESSING:
-      return 'text-purple-600 bg-purple-100'
+      return 'text-mint-600 bg-purple-100'
     case RedemptionStatus.COMPLETED:
       return 'text-green-600 bg-green-100'
     case RedemptionStatus.FAILED:

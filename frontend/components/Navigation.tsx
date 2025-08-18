@@ -78,7 +78,7 @@ export function Navigation() {
                   href={item.href}
                   className={`flex items-center space-x-2 px-4 py-2 rounded-xl transition-all duration-300 ${
                     isActive 
-                      ? 'bg-violet-600/20 text-white shadow-[0_4px_15px_0_rgba(132,93,247,0.4)] backdrop-blur-lg border border-violet-500/30' 
+                      ? 'bg-mint-500/20 text-white shadow-[0_0_20px_rgba(132,242,155,0.2)] backdrop-blur-lg border border-mint-500/30' 
                       : 'text-zinc-300 hover:bg-white/5 hover:text-white'
                   }`}
                 >
@@ -160,7 +160,7 @@ export function Navigation() {
                                 </div>
                               </div>
                             )}
-                            <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-violet-600/20 via-fuchsia-600/20 to-violet-600/20 blur-xl group-hover:blur-2xl transition-all duration-500 -z-10"></div>
+                            <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-mint-600/20 via-fuchsia-600/20 to-mint-600/20 blur-xl group-hover:blur-2xl transition-all duration-500 -z-10"></div>
                           </button>
                         );
                       }
@@ -191,7 +191,7 @@ export function Navigation() {
                       onClick={() => setIsMobileMenuOpen(false)}
                       className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${
                         isActive 
-                          ? 'bg-violet-600/20 text-white border border-violet-500/30' 
+                          ? 'bg-mint-500/20 text-white shadow-[0_0_20px_rgba(132,242,155,0.2)] border border-mint-500/30' 
                           : 'text-zinc-300 hover:bg-white/5 hover:text-white'
                       }`}
                     >
@@ -250,7 +250,7 @@ export function Navigation() {
                                     </div>
                                   </div>
                                 )}
-                                <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-violet-600/20 via-fuchsia-600/20 to-violet-600/20 blur-xl group-hover:blur-2xl transition-all duration-500 -z-10"></div>
+                                <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-mint-600/20 via-fuchsia-600/20 to-mint-600/20 blur-xl group-hover:blur-2xl transition-all duration-500 -z-10"></div>
                               </button>
                             );
                           }

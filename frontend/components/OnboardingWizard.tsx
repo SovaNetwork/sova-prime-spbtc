@@ -160,7 +160,7 @@ export default function OnboardingWizard({ onComplete, onSkip }: OnboardingWizar
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-gray-900 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6 relative">
+        <div className="bg-gradient-to-r from-blue-600 to-mint-600 p-6 relative">
           <button
             onClick={handleSkip}
             className="absolute top-4 right-4 text-white/80 hover:text-white transition-colors"

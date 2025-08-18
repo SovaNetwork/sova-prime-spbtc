@@ -99,7 +99,7 @@ export default function HomePage() {
                   style={{ animationDelay: `${index * 0.1}s` }}
                 >
                   <div className="p-6 space-y-4">
-                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-mint-600 flex items-center justify-center">
                       <Icon className="w-6 h-6 text-white" />
                     </div>
                     <h3 className="text-xl font-semibold text-white">
@@ -138,7 +138,7 @@ export default function HomePage() {
             </div>
             
             {/* Decorative gradient */}
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-transparent to-purple-500/10 pointer-events-none"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-transparent to-mint-500/10 pointer-events-none"></div>
           </GlassCard>
         </div>
       </section>
@@ -167,7 +167,7 @@ export default function HomePage() {
       {/* Background Effects */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute top-20 left-20 w-72 h-72 bg-blue-500/20 rounded-full filter blur-[100px] animate-pulse"></div>
-        <div className="absolute bottom-20 right-20 w-96 h-96 bg-purple-500/20 rounded-full filter blur-[120px] animate-pulse" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute bottom-20 right-20 w-96 h-96 bg-mint-500/20 rounded-full filter blur-[120px] animate-pulse" style={{ animationDelay: '2s' }}></div>
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-pink-500/10 rounded-full filter blur-[150px] animate-pulse" style={{ animationDelay: '4s' }}></div>
       </div>
     </div>

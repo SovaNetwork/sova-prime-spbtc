@@ -156,7 +156,7 @@ export function AddNetworkModal({ onAdd, onClose, existingChainIds }: AddNetwork
         <div className="p-6 border-b border-white/10">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <Server className="w-6 h-6 text-violet-400" />
+              <Server className="w-6 h-6 text-mint-400" />
               <h2 className="text-xl font-semibold text-white">Add Network Deployment</h2>
             </div>
             <button

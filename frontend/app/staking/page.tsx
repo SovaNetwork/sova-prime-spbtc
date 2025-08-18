@@ -53,7 +53,7 @@ export default function StakingPage() {
               </div>
               
               <div className="p-6 bg-white/5 rounded-xl">
-                <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center mx-auto mb-3">
+                <div className="w-12 h-12 bg-gradient-to-r from-mint-500 to-pink-500 rounded-lg flex items-center justify-center mx-auto mb-3">
                   <Gift className="w-6 h-6 text-white" />
                 </div>
                 <h3 className="text-white font-semibold mb-2">Exclusive Perks</h3>
@@ -98,10 +98,10 @@ export default function StakingPage() {
               </div>
             </div>
             
-            <div className="p-4 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-xl border border-purple-500/20">
+            <div className="p-4 bg-gradient-to-r from-mint-500/10 to-pink-500/10 rounded-xl border border-mint-500/20">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-white font-medium">Diamond Tier</span>
-                <span className="text-purple-400 text-sm">1000+ btcVault</span>
+                <span className="text-mint-400 text-sm">1000+ btcVault</span>
               </div>
               <div className="text-white/60 text-sm">
                 • 2x staking rewards • 3x voting power • Daily airdrops • VIP access • Exclusive NFTs

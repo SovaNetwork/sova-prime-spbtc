@@ -61,7 +61,7 @@ export default function TransactionHistory({
             placeholder="Filter by address (0x...)"
             value={filterAddress}
             onChange={(e) => setFilterAddress(e.target.value)}
-            className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-violet-500"
+            className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-mint-500"
           />
         </div>
       )}
@@ -128,7 +128,7 @@ export default function TransactionHistory({
                     href={`https://sepolia.basescan.org/tx/${tx.transactionHash}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-violet-400 hover:text-violet-300"
+                    className="flex items-center gap-1 text-mint-400 hover:text-mint-300"
                   >
                     {formatted.shortTxHash}
                     <ExternalLinkIcon className="w-3 h-3" />
@@ -142,7 +142,7 @@ export default function TransactionHistory({
 
       {transactions.length > 0 && transactions.length >= limit && (
         <div className="mt-4 text-center">
-          <button className="text-violet-400 hover:text-violet-300 text-sm">
+          <button className="text-mint-400 hover:text-mint-300 text-sm">
             Load more transactions
           </button>
         </div>

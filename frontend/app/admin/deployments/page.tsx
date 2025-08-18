@@ -112,7 +112,7 @@ export default function DeploymentsPage() {
                   {deployments.length}
                 </div>
               </div>
-              <Server className="w-8 h-8 text-violet-400" />
+              <Server className="w-8 h-8 text-mint-400" />
             </div>
           </div>
 
@@ -159,7 +159,7 @@ export default function DeploymentsPage() {
             <button
               onClick={() => setViewMode('grid')}
               className={`glass-button rounded-lg px-4 py-2 ${
-                viewMode === 'grid' ? 'bg-violet-500/20 border-violet-500/50' : ''
+                viewMode === 'grid' ? 'bg-mint-500/20 border-mint-500/50' : ''
               }`}
             >
               Grid View
@@ -167,7 +167,7 @@ export default function DeploymentsPage() {
             <button
               onClick={() => setViewMode('dashboard')}
               className={`glass-button rounded-lg px-4 py-2 ${
-                viewMode === 'dashboard' ? 'bg-violet-500/20 border-violet-500/50' : ''
+                viewMode === 'dashboard' ? 'bg-mint-500/20 border-mint-500/50' : ''
               }`}
             >
               Dashboard

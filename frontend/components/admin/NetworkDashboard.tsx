@@ -108,12 +108,12 @@ export function NetworkDashboard({ deployments }: NetworkDashboardProps) {
         <div className="glass-card rounded-xl p-4">
           <div className="flex items-center justify-between mb-2">
             <div className="text-white/60 text-sm">24h Transactions</div>
-            <Activity className="w-5 h-5 text-violet-400" />
+            <Activity className="w-5 h-5 text-mint-400" />
           </div>
           <div className="text-2xl font-bold text-white">
             {formatValue(aggregateMetrics.totalTransactions, 'number')}
           </div>
-          <div className="text-violet-400 text-xs mt-1">
+          <div className="text-mint-400 text-xs mt-1">
             +15.2% from yesterday
           </div>
         </div>
@@ -149,7 +149,7 @@ export function NetworkDashboard({ deployments }: NetworkDashboardProps) {
       <div className="glass-card rounded-2xl overflow-hidden">
         <div className="p-6 border-b border-white/10">
           <h3 className="text-lg font-semibold text-white flex items-center space-x-2">
-            <BarChart3 className="w-5 h-5 text-violet-400" />
+            <BarChart3 className="w-5 h-5 text-mint-400" />
             <span>Network Performance</span>
           </h3>
         </div>
@@ -237,7 +237,7 @@ export function NetworkDashboard({ deployments }: NetworkDashboardProps) {
         {/* Recent Activity */}
         <div className="glass-card rounded-2xl p-6">
           <h3 className="text-lg font-semibold text-white mb-4 flex items-center space-x-2">
-            <Activity className="w-5 h-5 text-violet-400" />
+            <Activity className="w-5 h-5 text-mint-400" />
             <span>Recent Activity</span>
           </h3>
           
@@ -258,7 +258,7 @@ export function NetworkDashboard({ deployments }: NetworkDashboardProps) {
               <span className="text-white/40 ml-auto">1h ago</span>
             </div>
             <div className="flex items-center space-x-3 text-sm">
-              <div className="w-2 h-2 bg-violet-400 rounded-full" />
+              <div className="w-2 h-2 bg-mint-400 rounded-full" />
               <span className="text-white/60">Contract verified on Polygon</span>
               <span className="text-white/40 ml-auto">2h ago</span>
             </div>

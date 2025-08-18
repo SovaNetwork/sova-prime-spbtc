@@ -93,7 +93,7 @@ export function ChainSelector({ onChainSelect, showAll = false, className }: Cha
           <div className={cn(
             "absolute top-full mt-2 right-0 z-50",
             "w-64 p-2 rounded-xl",
-            "bg-slate-900/95 backdrop-blur-xl",
+            "bg-mint-600/95 backdrop-blur-xl",
             "border border-white/10",
             "shadow-2xl shadow-black/50"
           )}>

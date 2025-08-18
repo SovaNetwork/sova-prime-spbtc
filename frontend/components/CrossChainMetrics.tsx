@@ -91,7 +91,7 @@ export function CrossChainMetrics() {
                 Across {metrics.chains.length} networks
               </p>
             </div>
-            <Globe className="w-8 h-8 text-violet-400" />
+            <Globe className="w-8 h-8 text-mint-400" />
           </div>
         </GlassCard>
 
@@ -193,7 +193,7 @@ export function CrossChainMetrics() {
                 <div className="w-32">
                   <div className="h-2 bg-white/10 rounded-full overflow-hidden">
                     <div 
-                      className="h-full bg-gradient-to-r from-violet-500 to-purple-500 rounded-full transition-all"
+                      className="h-full bg-gradient-to-r from-mint-500 to-mint-500 rounded-full transition-all"
                       style={{ width: `${Math.min(tvlPercentage, 100)}%` }}
                     />
                   </div>

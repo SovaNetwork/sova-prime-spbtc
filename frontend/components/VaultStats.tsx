@@ -122,7 +122,7 @@ export function VaultStats() {
             {showAggregate ? 'Total TVL (All Chains)' : 'Total Value Locked'}
           </h3>
           {(indexedMetrics || showAggregate) && (
-            <ActivityIcon className="w-4 h-4 text-violet-400 animate-pulse" />
+            <ActivityIcon className="w-4 h-4 text-mint-400 animate-pulse" />
           )}
         </div>
         <p className="text-2xl font-bold text-white">{totalTvl.toFixed(4)} BTC</p>

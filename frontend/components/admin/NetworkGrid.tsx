@@ -232,8 +232,8 @@ export function NetworkGrid({ deployments, onEdit, onRemove }: NetworkGridProps)
         onClick={() => document.querySelector<HTMLButtonElement>('[title="Add Network"]')?.click()}
         className="glass-card rounded-2xl p-6 min-h-[300px] flex flex-col items-center justify-center space-y-4 hover:bg-white/5 transition-all duration-300 hover:scale-[1.02] border-dashed"
       >
-        <div className="w-16 h-16 rounded-full bg-violet-400/10 flex items-center justify-center">
-          <Server className="w-8 h-8 text-violet-400" />
+        <div className="w-16 h-16 rounded-full bg-mint-400/10 flex items-center justify-center">
+          <Server className="w-8 h-8 text-mint-400" />
         </div>
         <div className="text-center">
           <div className="text-white font-medium mb-1">Add Network</div>
