@@ -7,8 +7,8 @@ import { Navigation } from "@/components/Navigation";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Multi-Collateral BTC Vault",
-  description: "Deposit multiple BTC types, earn yield, redeem in sovaBTC",
+  title: "stSOVABTC - Multi-Collateral Bitcoin Vault",
+  description: "Deposit multiple BTC variants, earn sustainable yield with stSOVABTC",
 };
 
 export default function RootLayout({

@@ -76,7 +76,7 @@ export function WalletButton() {
           
           {/* Dropdown */}
           <div className="absolute right-0 mt-2 w-72 z-50">
-            <div className="glass-card rounded-2xl overflow-hidden">
+            <div className="bg-slate-900 backdrop-blur-xl border border-white/10 rounded-2xl shadow-xl overflow-hidden">
               {/* Account Info */}
               <div className="p-4 border-b border-white/10">
                 <div className="flex items-center space-x-3">

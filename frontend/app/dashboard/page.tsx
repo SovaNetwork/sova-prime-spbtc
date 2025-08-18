@@ -132,19 +132,19 @@ export default function DashboardPage() {
       user: tx.depositor || tx.withdrawer,
       amount: tx.amount,
       timestamp: tx.timestamp,
-      transactionHash: tx.transactionHash,
+      transactionHash: tx.transactionHash, // Already mapped in useTransactionHistory hook
     }))
     .sort((a, b) => b.timestamp - a.timestamp)
     .slice(0, 5);
 
   return (
-    <main className="container mx-auto px-6 py-12">
-      <div className="mb-8 flex items-center justify-between">
+    <main className="container mx-auto px-4 sm:px-6 py-8 sm:py-12">
+      <div className="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-4xl font-bold text-white mb-2">Dashboard</h1>
           <p className="text-white/60">Monitor vault performance and your positions</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <ChainSelector showAll onChainSelect={setSelectedChain} />
           <button
             onClick={() => setShowCrossChain(!showCrossChain)}

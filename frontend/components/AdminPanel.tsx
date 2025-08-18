@@ -298,7 +298,7 @@ export function AdminPanel({ className = '' }: AdminPanelProps) {
               
               <div className="glass-card-light rounded-lg p-4">
                 <p className="text-sm text-gray-400">Total Shares</p>
-                <p className="text-xl font-bold text-white">{shares.toFixed(2)} vBTC</p>
+                <p className="text-xl font-bold text-white">{shares.toFixed(2)} stSOVABTC</p>
               </div>
               
               <div className="glass-card-light rounded-lg p-4">

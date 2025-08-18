@@ -240,10 +240,10 @@ body::before {
 
 @keyframes pulse-glow {
   from {
-    box-shadow: 0 0 20px var(--color-violet-500);
+    box-shadow: 0 0 20px #84F29B;
   }
   to {
-    box-shadow: 0 0 40px var(--color-violet-500), 0 0 60px var(--color-fuchsia-500);
+    box-shadow: 0 0 40px #84F29B, 0 0 60px #84F29B;
   }
 }
 

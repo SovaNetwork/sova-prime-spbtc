@@ -82,7 +82,7 @@ export function NetworkSwitcher() {
 
       {isOpen && (
         <div className="absolute top-full right-0 mt-2 w-64 rounded-xl overflow-hidden z-50">
-          <div className="bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-xl">
+          <div className="bg-slate-900 backdrop-blur-xl border border-white/10 rounded-xl shadow-xl">
             <div className="p-2">
               <div className="text-xs font-medium text-white/40 px-3 py-2 uppercase tracking-wider">
                 Select Network

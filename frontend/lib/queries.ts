@@ -31,8 +31,8 @@ export const GET_RECENT_DEPOSITS = gql`
         assets
         shares
         blockNumber
-        blockTimestamp
-        transactionHash
+        timestamp
+        txHash
       }
     }
   }
@@ -50,8 +50,8 @@ export const GET_RECENT_WITHDRAWALS = gql`
         assets
         shares
         blockNumber
-        blockTimestamp
-        transactionHash
+        timestamp
+        txHash
       }
     }
   }
@@ -96,8 +96,8 @@ export const GET_LIQUIDITY_EVENTS = gql`
         eventType
         amount
         blockNumber
-        blockTimestamp
-        transactionHash
+        timestamp
+        txHash
       }
     }
   }
@@ -144,7 +144,7 @@ export const GET_TRANSACTION_HISTORY = gql`
         owner
         assets
         shares
-        blockTimestamp
+        timestamp: blockTimestamp
         transactionHash
       }
     }
@@ -156,7 +156,7 @@ export const GET_TRANSACTION_HISTORY = gql`
         owner
         assets
         shares
-        blockTimestamp
+        timestamp: blockTimestamp
         transactionHash
       }
     }

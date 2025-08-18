@@ -286,15 +286,15 @@ export default function VaultPage() {
       />
 
       {/* Main Content */}
-      <main className="relative z-10 container mx-auto px-6 py-8">
+      <main className="relative z-10 container mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <div className="max-w-4xl mx-auto space-y-8">
 
           {/* Vault Overview Card */}
           <div className="relative overflow-hidden bg-white/10 backdrop-blur-xl border-white/20 shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] rounded-2xl border">
             <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-transparent to-purple-500/10"></div>
             
-            <div className="relative p-8">
-              <h1 className="text-3xl font-bold text-white mb-2">Multi-Collateral Bitcoin Vault</h1>
+            <div className="relative p-6 sm:p-8">
+              <h1 className="text-3xl font-bold text-white mb-2">stSOVABTC Vault</h1>
               <p className="text-white/60 mb-8">Deposit BTC variants to earn sustainable yield from DeFi strategies</p>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -313,7 +313,7 @@ export default function VaultPage() {
                 <div className="bg-white/5 backdrop-blur-md rounded-xl p-6 border border-white/10">
                   <p className="text-white/60 text-sm mb-1">Your Position</p>
                   <p className="text-2xl font-bold text-white">{userBTCValue.toFixed(6)} BTC</p>
-                  <p className="text-white/60 text-sm">{userShares ? formatUnits(userShares, 18) : '0'} vBTC</p>
+                  <p className="text-white/60 text-sm">{userShares ? formatUnits(userShares, 18) : '0'} stSOVABTC</p>
                 </div>
               </div>
             </div>
@@ -341,12 +341,12 @@ export default function VaultPage() {
                     : 'text-gray-400 hover:text-white hover:bg-white/5'
                 }`}
               >
-                Redeem
+                Withdraw
               </button>
             </div>
 
             {/* Form Content */}
-            <div className="p-8">
+            <div className="p-6 sm:p-8">
               {!isConnected ? (
                 <div className="text-center py-12">
                   <Wallet className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -381,7 +381,7 @@ export default function VaultPage() {
 
                       {/* Dropdown */}
                       {showCollateralDropdown && (
-                        <div className="absolute top-full left-0 right-0 mt-2 glass-card rounded-lg overflow-hidden z-20">
+                        <div className="absolute top-full left-0 right-0 mt-2 bg-slate-900 backdrop-blur-xl border border-white/10 rounded-lg shadow-xl overflow-hidden z-20">
                           {COLLATERAL_TYPES.map((collateral) => (
                             <button
                               key={collateral.address}
@@ -443,7 +443,7 @@ export default function VaultPage() {
                       <div className="flex items-center justify-between">
                         <span className="text-gray-400">You will receive</span>
                         <span className="text-white font-medium">
-                          {previewShares ? formatUnits(previewShares, 18) : '...'} vBTC
+                          {previewShares ? formatUnits(previewShares, 18) : '...'} stSOVABTC
                         </span>
                       </div>
                       {allowance !== undefined && (
@@ -491,41 +491,97 @@ export default function VaultPage() {
               ) : (
                 <div className="space-y-6">
                   {/* Notice about new redemption system */}
-                  <div className="p-4 rounded-lg bg-blue-500/20 border border-blue-500/50">
-                    <p className="text-blue-400 text-sm font-medium mb-2">
-                      New EIP-712 Signature-Based Redemption System
+                  <div className="p-4 rounded-lg bg-mint-500/20 border border-mint-500/50">
+                    <p className="text-mint-400 text-sm font-medium mb-2">
+                      EIP-712 Signature-Based Withdrawal System
                     </p>
-                    <p className="text-blue-300 text-xs">
-                      Submit redemption requests using cryptographic signatures. Your requests will be queued and processed by vault administrators.
+                    <p className="text-mint-300 text-xs">
+                      Submit withdrawal requests using cryptographic signatures. Your requests will be queued and processed by vault administrators.
                     </p>
                   </div>
                   
-                  {/* Placeholder message directing to full interface */}
-                  <div className="text-center py-8">
-                    <p className="text-white text-lg mb-4">
-                      Use the full redemption interface below for EIP-712 signature-based redemptions
-                    </p>
-                    <p className="text-gray-400 text-sm">
-                      This provides better security and allows you to track your redemption requests
-                    </p>
+                  {/* Embedded withdrawal interface */}
+                  <div className="space-y-4">
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <label className="form-label">Withdrawal Amount</label>
+                        <div className="text-sm text-gray-400">
+                          Available: {userShares ? formatUnits(userShares, 18) : '0'} stSOVABTC
+                        </div>
+                      </div>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          value={amount}
+                          onChange={(e) => setAmount(e.target.value)}
+                          placeholder="0.00"
+                          className="form-input pr-20"
+                        />
+                        <button
+                          onClick={handleMaxWithdraw}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 text-xs font-medium text-mint-400 hover:text-mint-300 transition-colors"
+                        >
+                          MAX
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {/* Preview */}
+                    {amount && parseFloat(amount) > 0 && (
+                      <div className="glass-card-light rounded-lg p-4 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-400">You will receive (approx.)</span>
+                          <span className="text-white font-medium">
+                            {(parseFloat(amount) * sharePrice).toFixed(6)} BTC
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-400">Processing time</span>
+                          <span className="text-yellow-400">1-3 business days</span>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Withdrawal button */}
+                    <button
+                      onClick={() => setActiveTab('redeem')} // This will be updated to handle withdrawal
+                      disabled={!amount || parseFloat(amount) <= 0}
+                      className="btn-primary w-full bg-mint-600 hover:bg-mint-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Request Withdrawal
+                    </button>
+                    
+                    <div className="text-center">
+                      <p className="text-gray-400 text-sm">
+                        For large withdrawals or immediate processing, please contact support
+                      </p>
+                    </div>
                   </div>
                 </div>
               )}
             </div>
           </div>
 
-          {/* EIP-712 Signature-Based Redemption System */}
-          {deploymentId && !isLoadingDeployment ? (
-            <VaultRedemption
-              vaultAddress={BTC_VAULT_TOKEN_ADDRESS as `0x${string}`}
-              deploymentId={deploymentId}
-              chainId={chainId}
-            />
-          ) : (
-            <div className="text-center py-8 text-gray-400">
-              {isLoadingDeployment ? 'Loading deployment configuration...' : 'No deployment found for this network'}
+          {/* EIP-712 Signature-Based Redemption System - Advanced Interface */}
+          <div className="relative overflow-hidden bg-white/10 backdrop-blur-xl border-white/20 shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] rounded-2xl border">
+            <div className="absolute inset-0 bg-gradient-to-br from-mint-500/10 via-transparent to-mint-500/5"></div>
+            <div className="relative p-6 sm:p-8">
+              <h3 className="text-xl font-semibold text-white mb-4">Advanced Withdrawal Interface</h3>
+              <p className="text-white/60 mb-6">Use the full EIP-712 signature-based withdrawal system for advanced features and tracking.</p>
+              
+              {deploymentId && !isLoadingDeployment ? (
+                <VaultRedemption
+                  vaultAddress={BTC_VAULT_TOKEN_ADDRESS as `0x${string}`}
+                  deploymentId={deploymentId}
+                  chainId={chainId}
+                />
+              ) : (
+                <div className="text-center py-8 text-gray-400">
+                  {isLoadingDeployment ? 'Loading deployment configuration...' : 'No deployment found for this network'}
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </main>
     </div>

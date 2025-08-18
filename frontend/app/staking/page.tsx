@@ -132,7 +132,7 @@ export default function StakingPage() {
                 />
                 <button
                   type="submit"
-                  className="px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-xl hover:shadow-[0_8px_25px_0_rgba(251,146,60,0.4)] transition-all duration-300"
+                  className="px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-xl hover:shadow-[0_8px_25px_0_rgba(132,242,155,0.4)] transition-all duration-300"
                 >
                   Notify Me
                 </button>

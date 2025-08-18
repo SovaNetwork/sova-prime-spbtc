@@ -30,9 +30,9 @@ export function useTransactionHistory(userAddress?: string, limit: number = 20) 
       user: item.owner, // Changed from depositor to owner
       amount: item.assets, // Changed from amount to assets
       shares: item.shares,
-      timestamp: item.blockTimestamp,
+      timestamp: item.timestamp,
       blockNumber: item.blockNumber,
-      transactionHash: item.transactionHash,
+      transactionHash: item.txHash,
     }));
 
     const withdrawals = (data.btcWithdrawalss?.items || []).map((item: any) => ({
@@ -41,9 +41,9 @@ export function useTransactionHistory(userAddress?: string, limit: number = 20) 
       user: item.owner, // Changed from withdrawer to owner
       amount: item.assets, // Changed from amount to assets
       shares: item.shares,
-      timestamp: item.blockTimestamp,
+      timestamp: item.timestamp,
       blockNumber: item.blockNumber,
-      transactionHash: item.transactionHash,
+      transactionHash: item.txHash,
     }));
 
     // Filter by user if specified
@@ -79,9 +79,9 @@ export function useRecentDeposits(limit: number = 10) {
       depositor: item.owner, // Changed to owner
       amount: item.assets, // Changed to assets
       shares: item.shares,
-      timestamp: item.blockTimestamp,
+      timestamp: item.timestamp,
       blockNumber: item.blockNumber,
-      transactionHash: item.transactionHash,
+      transactionHash: item.txHash,
     }));
   }, [data, limit]);
 
@@ -105,9 +105,9 @@ export function useRecentWithdrawals(limit: number = 10) {
       withdrawer: item.owner, // Changed to owner
       amount: item.assets, // Changed to assets
       shares: item.shares,
-      timestamp: item.blockTimestamp,
+      timestamp: item.timestamp,
       blockNumber: item.blockNumber,
-      transactionHash: item.transactionHash,
+      transactionHash: item.txHash,
     }));
   }, [data, limit]);
 
