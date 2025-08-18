@@ -23,32 +23,13 @@ export function GlassCard({
   style = {}
 }: GlassCardProps) {
   const getVariantStyles = () => {
-    switch (variant) {
-      case 'light':
-        return {
-          background: 'rgba(255, 255, 255, 0.1)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
-        };
-      case 'premium':
-        return {
-          background: 'rgba(15, 23, 42, 0.4)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
-        };
-      default: // dark
-        return {
-          background: 'rgba(15, 23, 42, 0.4)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
-        };
-    }
+    // All variants now use the same clean style like Transaction History card
+    return {
+      background: 'rgba(255, 255, 255, 0.05)',
+      backdropFilter: 'blur(48px)',
+      WebkitBackdropFilter: 'blur(48px)',
+      border: '1px solid rgba(255, 255, 255, 0.1)',
+    };
   };
 
   const baseClasses = cn(

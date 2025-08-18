@@ -290,10 +290,8 @@ export default function VaultPage() {
         <div className="max-w-4xl mx-auto space-y-8">
 
           {/* Vault Overview Card */}
-          <div className="relative overflow-hidden bg-white/10 backdrop-blur-xl border-white/20 shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] rounded-2xl border">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-transparent to-purple-500/10"></div>
-            
-            <div className="relative p-6 sm:p-8">
+          <div className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10">
+            <div className="p-6 sm:p-8">
               <h1 className="text-3xl font-bold text-white mb-2">stSOVABTC Vault</h1>
               <p className="text-white/60 mb-8">Deposit BTC variants to earn sustainable yield from DeFi strategies</p>
               
@@ -320,7 +318,7 @@ export default function VaultPage() {
           </div>
 
           {/* Main Vault Interface */}
-          <div className="relative overflow-hidden bg-white/10 backdrop-blur-xl border-white/20 shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] rounded-2xl border">
+          <div className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10">
             {/* Tab Navigation */}
             <div className="flex border-b border-white/10">
               <button
@@ -439,7 +437,7 @@ export default function VaultPage() {
 
                   {/* Preview */}
                   {amount && parseFloat(amount) > 0 && (
-                    <div className="glass-card-light rounded-lg p-4 space-y-2">
+                    <div className="bg-white/5 backdrop-blur-xl rounded-lg border border-white/10 p-4 space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-gray-400">You will receive</span>
                         <span className="text-white font-medium">
@@ -528,7 +526,7 @@ export default function VaultPage() {
                     
                     {/* Preview */}
                     {amount && parseFloat(amount) > 0 && (
-                      <div className="glass-card-light rounded-lg p-4 space-y-2">
+                      <div className="bg-white/5 backdrop-blur-xl rounded-lg border border-white/10 p-4 space-y-2">
                         <div className="flex items-center justify-between">
                           <span className="text-gray-400">You will receive (approx.)</span>
                           <span className="text-white font-medium">
@@ -563,9 +561,8 @@ export default function VaultPage() {
           </div>
 
           {/* EIP-712 Signature-Based Redemption System - Advanced Interface */}
-          <div className="relative overflow-hidden bg-white/10 backdrop-blur-xl border-white/20 shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] rounded-2xl border">
-            <div className="absolute inset-0 bg-gradient-to-br from-mint-500/10 via-transparent to-mint-500/5"></div>
-            <div className="relative p-6 sm:p-8">
+          <div className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10">
+            <div className="p-6 sm:p-8">
               <h3 className="text-xl font-semibold text-white mb-4">Advanced Withdrawal Interface</h3>
               <p className="text-white/60 mb-6">Use the full EIP-712 signature-based withdrawal system for advanced features and tracking.</p>
               

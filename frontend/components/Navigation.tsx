@@ -50,28 +50,24 @@ export function Navigation() {
     <header className="relative z-50 border-b border-white/10 backdrop-blur-xl bg-zinc-950/40 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
       <div className="container mx-auto px-4 sm:px-6 py-4">
         <div className="flex items-center justify-between">
-          {/* Logo with 3D Effect */}
-          <div className="flex items-center space-x-3">
-            <div className="relative">
-              <div className="w-10 h-10 bg-gradient-accent rounded-xl flex items-center justify-center shadow-[0_8px_25px_0_rgba(132,242,155,0.4)] transform hover:scale-110 transition-all duration-300">
+          {/* Logo */}
+          <div className="flex items-center">
+            <Link href="/" className="relative">
+              <div className="flex items-center justify-center transform hover:scale-105 transition-all duration-300">
                 <Image 
                   src="/SOVA_LOGO_WHITE.svg" 
                   alt="Sova Logo" 
-                  width={24} 
-                  height={24} 
+                  width={100} 
+                  height={40} 
                   className="text-white"
+                  style={{ width: 'auto', height: '40px' }}
                 />
               </div>
-              <div className="absolute inset-0 bg-gradient-accent rounded-xl blur-lg opacity-30 -z-10"></div>
-            </div>
-            <div>
-              <h1 className="text-xl font-semibold text-white drop-shadow-lg">stSOVABTC</h1>
-              <p className="text-xs text-white/60">Multi-Collateral Bitcoin Yield</p>
-            </div>
+            </Link>
           </div>
 
-          {/* Desktop Navigation with Glass Effect */}
-          <nav className="hidden md:flex items-center space-x-2 glass-card-light rounded-2xl p-2">
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center space-x-2 bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl p-2">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;

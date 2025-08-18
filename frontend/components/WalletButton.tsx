@@ -42,11 +42,11 @@ export function WalletButton() {
     // Find matching wallet info
     for (const [key, info] of Object.entries(walletInfo)) {
       if (connectorName.includes(key) || connectorName.includes(info.name.toLowerCase())) {
-        return info.icon;
+        return null; // Don't show emoji icons
       }
     }
     
-    return '🔗'; // Default icon
+    return null; // No emoji icons
   };
 
   return (
@@ -55,10 +55,8 @@ export function WalletButton() {
         onClick={() => setIsOpen(!isOpen)}
         className="glass-button rounded-xl px-4 py-2 flex items-center space-x-2 transition-all duration-300"
       >
-        {ensAvatar ? (
+        {ensAvatar && (
           <img src={ensAvatar} alt="ENS Avatar" className="w-5 h-5 rounded-full" />
-        ) : (
-          <span className="text-lg">{getWalletIcon()}</span>
         )}
         <span className="font-medium">
           {ensName || formatAddress(address)}
@@ -91,8 +89,7 @@ export function WalletButton() {
                     <div className="text-white font-medium">
                       {ensName || formatAddress(address)}
                     </div>
-                    <div className="text-white/60 text-sm flex items-center space-x-1">
-                      <span>{getWalletIcon()}</span>
+                    <div className="text-white/60 text-sm">
                       <span>{connector?.name}</span>
                     </div>
                   </div>
