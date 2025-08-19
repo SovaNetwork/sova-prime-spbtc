@@ -171,47 +171,6 @@ contract BtcVaultStrategyExtendedTest is Test {
     }
 
     /*//////////////////////////////////////////////////////////////
-                    REBALANCE COLLATERAL TESTS
-    //////////////////////////////////////////////////////////////*/
-
-    function test_RebalanceCollateral_Success() public {
-        vm.startPrank(manager);
-        // This is a placeholder function, just check it doesn't revert and emits event
-        vm.expectEmit(true, true, false, true);
-        emit IBtcVaultStrategy.CollateralRebalanced(address(wbtc), address(tbtc), 1e8);
-        strategy.rebalanceCollateral(address(wbtc), address(tbtc), 1e8);
-        vm.stopPrank();
-    }
-
-    function test_RebalanceCollateral_FromTokenNotSupported() public {
-        vm.startPrank(manager);
-        vm.expectRevert(IBtcVaultStrategy.AssetNotSupported.selector);
-        strategy.rebalanceCollateral(address(newToken), address(tbtc), 1e8);
-        vm.stopPrank();
-    }
-
-    function test_RebalanceCollateral_ToTokenNotSupported() public {
-        vm.startPrank(manager);
-        vm.expectRevert(IBtcVaultStrategy.AssetNotSupported.selector);
-        strategy.rebalanceCollateral(address(wbtc), address(newToken), 1e8);
-        vm.stopPrank();
-    }
-
-    function test_RebalanceCollateral_ZeroAmount() public {
-        vm.startPrank(manager);
-        vm.expectRevert(IBtcVaultStrategy.InvalidAmount.selector);
-        strategy.rebalanceCollateral(address(wbtc), address(tbtc), 0);
-        vm.stopPrank();
-    }
-
-    function test_RebalanceCollateral_Unauthorized() public {
-        vm.startPrank(user);
-        vm.expectRevert();
-        strategy.rebalanceCollateral(address(wbtc), address(tbtc), 1e8);
-        vm.stopPrank();
-    }
-
-    /*//////////////////////////////////////////////////////////////
                     WITHDRAW COLLATERAL TESTS
     //////////////////////////////////////////////////////////////*/
 

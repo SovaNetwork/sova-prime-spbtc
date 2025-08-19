@@ -14,7 +14,6 @@ interface IBtcVaultStrategy {
     event CollateralRemoved(address indexed token);
     event LiquidityAdded(uint256 amount);
     event LiquidityRemoved(uint256 amount);
-    event CollateralRebalanced(address indexed fromToken, address indexed toToken, uint256 amount);
     event CollateralWithdrawn(address indexed token, uint256 amount, address indexed to);
 
     /*//////////////////////////////////////////////////////////////
@@ -75,14 +74,6 @@ interface IBtcVaultStrategy {
      * @param to Address to send the sovaBTC
      */
     function removeLiquidity(uint256 amount, address to) external;
-
-    /**
-     * @notice Rebalance collateral between tokens
-     * @param fromToken Token to rebalance from
-     * @param toToken Token to rebalance to
-     * @param amount Amount to rebalance
-     */
-    function rebalanceCollateral(address fromToken, address toToken, uint256 amount) external;
 
     /*//////////////////////////////////////////////////////////////
                         VAULT OPERATIONS

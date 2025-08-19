@@ -34,7 +34,6 @@ contract BtcVaultStrategy is ReportedStrategy {
     event CollateralRemoved(address indexed token);
     event LiquidityAdded(uint256 amount);
     event LiquidityRemoved(uint256 amount);
-    event CollateralRebalanced(address indexed fromToken, address indexed toToken, uint256 amount);
     event CollateralWithdrawn(address indexed token, uint256 amount, address indexed to);
     event CollateralDeposited(address indexed depositor, address indexed token, uint256 amount);
 
@@ -198,22 +197,6 @@ contract BtcVaultStrategy is ReportedStrategy {
         asset.safeTransfer(to, amount);
 
         emit LiquidityRemoved(amount);
-    }
-
-    /**
-     * @notice Rebalance collateral between tokens
-     * @dev Admin would need to perform actual swaps externally
-     * @param fromToken Token to rebalance from
-     * @param toToken Token to rebalance to
-     * @param amount Amount to rebalance
-     */
-    function rebalanceCollateral(address fromToken, address toToken, uint256 amount) external onlyManager {
-        if (!supportedAssets[fromToken]) revert AssetNotSupported();
-        if (!supportedAssets[toToken]) revert AssetNotSupported();
-        if (amount == 0) revert InvalidAmount();
-
-        // This is a placeholder - actual rebalancing would require swapping
-        emit CollateralRebalanced(fromToken, toToken, amount);
     }
 
     /**
