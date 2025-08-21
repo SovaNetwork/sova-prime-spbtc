@@ -273,7 +273,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- Built on the [FountFi Protocol](https://github.com/fountfi/protocol)
+- Built on the [FountFi Protocol](https://github.com/sovanetwork/fountfi)
 - Audited by [Omniscia](https://omniscia.io)
 - Powered by [Foundry](https://book.getfoundry.sh/)
 
