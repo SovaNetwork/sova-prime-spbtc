@@ -62,8 +62,8 @@ contract BtcVaultStrategyExtendedTest is Test {
 
         // Add initial collaterals (sovaBTC already added during initialization)
         vm.startPrank(manager);
-        strategy.addCollateral(address(wbtc), 8);
-        strategy.addCollateral(address(tbtc), 8);
+        strategy.addCollateral(address(wbtc));
+        strategy.addCollateral(address(tbtc));
         vm.stopPrank();
 
         // Mint tokens for testing
@@ -81,14 +81,14 @@ contract BtcVaultStrategyExtendedTest is Test {
     function test_AddCollateral_ZeroAddress() public {
         vm.startPrank(manager);
         vm.expectRevert(IBtcVaultStrategy.InvalidAddress.selector);
-        strategy.addCollateral(address(0), 8);
+        strategy.addCollateral(address(0));
         vm.stopPrank();
     }
 
     function test_AddCollateral_AlreadySupported() public {
         vm.startPrank(manager);
         vm.expectRevert(IBtcVaultStrategy.AssetAlreadySupported.selector);
-        strategy.addCollateral(address(wbtc), 8);
+        strategy.addCollateral(address(wbtc));
         vm.stopPrank();
     }
 
@@ -97,14 +97,14 @@ contract BtcVaultStrategyExtendedTest is Test {
 
         vm.startPrank(manager);
         vm.expectRevert(IBtcVaultStrategy.InvalidDecimals.selector);
-        strategy.addCollateral(address(wrongDecimalToken), 18);
+        strategy.addCollateral(address(wrongDecimalToken));
         vm.stopPrank();
     }
 
     function test_AddCollateral_Unauthorized() public {
         vm.startPrank(user);
         vm.expectRevert();
-        strategy.addCollateral(address(newToken), 8);
+        strategy.addCollateral(address(newToken));
         vm.stopPrank();
     }
 
@@ -115,7 +115,7 @@ contract BtcVaultStrategyExtendedTest is Test {
     function test_RemoveCollateral_Success() public {
         // First add a new collateral
         vm.startPrank(manager);
-        strategy.addCollateral(address(newToken), 8);
+        strategy.addCollateral(address(newToken));
         assertTrue(strategy.isSupportedAsset(address(newToken)));
 
         // Now remove it
@@ -162,9 +162,9 @@ contract BtcVaultStrategyExtendedTest is Test {
         vm.startPrank(user);
         sovaBTC.approve(address(strategy), amount);
 
-        uint256 liquidityBefore = strategy.availableLiquidity();
+        uint256 liquidityBefore = strategy.getAvailableLiquidity();
         strategy.depositCollateral(address(sovaBTC), amount);
-        uint256 liquidityAfter = strategy.availableLiquidity();
+        uint256 liquidityAfter = strategy.getAvailableLiquidity();
 
         assertEq(liquidityAfter - liquidityBefore, amount);
         vm.stopPrank();
@@ -200,13 +200,13 @@ contract BtcVaultStrategyExtendedTest is Test {
         sovaBTC.approve(address(strategy), 10e8);
         strategy.addLiquidity(10e8);
 
-        uint256 liquidityBefore = strategy.availableLiquidity();
+        uint256 liquidityBefore = strategy.getAvailableLiquidity();
         assertEq(liquidityBefore, 10e8);
 
         // Withdraw sovaBTC
         strategy.withdrawCollateral(address(sovaBTC), 5e8, admin);
 
-        uint256 liquidityAfter = strategy.availableLiquidity();
+        uint256 liquidityAfter = strategy.getAvailableLiquidity();
         assertEq(liquidityAfter, 5e8);
         vm.stopPrank();
     }
@@ -257,9 +257,9 @@ contract BtcVaultStrategyExtendedTest is Test {
         MockERC20 token3 = new MockERC20("Token3", "TK3", 8);
 
         vm.startPrank(manager);
-        strategy.addCollateral(address(token1), 8);
-        strategy.addCollateral(address(token2), 8);
-        strategy.addCollateral(address(token3), 8);
+        strategy.addCollateral(address(token1));
+        strategy.addCollateral(address(token2));
+        strategy.addCollateral(address(token3));
 
         // Remove the middle one
         strategy.removeCollateral(address(token2));
@@ -289,13 +289,13 @@ contract BtcVaultStrategyExtendedTest is Test {
         vm.startPrank(manager);
         vm.expectEmit(true, false, false, true);
         emit IBtcVaultStrategy.CollateralAdded(address(newToken), 8);
-        strategy.addCollateral(address(newToken), 8);
+        strategy.addCollateral(address(newToken));
         vm.stopPrank();
     }
 
     function test_Events_CollateralRemoved() public {
         vm.startPrank(manager);
-        strategy.addCollateral(address(newToken), 8);
+        strategy.addCollateral(address(newToken));
 
         vm.expectEmit(true, false, false, false);
         emit IBtcVaultStrategy.CollateralRemoved(address(newToken));

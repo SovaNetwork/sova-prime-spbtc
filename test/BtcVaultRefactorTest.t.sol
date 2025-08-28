@@ -69,8 +69,8 @@ contract BtcVaultRefactorTest is Test {
 
         // Configure strategy as manager
         vm.startPrank(manager);
-        strategy.addCollateral(address(wBTC), 8);
-        strategy.addCollateral(address(tBTC), 8);
+        strategy.addCollateral(address(wBTC));
+        strategy.addCollateral(address(tBTC));
         vm.stopPrank();
 
         // Mint tokens to users
@@ -117,12 +117,10 @@ contract BtcVaultRefactorTest is Test {
     }
 
     function test_ManagedRedemption() public {
-        // Setup: Add liquidity to strategy and approve token
+        // Setup: Add liquidity to strategy
         vm.startPrank(manager);
         sovaBTC.approve(address(strategy), 100e8);
         strategy.addLiquidity(100e8);
-        // Approve token to withdraw from strategy
-        strategy.approveTokenWithdrawal();
         vm.stopPrank();
 
         // User deposits wBTC
@@ -131,21 +129,18 @@ contract BtcVaultRefactorTest is Test {
         wBTC.approve(address(vaultToken), depositAmount);
         uint256 shares = vaultToken.depositCollateral(address(wBTC), depositAmount, user1);
 
-        // User approves strategy to spend their shares for managed withdrawal
+        // User approves strategy to spend their shares
         vaultToken.approve(address(strategy), shares);
         vm.stopPrank();
 
-        // Manager (as strategy) processes redemption
+        // Strategy needs to approve vaultToken to pull sovaBTC for redemption payout
         vm.startPrank(address(strategy));
+        sovaBTC.approve(address(vaultToken), depositAmount);
+        
         uint256 sovaBTCBefore = sovaBTC.balanceOf(user1);
 
-        // Redemption through ManagedWithdrawRWA (called by strategy)
-        uint256 assets = ManagedWithdrawRWA(address(vaultToken)).redeem(
-            shares,
-            user1, // to
-            user1, // owner
-            depositAmount // minAssets (expecting 1:1)
-        );
+        // Strategy calls redeem directly
+        uint256 assets = vaultToken.redeem(shares, user1, user1);
 
         uint256 sovaBTCAfter = sovaBTC.balanceOf(user1);
 

@@ -143,7 +143,7 @@ contract DeployMultiNetwork is Script {
             console2.log("  Address:", collateral.tokenAddress);
             console2.log("  Decimals:", collateral.decimals);
 
-            try strategy.addCollateral(collateral.tokenAddress, collateral.decimals) {
+            try strategy.addCollateral(collateral.tokenAddress) {
                 console2.log("  Status: Added successfully");
             } catch Error(string memory reason) {
                 console2.log("  Status: Failed -", reason);

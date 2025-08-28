@@ -84,12 +84,12 @@ contract DeployBtcVault is Script {
 
         // 4. Configure initial collateral types
         if (config.wBTC != address(0)) {
-            btcStrategy.addCollateral(config.wBTC, 8); // 8 decimals for BTC
+            btcStrategy.addCollateral(config.wBTC); // 8 decimals for BTC
             console2.log("Added WBTC as collateral:", config.wBTC);
         }
 
         if (config.tBTC != address(0)) {
-            btcStrategy.addCollateral(config.tBTC, 8); // 8 decimals for BTC
+            btcStrategy.addCollateral(config.tBTC); // 8 decimals for BTC
             console2.log("Added tBTC as collateral:", config.tBTC);
         }
 

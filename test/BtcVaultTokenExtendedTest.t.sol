@@ -61,8 +61,8 @@ contract BtcVaultTokenExtendedTest is Test {
 
         // Add supported collaterals (sovaBTC already added during initialization)
         vm.startPrank(manager);
-        strategy.addCollateral(address(wbtc), 8);
-        strategy.addCollateral(address(tbtc), 8);
+        strategy.addCollateral(address(wbtc));
+        strategy.addCollateral(address(tbtc));
         vm.stopPrank();
 
         // Mint tokens for testing

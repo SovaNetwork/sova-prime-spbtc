@@ -62,8 +62,8 @@ contract BtcVaultCriticalFixesTest is Test {
 
         // Add supported collaterals
         vm.startPrank(manager);
-        strategy.addCollateral(address(wbtc), 8);
-        strategy.addCollateral(address(tbtc), 8);
+        strategy.addCollateral(address(wbtc));
+        strategy.addCollateral(address(tbtc));
         vm.stopPrank();
 
         // Mint tokens for testing
@@ -224,7 +224,7 @@ contract BtcVaultCriticalFixesTest is Test {
         uint256 depositAmount = 10e8; // 10 BTC
         
         // Check initial liquidity
-        uint256 initialLiquidity = strategy.availableLiquidity();
+        uint256 initialLiquidity = strategy.getAvailableLiquidity();
         assertEq(initialLiquidity, 0, "Initial liquidity should be 0");
         
         // Alice deposits sovaBTC
@@ -234,7 +234,7 @@ contract BtcVaultCriticalFixesTest is Test {
         vm.stopPrank();
         
         // Check liquidity increased
-        uint256 newLiquidity = strategy.availableLiquidity();
+        uint256 newLiquidity = strategy.getAvailableLiquidity();
         assertEq(newLiquidity, depositAmount, "Liquidity should increase by deposit amount");
     }
 
@@ -245,7 +245,7 @@ contract BtcVaultCriticalFixesTest is Test {
         uint256 depositAmount = 10e8; // 10 BTC
         
         // Check initial liquidity
-        uint256 initialLiquidity = strategy.availableLiquidity();
+        uint256 initialLiquidity = strategy.getAvailableLiquidity();
         
         // Alice deposits WBTC (not sovaBTC)
         vm.startPrank(alice);
@@ -254,7 +254,7 @@ contract BtcVaultCriticalFixesTest is Test {
         vm.stopPrank();
         
         // Check liquidity unchanged
-        uint256 newLiquidity = strategy.availableLiquidity();
+        uint256 newLiquidity = strategy.getAvailableLiquidity();
         assertEq(newLiquidity, initialLiquidity, "Liquidity should not change for WBTC deposits");
     }
 
@@ -283,7 +283,7 @@ contract BtcVaultCriticalFixesTest is Test {
         
         // Available liquidity should be clamped to actual balance
         uint256 actualBalance = sovaBTC.balanceOf(address(strategy));
-        uint256 availableLiq = strategy.availableLiquidity();
+        uint256 availableLiq = strategy.getAvailableLiquidity();
         
         assertEq(actualBalance, depositAmount + directTransfer + depositAmount, "Actual balance check");
         assertLe(availableLiq, actualBalance, "Available liquidity should not exceed actual balance");
@@ -302,14 +302,14 @@ contract BtcVaultCriticalFixesTest is Test {
         vaultToken.depositCollateral(address(sovaBTC), depositAmount, alice);
         vm.stopPrank();
         
-        uint256 liquidityBefore = strategy.availableLiquidity();
+        uint256 liquidityBefore = strategy.getAvailableLiquidity();
         assertEq(liquidityBefore, depositAmount, "Liquidity should equal deposit");
         
         // Manager withdraws some sovaBTC
         vm.prank(manager);
         strategy.withdrawCollateral(address(sovaBTC), withdrawAmount, manager);
         
-        uint256 liquidityAfter = strategy.availableLiquidity();
+        uint256 liquidityAfter = strategy.getAvailableLiquidity();
         assertEq(liquidityAfter, depositAmount - withdrawAmount, "Liquidity should decrease by withdrawal");
     }
 
@@ -332,9 +332,9 @@ contract BtcVaultCriticalFixesTest is Test {
     }
 
     /**
-     * @notice Test syncAvailableLiquidity reconciliation function
+     * @notice Test that liquidity is now direct balance check
      */
-    function test_SyncAvailableLiquidity_FixesDrift() public {
+    function test_LiquidityIsDirectBalance() public {
         uint256 depositAmount = 10e8; // 10 BTC
         
         // Setup: deposit sovaBTC to establish liquidity
@@ -343,31 +343,22 @@ contract BtcVaultCriticalFixesTest is Test {
         vaultToken.depositCollateral(address(sovaBTC), depositAmount, alice);
         vm.stopPrank();
         
-        // Simulate drift: manager withdraws sovaBTC bypassing accounting
-        // (In real scenario this shouldn't happen, but testing defensive mechanism)
-        uint256 liquidityBefore = strategy.availableLiquidity();
-        assertEq(liquidityBefore, depositAmount, "Initial liquidity check");
+        // Liquidity should equal actual balance
+        assertEq(strategy.getAvailableLiquidity(), sovaBTC.balanceOf(address(strategy)), "Liquidity should match balance");
         
-        // Direct transfer out (simulating accounting drift)
-        vm.prank(address(strategy));
-        sovaBTC.transfer(manager, 5e8);
+        // Simulate a direct transfer (not through addLiquidity)
+        vm.prank(attacker);
+        sovaBTC.transfer(address(strategy), 5e8);
         
-        // Available liquidity is now out of sync (still shows 10e8)
-        assertEq(strategy.availableLiquidity(), depositAmount, "Liquidity tracking unchanged");
-        assertEq(sovaBTC.balanceOf(address(strategy)), 5e8, "Actual balance is lower");
-        
-        // Manager calls sync to reconcile
-        vm.prank(manager);
-        strategy.syncAvailableLiquidity();
-        
-        // Available liquidity should now match actual balance
-        assertEq(strategy.availableLiquidity(), 5e8, "Liquidity should be synced to actual balance");
+        // Liquidity should automatically reflect new balance
+        assertEq(strategy.getAvailableLiquidity(), 15e8, "Liquidity should automatically update");
+        assertEq(sovaBTC.balanceOf(address(strategy)), 15e8, "Balance check");
     }
 
     /**
-     * @notice Test that sync only adjusts downward, never upward
+     * @notice Test defensive accounting - withdrawals respect actual balance
      */
-    function test_SyncAvailableLiquidity_OnlyDownward() public {
+    function test_DefensiveAccounting_RespectsBalance() public {
         uint256 depositAmount = 5e8; // 5 BTC
         
         // Setup: deposit sovaBTC
@@ -376,19 +367,18 @@ contract BtcVaultCriticalFixesTest is Test {
         vaultToken.depositCollateral(address(sovaBTC), depositAmount, alice);
         vm.stopPrank();
         
-        // Direct transfer IN (more balance than tracked)
-        vm.prank(attacker);
-        sovaBTC.transfer(address(strategy), 10e8);
+        // Manager tries to withdraw more than actual balance
+        vm.startPrank(manager);
         
-        uint256 liquidityBefore = strategy.availableLiquidity();
-        assertEq(liquidityBefore, depositAmount, "Tracked liquidity");
-        assertEq(sovaBTC.balanceOf(address(strategy)), 15e8, "Actual balance higher");
+        // Should revert - can't withdraw more than balance
+        vm.expectRevert();
+        strategy.withdrawCollateral(address(sovaBTC), 20e8, alice);
         
-        // Sync should NOT increase availableLiquidity
-        vm.prank(manager);
-        strategy.syncAvailableLiquidity();
+        // Withdraw within balance should work
+        strategy.withdrawCollateral(address(sovaBTC), 3e8, alice);
+        assertEq(sovaBTC.balanceOf(alice), 98e8, "Alice should receive withdrawn amount");
         
-        assertEq(strategy.availableLiquidity(), depositAmount, "Liquidity should not increase from sync");
+        vm.stopPrank();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -406,7 +396,7 @@ contract BtcVaultCriticalFixesTest is Test {
         vm.stopPrank();
         
         assertEq(aliceShares, 10e18, "Alice gets 10e18 shares at 1:1");
-        assertEq(strategy.availableLiquidity(), 10e8, "Liquidity is 10e8");
+        assertEq(strategy.getAvailableLiquidity(), 10e8, "Liquidity is 10e8");
         
         // NAV increases to 1.5x
         vm.startPrank(manager);
@@ -422,7 +412,7 @@ contract BtcVaultCriticalFixesTest is Test {
         
         // Allow small rounding difference
         assertApproxEqAbs(bobShares, 4e18, 1e10, "Bob gets ~4e18 shares at 1.5x NAV");
-        assertEq(strategy.availableLiquidity(), 10e8, "Liquidity unchanged from WBTC");
+        assertEq(strategy.getAvailableLiquidity(), 10e8, "Liquidity unchanged from WBTC");
         
         // Attacker deposits sovaBTC
         vm.startPrank(attacker);
@@ -432,7 +422,7 @@ contract BtcVaultCriticalFixesTest is Test {
         
         // Allow small rounding difference
         assertApproxEqAbs(attackerShares, 10e18, 1e10, "Attacker gets ~10e18 shares at 1.5x NAV");
-        assertEq(strategy.availableLiquidity(), 25e8, "Liquidity increased to 25e8");
+        assertEq(strategy.getAvailableLiquidity(), 25e8, "Liquidity increased to 25e8");
         
         // Verify total supply and proportions
         uint256 totalShares = vaultToken.totalSupply();
@@ -458,14 +448,14 @@ contract BtcVaultCriticalFixesTest is Test {
         strategy.notifyCollateralDeposit(address(sovaBTC), depositAmount);
         
         // Available liquidity should equal actual balance (clamped)
-        assertEq(strategy.availableLiquidity(), depositAmount, "Liquidity clamped to actual balance");
+        assertEq(strategy.getAvailableLiquidity(), depositAmount, "Liquidity clamped to actual balance");
         
         // Try duplicate notification
         vm.prank(address(vaultToken));
         strategy.notifyCollateralDeposit(address(sovaBTC), depositAmount);
         
         // Still should be clamped to actual balance
-        assertEq(strategy.availableLiquidity(), depositAmount, "Liquidity still clamped correctly");
+        assertEq(strategy.getAvailableLiquidity(), depositAmount, "Liquidity still clamped correctly");
     }
 
     /*//////////////////////////////////////////////////////////////

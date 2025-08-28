@@ -44,17 +44,16 @@ contract BtcVaultStrategy is ReportedStrategy {
                             STATE
     //////////////////////////////////////////////////////////////*/
 
+    /// @notice All BTC collateral tokens must have 8 decimals
+    uint8 public constant COLLATERAL_DECIMALS = 8;
+
     /// @notice Inline asset registry - supported BTC collateral tokens
     mapping(address => bool) public supportedAssets;
-
-    /// @notice Decimals for each supported asset (typically 8 for BTC tokens)
-    mapping(address => uint8) public collateralDecimals;
 
     /// @notice Array of supported collateral addresses for enumeration
     address[] public collateralTokens;
 
-    /// @notice sovaBTC available for redemptions
-    uint256 public availableLiquidity;
+    // Note: availableLiquidity tracking removed - using actual balance instead for simplicity
 
     /*//////////////////////////////////////////////////////////////
                             INITIALIZATION
@@ -82,9 +81,10 @@ contract BtcVaultStrategy is ReportedStrategy {
         // Call parent initialization which sets up reporter and deploys token
         super.initialize(name_, symbol_, roleManager_, manager_, sovaBTC_, assetDecimals_, initData);
 
-        // sovaBTC is always a supported asset for liquidity
+        // sovaBTC is always a supported asset
+        // Verify it has the correct decimals
+        if (assetDecimals_ != COLLATERAL_DECIMALS) revert InvalidDecimals();
         supportedAssets[sovaBTC_] = true;
-        collateralDecimals[sovaBTC_] = assetDecimals_;
         collateralTokens.push(sovaBTC_);
     }
 
@@ -110,19 +110,25 @@ contract BtcVaultStrategy is ReportedStrategy {
 
     /**
      * @notice Add a new supported collateral token
+     * @dev All collateral must have 8 decimals (enforced by COLLATERAL_DECIMALS constant)
      * @param token Address of the BTC collateral token
-     * @param decimals_ Decimals of the token (must be 8 for BTC tokens)
      */
-    function addCollateral(address token, uint8 decimals_) external onlyManager {
+    function addCollateral(address token) external onlyManager {
         if (token == address(0)) revert InvalidAddress();
         if (supportedAssets[token]) revert AssetAlreadySupported();
-        if (decimals_ != 8) revert InvalidDecimals(); // All BTC tokens should have 8 decimals
+        
+        // Verify the token has 8 decimals
+        // Note: This assumes the token implements decimals() - may revert for non-standard tokens
+        try IERC20(token).decimals() returns (uint8 decimals) {
+            if (decimals != COLLATERAL_DECIMALS) revert InvalidDecimals();
+        } catch {
+            revert InvalidDecimals();
+        }
 
         supportedAssets[token] = true;
-        collateralDecimals[token] = decimals_;
         collateralTokens.push(token);
 
-        emit CollateralAdded(token, decimals_);
+        emit CollateralAdded(token, COLLATERAL_DECIMALS);
     }
 
     /**
@@ -134,7 +140,6 @@ contract BtcVaultStrategy is ReportedStrategy {
         if (token == asset) revert InvalidAddress(); // Cannot remove sovaBTC
 
         supportedAssets[token] = false;
-        delete collateralDecimals[token];
 
         // Remove from array
         for (uint256 i = 0; i < collateralTokens.length; i++) {
@@ -160,19 +165,12 @@ contract BtcVaultStrategy is ReportedStrategy {
         // Transfer collateral from sender to strategy
         token.safeTransferFrom(msg.sender, address(this), amount);
 
-        // If depositing sovaBTC, increase available liquidity
-        if (token == asset) {
-            availableLiquidity += amount;
-        }
-
         emit CollateralDeposited(msg.sender, token, amount);
     }
 
     /**
      * @notice Notify strategy of collateral deposit from BtcVaultToken
-     * @dev CRITICAL FIX: This function ensures availableLiquidity stays in sync when
-     * deposits come through BtcVaultToken.depositCollateral() instead of directly to strategy.
-     * Includes defensive accounting to prevent availableLiquidity from exceeding actual balance.
+     * @dev No-op function kept for compatibility - actual tracking removed
      * @param token The collateral token that was deposited
      * @param amount The amount that was deposited
      */
@@ -180,25 +178,9 @@ contract BtcVaultStrategy is ReportedStrategy {
         // Only the token contract can call this function
         if (msg.sender != sToken) revert UnauthorizedCaller();
         
-        // If the deposited token is sovaBTC, update available liquidity
-        if (token == asset) {
-            // DEFENSIVE ACCOUNTING: Clamp availableLiquidity to never exceed actual balance
-            // This handles edge cases:
-            // 1. Someone sends sovaBTC directly to strategy (bypassing deposit functions)
-            // 2. Duplicate notifications due to bugs or retries
-            // 3. Any other unexpected balance changes
-            uint256 actualBalance = IERC20(asset).balanceOf(address(this));
-            uint256 newAvailable = availableLiquidity + amount;
-            
-            // Clamp to actual balance - self-healing approach to maintain invariant
-            availableLiquidity = newAvailable > actualBalance ? actualBalance : newAvailable;
-            
-            // Log this liquidity update with full details for transparency
-            emit LiquidityNotified(token, amount, availableLiquidity);
-        }
-        
-        // Note: For other collateral types (WBTC, tBTC, etc.), 
-        // no liquidity tracking is needed as they're not used for redemptions
+        // No-op: Balance tracking simplified to use actual balances
+        // Kept for interface compatibility
+        emit CollateralDeposited(msg.sender, token, amount);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -206,7 +188,7 @@ contract BtcVaultStrategy is ReportedStrategy {
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * @notice Add sovaBTC liquidity for redemptions
+     * @notice Add sovaBTC for redemptions
      * @param amount Amount of sovaBTC to add
      */
     function addLiquidity(uint256 amount) external onlyManager {
@@ -214,22 +196,21 @@ contract BtcVaultStrategy is ReportedStrategy {
 
         // Transfer sovaBTC from manager
         asset.safeTransferFrom(msg.sender, address(this), amount);
-        availableLiquidity += amount;
 
         emit LiquidityAdded(amount);
     }
 
     /**
-     * @notice Remove excess sovaBTC liquidity
+     * @notice Remove sovaBTC from strategy
      * @param amount Amount of sovaBTC to remove
      * @param to Address to send the sovaBTC
      */
     function removeLiquidity(uint256 amount, address to) external onlyManager {
         if (amount == 0) revert InvalidAmount();
-        if (amount > availableLiquidity) revert InsufficientLiquidity();
+        uint256 balance = IERC20(asset).balanceOf(address(this));
+        if (amount > balance) revert InsufficientLiquidity();
         if (to == address(0)) revert InvalidAddress();
 
-        availableLiquidity -= amount;
         asset.safeTransfer(to, amount);
 
         emit LiquidityRemoved(amount);
@@ -249,15 +230,6 @@ contract BtcVaultStrategy is ReportedStrategy {
         uint256 tokenBalance = IERC20(token).balanceOf(address(this));
         if (amount > tokenBalance) revert InsufficientLiquidity();
 
-        // CRITICAL FIX: Properly decrement availableLiquidity for sovaBTC withdrawals
-        // This maintains the invariant that availableLiquidity <= actual sovaBTC balance
-        if (token == asset) {
-            // Strict enforcement: revert if trying to withdraw more than tracked liquidity
-            // This prevents the accounting from drifting
-            if (amount > availableLiquidity) revert InsufficientLiquidity();
-            availableLiquidity -= amount;
-        }
-
         token.safeTransfer(to, amount);
         emit CollateralWithdrawn(token, amount, to);
     }
@@ -267,32 +239,14 @@ contract BtcVaultStrategy is ReportedStrategy {
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * @notice Sync availableLiquidity to actual sovaBTC balance
-     * @dev Manager-only function to reconcile any drift in liquidity tracking.
-     * Handles cases where sovaBTC was sent directly to the strategy or other
-     * unexpected balance changes. Only decreases availableLiquidity, never increases it.
-     */
-    function syncAvailableLiquidity() external onlyManager {
-        uint256 actualBalance = IERC20(asset).balanceOf(address(this));
-        
-        // Only adjust downward - this prevents accidentally counting non-redemption funds
-        if (availableLiquidity > actualBalance) {
-            uint256 oldAvailable = availableLiquidity;
-            availableLiquidity = actualBalance;
-            
-            // Emit event for transparency and tracking
-            emit LiquiditySynced(oldAvailable, availableLiquidity);
-        }
-    }
-
-    /**
      * @notice Approve token to withdraw assets during redemptions
      * @dev Called before redemptions to allow token to pull sovaBTC
+     * @param amount Amount to approve for withdrawal
      */
-    function approveTokenWithdrawal() external onlyManager {
+    function approveTokenWithdrawal(uint256 amount) external onlyManager {
         // Zero-first approval pattern for compatibility with tokens that require it
         asset.safeApprove(sToken, 0);
-        asset.safeApprove(sToken, availableLiquidity);
+        asset.safeApprove(sToken, amount);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -345,10 +299,18 @@ contract BtcVaultStrategy is ReportedStrategy {
     }
 
     /**
-     * @notice Get available liquidity for redemptions
-     * @return Amount of sovaBTC available
+     * @notice Get available sovaBTC balance for redemptions
+     * @return Current sovaBTC balance in the strategy
      */
     function getAvailableLiquidity() external view returns (uint256) {
-        return availableLiquidity;
+        return IERC20(asset).balanceOf(address(this));
+    }
+    
+    /**
+     * @notice Get available sovaBTC balance (alias for compatibility)
+     * @return Current sovaBTC balance in the strategy
+     */
+    function availableLiquidity() external view returns (uint256) {
+        return IERC20(asset).balanceOf(address(this));
     }
 }

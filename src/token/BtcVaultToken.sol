@@ -133,16 +133,16 @@ contract BtcVaultToken is ManagedWithdrawRWA {
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * @notice Override standard deposit to disable it
-     * @dev Multi-collateral vault only accepts deposits via depositCollateral
+     * @notice Standard ERC-4626 deposit is disabled
+     * @dev Use depositCollateral for all deposits including sovaBTC
      */
     function deposit(uint256, address) public virtual override returns (uint256) {
         revert StandardDepositDisabled();
     }
 
     /**
-     * @notice Override standard mint to disable it
-     * @dev Multi-collateral vault only accepts deposits via depositCollateral
+     * @notice Standard ERC-4626 mint is disabled
+     * @dev Use depositCollateral for all deposits including sovaBTC
      */
     function mint(uint256, address) public virtual override returns (uint256) {
         revert StandardDepositDisabled();

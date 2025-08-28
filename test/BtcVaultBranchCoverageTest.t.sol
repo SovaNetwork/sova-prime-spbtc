@@ -53,7 +53,7 @@ contract BtcVaultBranchCoverageTest is Test {
 
         // Add supported collateral
         vm.prank(manager);
-        strategy.addCollateral(address(wbtc), 8);
+        strategy.addCollateral(address(wbtc));
 
         // Mint tokens
         wbtc.mint(user, 100e8);
@@ -90,9 +90,9 @@ contract BtcVaultBranchCoverageTest is Test {
         vm.startPrank(user);
         wbtc.approve(address(strategy), 1e8);
 
-        uint256 liquidityBefore = strategy.availableLiquidity();
+        uint256 liquidityBefore = strategy.getAvailableLiquidity();
         strategy.depositCollateral(address(wbtc), 1e8);
-        uint256 liquidityAfter = strategy.availableLiquidity();
+        uint256 liquidityAfter = strategy.getAvailableLiquidity();
 
         // Liquidity should NOT increase for non-sovaBTC deposits
         assertEq(liquidityBefore, liquidityAfter);
@@ -106,9 +106,9 @@ contract BtcVaultBranchCoverageTest is Test {
         vm.startPrank(user);
         sovaBTC.approve(address(strategy), 1e8);
 
-        uint256 liquidityBefore = strategy.availableLiquidity();
+        uint256 liquidityBefore = strategy.getAvailableLiquidity();
         strategy.depositCollateral(address(sovaBTC), 1e8);
-        uint256 liquidityAfter = strategy.availableLiquidity();
+        uint256 liquidityAfter = strategy.getAvailableLiquidity();
 
         // Liquidity SHOULD increase for sovaBTC deposits
         assertEq(liquidityAfter - liquidityBefore, 1e8);
@@ -129,9 +129,9 @@ contract BtcVaultBranchCoverageTest is Test {
 
         // Withdraw WBTC (not sovaBTC) - tests branch where token != asset
         vm.startPrank(manager);
-        uint256 liquidityBefore = strategy.availableLiquidity();
+        uint256 liquidityBefore = strategy.getAvailableLiquidity();
         strategy.withdrawCollateral(address(wbtc), 2e8, user);
-        uint256 liquidityAfter = strategy.availableLiquidity();
+        uint256 liquidityAfter = strategy.getAvailableLiquidity();
 
         // Liquidity should NOT change
         assertEq(liquidityBefore, liquidityAfter);
@@ -143,22 +143,24 @@ contract BtcVaultBranchCoverageTest is Test {
         // Add some sovaBTC to strategy
         vm.startPrank(manager);
         sovaBTC.mint(address(strategy), 10e8);
-        // Don't update availableLiquidity, so balance > liquidity
         vm.stopPrank();
 
-        // Try to withdraw more than availableLiquidity but less than balance
-        // This should now REVERT due to the critical fix for proper liquidity tracking
+        // Now liquidity equals balance automatically
         vm.startPrank(manager);
-        uint256 liquidityBefore = strategy.availableLiquidity();
-        assertEq(liquidityBefore, 0); // No liquidity tracked
+        uint256 liquidityBefore = strategy.getAvailableLiquidity();
+        assertEq(liquidityBefore, 10e8); // Liquidity = balance
 
-        // CRITICAL FIX: This now correctly reverts when trying to withdraw more than tracked liquidity
-        vm.expectRevert(BtcVaultStrategy.InsufficientLiquidity.selector);
+        // Can withdraw up to balance
         strategy.withdrawCollateral(address(sovaBTC), 5e8, user);
         
-        // Liquidity remains unchanged since withdrawal was reverted
-        uint256 liquidityAfter = strategy.availableLiquidity();
-        assertEq(liquidityAfter, 0);
+        // Liquidity automatically updates with balance
+        uint256 liquidityAfter = strategy.getAvailableLiquidity();
+        assertEq(liquidityAfter, 5e8);
+        
+        // Cannot withdraw more than remaining balance
+        vm.expectRevert();
+        strategy.withdrawCollateral(address(sovaBTC), 10e8, user);
+        
         vm.stopPrank();
     }
 
@@ -168,14 +170,14 @@ contract BtcVaultBranchCoverageTest is Test {
         sovaBTC.approve(address(strategy), 10e8);
         strategy.addLiquidity(10e8);
 
-        uint256 liquidityBefore = strategy.availableLiquidity();
+        uint256 liquidityBefore = strategy.getAvailableLiquidity();
         assertEq(liquidityBefore, 10e8);
 
         // Withdraw within available liquidity
         // This tests the branch where token == asset && amount <= availableLiquidity
         strategy.withdrawCollateral(address(sovaBTC), 3e8, user);
 
-        uint256 liquidityAfter = strategy.availableLiquidity();
+        uint256 liquidityAfter = strategy.getAvailableLiquidity();
         assertEq(liquidityAfter, 7e8); // Properly decremented
         vm.stopPrank();
     }
@@ -207,8 +209,8 @@ contract BtcVaultBranchCoverageTest is Test {
         MockERC20 token2 = new MockERC20("Token2", "TK2", 8);
 
         vm.startPrank(manager);
-        strategy.addCollateral(address(token1), 8);
-        strategy.addCollateral(address(token2), 8);
+        strategy.addCollateral(address(token1));
+        strategy.addCollateral(address(token2));
 
         // Remove the last one (token2)
         // This tests a different branch in the array removal logic
@@ -237,9 +239,9 @@ contract BtcVaultBranchCoverageTest is Test {
         MockERC20 token3 = new MockERC20("Token3", "TK3", 8);
 
         vm.startPrank(manager);
-        strategy.addCollateral(address(token1), 8);
-        strategy.addCollateral(address(token2), 8);
-        strategy.addCollateral(address(token3), 8);
+        strategy.addCollateral(address(token1));
+        strategy.addCollateral(address(token2));
+        strategy.addCollateral(address(token3));
 
         // Get initial array order
         address[] memory collateralsBefore = strategy.getSupportedCollaterals();
@@ -331,12 +333,12 @@ contract BtcVaultBranchCoverageTest is Test {
         sovaBTC.approve(address(strategy), 5e8);
         strategy.addLiquidity(5e8);
 
-        assertEq(strategy.availableLiquidity(), 5e8);
+        assertEq(strategy.getAvailableLiquidity(), 5e8);
 
         // Remove exactly what's available
         strategy.removeLiquidity(5e8, user);
 
-        assertEq(strategy.availableLiquidity(), 0);
+        assertEq(strategy.getAvailableLiquidity(), 0);
         assertEq(sovaBTC.balanceOf(user), 100e8 + 5e8); // original + removed
         vm.stopPrank();
     }

@@ -80,7 +80,7 @@ contract MultiNetworkForkTest is Test {
         NetworkConfig.CollateralConfig[] memory _collaterals = NetworkConfig.getCollaterals(chainId);
         for (uint256 i = 0; i < _collaterals.length; i++) {
             if (_collaterals[i].tokenAddress != address(0)) {
-                strategy.addCollateral(_collaterals[i].tokenAddress, _collaterals[i].decimals);
+                strategy.addCollateral(_collaterals[i].tokenAddress);
             }
         }
 

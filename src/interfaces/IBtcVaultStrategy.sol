@@ -15,8 +15,6 @@ interface IBtcVaultStrategy {
     event LiquidityAdded(uint256 amount);
     event LiquidityRemoved(uint256 amount);
     event CollateralWithdrawn(address indexed token, uint256 amount, address indexed to);
-    event LiquidityNotified(address indexed token, uint256 amount, uint256 newAvailable);
-    event LiquiditySynced(uint256 oldAvailable, uint256 newAvailable);
 
     /*//////////////////////////////////////////////////////////////
                             ERRORS
@@ -36,10 +34,10 @@ interface IBtcVaultStrategy {
 
     /**
      * @notice Add a new supported collateral token
+     * @dev All collateral must have 8 decimals
      * @param token Address of the BTC collateral token
-     * @param decimals Decimals of the token
      */
-    function addCollateral(address token, uint8 decimals) external;
+    function addCollateral(address token) external;
 
     /**
      * @notice Remove a supported collateral token
@@ -77,11 +75,6 @@ interface IBtcVaultStrategy {
      */
     function removeLiquidity(uint256 amount, address to) external;
 
-    /**
-     * @notice Sync availableLiquidity to actual sovaBTC balance
-     * @dev Manager-only function to reconcile any drift in liquidity tracking
-     */
-    function syncAvailableLiquidity() external;
 
     /*//////////////////////////////////////////////////////////////
                         VAULT OPERATIONS
@@ -122,9 +115,9 @@ interface IBtcVaultStrategy {
     function collateralBalance(address token) external view returns (uint256);
 
     /**
-     * @notice Get available liquidity for redemptions
-     * @return Amount of sovaBTC available
+     * @notice Get available sovaBTC balance for redemptions
+     * @return Current sovaBTC balance in the strategy
      */
-    function availableLiquidity() external view returns (uint256);
+    function getAvailableLiquidity() external view returns (uint256);
 
 }

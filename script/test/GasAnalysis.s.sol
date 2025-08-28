@@ -130,7 +130,7 @@ contract GasAnalysisScript is Script {
         console2.log("Measuring add collateral gas...");
         vm.startPrank(manager);
         gasBefore = gasleft();
-        strategy.addCollateral(address(0x123), 8);
+        strategy.addCollateral(address(0x123));
         metrics.addCollateral = gasBefore - gasleft();
         vm.stopPrank();
 

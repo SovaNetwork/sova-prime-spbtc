@@ -73,15 +73,15 @@ contract DeployBtcVaultSimple is Script {
         console2.log("\n4. Adding collateral support...");
 
         // Add WBTC support
-        btcStrategy.addCollateral(WBTC, 8);
+        btcStrategy.addCollateral(WBTC);
         console2.log("   Added WBTC as collateral");
 
         // Add TBTC support
-        btcStrategy.addCollateral(TBTC, 8);
+        btcStrategy.addCollateral(TBTC);
         console2.log("   Added TBTC as collateral");
 
         // Add sovaBTC support (already added during initialization, but let's ensure it)
-        // btcStrategy.addCollateral(SOVABTC, 8); // Skip this as it's already added
+        // btcStrategy.addCollateral(SOVABTC); // Skip this as it's already added
         console2.log("   sovaBTC already supported as collateral");
 
         // 6. Set reporter as updater
