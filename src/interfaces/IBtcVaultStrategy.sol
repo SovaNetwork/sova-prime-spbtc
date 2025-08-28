@@ -80,6 +80,14 @@ interface IBtcVaultStrategy {
     //////////////////////////////////////////////////////////////*/
 
     /**
+     * @notice Notify strategy of collateral deposit from vault
+     * @dev Called by BtcVaultToken after depositing collateral to maintain availableLiquidity sync
+     * @param token The collateral token that was deposited
+     * @param amount The amount that was deposited
+     */
+    function notifyCollateralDeposit(address token, uint256 amount) external;
+
+    /**
      * @notice Withdraw assets to a recipient (only callable by vault)
      * @param token Asset to withdraw (must be sovaBTC)
      * @param to Recipient address

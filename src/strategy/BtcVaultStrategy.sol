@@ -165,6 +165,33 @@ contract BtcVaultStrategy is ReportedStrategy {
         emit CollateralDeposited(msg.sender, token, amount);
     }
 
+    /**
+     * @notice Notify strategy of collateral deposit from BtcVaultToken
+     * @dev CRITICAL FIX: This function ensures availableLiquidity stays in sync when
+     * deposits come through BtcVaultToken.depositCollateral() instead of directly to strategy.
+     * Without this, sovaBTC deposits via the token contract would not update availableLiquidity,
+     * causing withdrawCollateral() and other liquidity-dependent functions to fail.
+     * @param token The collateral token that was deposited
+     * @param amount The amount that was deposited
+     */
+    function notifyCollateralDeposit(address token, uint256 amount) external {
+        // Only the token contract can call this function
+        if (msg.sender != sToken) revert InvalidAddress();
+        
+        // If the deposited token is sovaBTC, update available liquidity
+        // This maintains the critical invariant that availableLiquidity tracks
+        // the actual sovaBTC balance available for redemptions
+        if (token == asset) {
+            availableLiquidity += amount;
+            
+            // Log this liquidity update for transparency
+            emit LiquidityAdded(amount);
+        }
+        
+        // Note: For other collateral types (WBTC, tBTC, etc.), 
+        // no liquidity tracking is needed as they're not used for redemptions
+    }
+
     /*//////////////////////////////////////////////////////////////
                         LIQUIDITY MANAGEMENT
     //////////////////////////////////////////////////////////////*/

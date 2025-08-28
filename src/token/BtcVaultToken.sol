@@ -77,14 +77,30 @@ contract BtcVaultToken is ManagedWithdrawRWA {
         if (amount < MIN_DEPOSIT) revert InsufficientAmount();
         if (receiver == address(0)) revert InvalidAddress();
 
-        // Calculate shares based on 1:1 conversion (all BTC variants = 1 sovaBTC)
-        // Handle decimal conversion: collateral is 8 decimals, shares are 18 decimals
-        shares = amount * 10 ** 10; // Scale from 8 to 18 decimals
+        // CRITICAL FIX: Use NAV-aware share calculation instead of fixed 1:1 conversion
+        // OLD BUG: shares = amount * 10 ** 10; // This ignored vault NAV, minting at 1:1 regardless of vault value
+        // 
+        // NEW LOGIC: Use ERC-4626's previewDeposit which correctly calculates shares based on:
+        // - Current totalAssets (from ReportedStrategy.balance() using pricePerShare)
+        // - Current totalSupply of shares
+        // This ensures new depositors receive shares proportional to vault's actual NAV
+        //
+        // IMPORTANT: Since all collateral tokens are enforced to be 8 decimals (same as sovaBTC),
+        // and treated as 1:1 with sovaBTC, we can pass amount directly to previewDeposit
+        // which expects asset-denominated units (8 decimals). The ERC-4626 math handles
+        // the conversion to 18-decimal shares internally.
+        shares = previewDeposit(amount);
 
         if (shares == 0) revert ZeroShares();
 
         // Transfer collateral directly to strategy
         token.safeTransferFrom(msg.sender, strategy, amount);
+        
+        // CRITICAL FIX: Notify strategy of the deposit to keep availableLiquidity in sync
+        // This is essential for sovaBTC deposits to update the liquidity counter
+        // Without this notification, sovaBTC balance would increase but availableLiquidity wouldn't,
+        // breaking withdrawCollateral() and other liquidity-dependent functions in the strategy
+        IBtcVaultStrategy(strategy).notifyCollateralDeposit(token, amount);
 
         // Mint shares to receiver
         _mint(receiver, shares);
@@ -102,8 +118,14 @@ contract BtcVaultToken is ManagedWithdrawRWA {
         if (!IBtcVaultStrategy(strategy).isSupportedAsset(token)) return 0;
         if (amount < MIN_DEPOSIT) return 0;
 
-        // 1:1 conversion with decimal adjustment (8 -> 18)
-        shares = amount * 10 ** 10;
+        // CRITICAL FIX: Use NAV-aware preview instead of fixed 1:1 conversion
+        // OLD BUG: shares = amount * 10 ** 10; // This always returned same shares regardless of vault NAV
+        //
+        // NEW LOGIC: Use inherited previewDeposit from ERC-4626 which:
+        // - Calculates shares = (amount * totalSupply) / totalAssets
+        // - Where totalAssets comes from ReportedStrategy.balance() using current pricePerShare
+        // - This ensures preview matches actual minting logic and respects vault NAV
+        shares = previewDeposit(amount);
     }
 
     /*//////////////////////////////////////////////////////////////

@@ -191,7 +191,7 @@ export function Navigation() {
                       onClick={() => setIsMobileMenuOpen(false)}
                       className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${
                         isActive 
-                          ? 'bg-mint-500/20 text-white shadow-[0_0_20px_rgba(132,242,155,0.2)] border border-mint-500/30' 
+                          ? 'bg-mint-500/20 text-white shadow-[0_0_20px_rgba(132,242,155,0.2ex)] border border-mint-500/30' 
                           : 'text-zinc-300 hover:bg-white/5 hover:text-white'
                       }`}
                     >
