@@ -146,16 +146,19 @@ contract BtcVaultBranchCoverageTest is Test {
         // Don't update availableLiquidity, so balance > liquidity
         vm.stopPrank();
 
-        // Withdraw more than availableLiquidity but less than balance
-        // This tests the branch where token == asset && amount > availableLiquidity
+        // Try to withdraw more than availableLiquidity but less than balance
+        // This should now REVERT due to the critical fix for proper liquidity tracking
         vm.startPrank(manager);
         uint256 liquidityBefore = strategy.availableLiquidity();
         assertEq(liquidityBefore, 0); // No liquidity tracked
 
+        // CRITICAL FIX: This now correctly reverts when trying to withdraw more than tracked liquidity
+        vm.expectRevert(BtcVaultStrategy.InsufficientLiquidity.selector);
         strategy.withdrawCollateral(address(sovaBTC), 5e8, user);
-
+        
+        // Liquidity remains unchanged since withdrawal was reverted
         uint256 liquidityAfter = strategy.availableLiquidity();
-        assertEq(liquidityAfter, 0); // Still 0 since we withdrew more than tracked
+        assertEq(liquidityAfter, 0);
         vm.stopPrank();
     }
 
