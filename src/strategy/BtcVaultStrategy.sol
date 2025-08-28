@@ -36,6 +36,8 @@ contract BtcVaultStrategy is ReportedStrategy {
     event LiquidityRemoved(uint256 amount);
     event CollateralWithdrawn(address indexed token, uint256 amount, address indexed to);
     event CollateralDeposited(address indexed depositor, address indexed token, uint256 amount);
+    event LiquidityNotified(address indexed token, uint256 amount, uint256 newAvailable);
+    event LiquiditySynced(uint256 oldAvailable, uint256 newAvailable);
 
     /*//////////////////////////////////////////////////////////////
                             STATE
@@ -169,8 +171,7 @@ contract BtcVaultStrategy is ReportedStrategy {
      * @notice Notify strategy of collateral deposit from BtcVaultToken
      * @dev CRITICAL FIX: This function ensures availableLiquidity stays in sync when
      * deposits come through BtcVaultToken.depositCollateral() instead of directly to strategy.
-     * Without this, sovaBTC deposits via the token contract would not update availableLiquidity,
-     * causing withdrawCollateral() and other liquidity-dependent functions to fail.
+     * Includes defensive accounting to prevent availableLiquidity from exceeding actual balance.
      * @param token The collateral token that was deposited
      * @param amount The amount that was deposited
      */
@@ -179,13 +180,20 @@ contract BtcVaultStrategy is ReportedStrategy {
         if (msg.sender != sToken) revert InvalidAddress();
         
         // If the deposited token is sovaBTC, update available liquidity
-        // This maintains the critical invariant that availableLiquidity tracks
-        // the actual sovaBTC balance available for redemptions
         if (token == asset) {
-            availableLiquidity += amount;
+            // DEFENSIVE ACCOUNTING: Clamp availableLiquidity to never exceed actual balance
+            // This handles edge cases:
+            // 1. Someone sends sovaBTC directly to strategy (bypassing deposit functions)
+            // 2. Duplicate notifications due to bugs or retries
+            // 3. Any other unexpected balance changes
+            uint256 actualBalance = IERC20(asset).balanceOf(address(this));
+            uint256 newAvailable = availableLiquidity + amount;
             
-            // Log this liquidity update for transparency
-            emit LiquidityAdded(amount);
+            // Clamp to actual balance - self-healing approach to maintain invariant
+            availableLiquidity = newAvailable > actualBalance ? actualBalance : newAvailable;
+            
+            // Log this liquidity update with full details for transparency
+            emit LiquidityNotified(token, amount, availableLiquidity);
         }
         
         // Note: For other collateral types (WBTC, tBTC, etc.), 
@@ -240,8 +248,12 @@ contract BtcVaultStrategy is ReportedStrategy {
         uint256 tokenBalance = IERC20(token).balanceOf(address(this));
         if (amount > tokenBalance) revert InsufficientLiquidity();
 
-        // If withdrawing sovaBTC, update liquidity tracking
-        if (token == asset && amount <= availableLiquidity) {
+        // CRITICAL FIX: Properly decrement availableLiquidity for sovaBTC withdrawals
+        // This maintains the invariant that availableLiquidity <= actual sovaBTC balance
+        if (token == asset) {
+            // Strict enforcement: revert if trying to withdraw more than tracked liquidity
+            // This prevents the accounting from drifting
+            if (amount > availableLiquidity) revert InsufficientLiquidity();
             availableLiquidity -= amount;
         }
 
@@ -252,6 +264,25 @@ contract BtcVaultStrategy is ReportedStrategy {
     /*//////////////////////////////////////////////////////////////
                         WITHDRAWAL SUPPORT
     //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Sync availableLiquidity to actual sovaBTC balance
+     * @dev Manager-only function to reconcile any drift in liquidity tracking.
+     * Handles cases where sovaBTC was sent directly to the strategy or other
+     * unexpected balance changes. Only decreases availableLiquidity, never increases it.
+     */
+    function syncAvailableLiquidity() external onlyManager {
+        uint256 actualBalance = IERC20(asset).balanceOf(address(this));
+        
+        // Only adjust downward - this prevents accidentally counting non-redemption funds
+        if (availableLiquidity > actualBalance) {
+            uint256 oldAvailable = availableLiquidity;
+            availableLiquidity = actualBalance;
+            
+            // Emit event for transparency and tracking
+            emit LiquiditySynced(oldAvailable, availableLiquidity);
+        }
+    }
 
     /**
      * @notice Approve token to withdraw assets during redemptions

@@ -15,6 +15,8 @@ interface IBtcVaultStrategy {
     event LiquidityAdded(uint256 amount);
     event LiquidityRemoved(uint256 amount);
     event CollateralWithdrawn(address indexed token, uint256 amount, address indexed to);
+    event LiquidityNotified(address indexed token, uint256 amount, uint256 newAvailable);
+    event LiquiditySynced(uint256 oldAvailable, uint256 newAvailable);
 
     /*//////////////////////////////////////////////////////////////
                             ERRORS
@@ -74,6 +76,12 @@ interface IBtcVaultStrategy {
      * @param to Address to send the sovaBTC
      */
     function removeLiquidity(uint256 amount, address to) external;
+
+    /**
+     * @notice Sync availableLiquidity to actual sovaBTC balance
+     * @dev Manager-only function to reconcile any drift in liquidity tracking
+     */
+    function syncAvailableLiquidity() external;
 
     /*//////////////////////////////////////////////////////////////
                         VAULT OPERATIONS
