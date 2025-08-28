@@ -230,7 +230,7 @@ contract VerifyBtcVault is Script {
 
         IBtcVaultStrategy strategy = IBtcVaultStrategy(contracts.strategy);
 
-        uint256 totalAssets = strategy.totalAssets();
+        uint256 totalAssets = strategy.totalCollateralAssets();
         uint256 availableLiquidity = strategy.availableLiquidity();
 
         console2.log("Total assets:", totalAssets);

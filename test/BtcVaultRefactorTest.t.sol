@@ -169,7 +169,7 @@ contract BtcVaultRefactorTest is Test {
         vm.stopPrank();
 
         // Check total assets in strategy
-        uint256 totalAssets = strategy.totalAssets();
+        uint256 totalAssets = strategy.totalCollateralAssets();
         assertEq(totalAssets, 8e8); // 5 + 3 BTC
 
         // Check individual balances

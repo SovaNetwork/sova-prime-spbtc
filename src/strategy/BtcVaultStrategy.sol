@@ -25,6 +25,7 @@ contract BtcVaultStrategy is ReportedStrategy {
     error InvalidDecimals();
     error InsufficientLiquidity();
     error InvalidAmount();
+    error UnauthorizedCaller();
 
     /*//////////////////////////////////////////////////////////////
                             EVENTS
@@ -177,7 +178,7 @@ contract BtcVaultStrategy is ReportedStrategy {
      */
     function notifyCollateralDeposit(address token, uint256 amount) external {
         // Only the token contract can call this function
-        if (msg.sender != sToken) revert InvalidAddress();
+        if (msg.sender != sToken) revert UnauthorizedCaller();
         
         // If the deposited token is sovaBTC, update available liquidity
         if (token == asset) {
@@ -289,7 +290,8 @@ contract BtcVaultStrategy is ReportedStrategy {
      * @dev Called before redemptions to allow token to pull sovaBTC
      */
     function approveTokenWithdrawal() external onlyManager {
-        // Approve the token to withdraw up to available liquidity
+        // Zero-first approval pattern for compatibility with tokens that require it
+        asset.safeApprove(sToken, 0);
         asset.safeApprove(sToken, availableLiquidity);
     }
 
@@ -315,10 +317,11 @@ contract BtcVaultStrategy is ReportedStrategy {
     }
 
     /**
-     * @notice Get total assets value in sovaBTC terms
-     * @return Total value of all collateral (1:1 conversion for all BTC tokens)
+     * @notice Get total collateral assets value in sovaBTC terms (1:1 for all BTC variants)
+     * @dev This sums raw collateral balances without NAV adjustment
+     * @return Total value of all collateral in 8 decimal units
      */
-    function totalAssets() external view returns (uint256) {
+    function totalCollateralAssets() external view returns (uint256) {
         uint256 total = 0;
 
         // Sum all collateral balances (all have 1:1 value with sovaBTC)

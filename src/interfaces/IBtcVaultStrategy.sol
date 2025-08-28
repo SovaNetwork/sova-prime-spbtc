@@ -26,9 +26,9 @@ interface IBtcVaultStrategy {
     error AssetAlreadySupported();
     error InvalidDecimals();
     error InsufficientLiquidity();
-    error UnauthorizedVault();
     error InvalidAmount();
     error InvalidAddress();
+    error UnauthorizedCaller();
 
     /*//////////////////////////////////////////////////////////////
                         COLLATERAL MANAGEMENT
@@ -96,14 +96,6 @@ interface IBtcVaultStrategy {
     function notifyCollateralDeposit(address token, uint256 amount) external;
 
     /**
-     * @notice Withdraw assets to a recipient (only callable by vault)
-     * @param token Asset to withdraw (must be sovaBTC)
-     * @param to Recipient address
-     * @param amount Amount to withdraw
-     */
-    function withdrawTo(address token, address to, uint256 amount) external;
-
-    /**
      * @notice Withdraw collateral to admin
      * @param token Collateral token to withdraw
      * @param amount Amount to withdraw
@@ -116,10 +108,11 @@ interface IBtcVaultStrategy {
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * @notice Get total assets value in sovaBTC terms
-     * @return Total value of all collateral
+     * @notice Get total collateral assets value in sovaBTC terms (1:1 for all BTC variants)
+     * @dev This sums raw collateral balances without NAV adjustment
+     * @return Total value of all collateral in 8 decimal units
      */
-    function totalAssets() external view returns (uint256);
+    function totalCollateralAssets() external view returns (uint256);
 
     /**
      * @notice Get balance of a specific collateral token
@@ -134,15 +127,4 @@ interface IBtcVaultStrategy {
      */
     function availableLiquidity() external view returns (uint256);
 
-    /**
-     * @notice Get the vault address
-     * @return Address of the vault
-     */
-    function getVault() external view returns (address);
-
-    /**
-     * @notice Set the vault address
-     * @param vault New vault address
-     */
-    function setVault(address vault) external;
 }

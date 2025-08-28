@@ -299,13 +299,13 @@ contract BtcVaultBranchCoverageTest is Test {
         vm.stopPrank();
 
         // Total assets should be sum of all collaterals (all 1:1 with sovaBTC)
-        uint256 totalAssets = strategy.totalAssets();
+        uint256 totalAssets = strategy.totalCollateralAssets();
         assertEq(totalAssets, 5e8); // 2 WBTC + 3 sovaBTC
     }
 
     function test_TotalAssets_EmptyStrategy() public {
-        // Test totalAssets when strategy has no deposits
-        uint256 totalAssets = strategy.totalAssets();
+        // Test totalCollateralAssets when strategy has no deposits
+        uint256 totalAssets = strategy.totalCollateralAssets();
         assertEq(totalAssets, 0);
     }
 
