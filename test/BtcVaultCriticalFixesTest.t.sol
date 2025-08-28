@@ -224,7 +224,7 @@ contract BtcVaultCriticalFixesTest is Test {
         uint256 depositAmount = 10e8; // 10 BTC
         
         // Check initial liquidity
-        uint256 initialLiquidity = strategy.getAvailableLiquidity();
+        uint256 initialLiquidity = strategy.availableLiquidity();
         assertEq(initialLiquidity, 0, "Initial liquidity should be 0");
         
         // Alice deposits sovaBTC
@@ -234,7 +234,7 @@ contract BtcVaultCriticalFixesTest is Test {
         vm.stopPrank();
         
         // Check liquidity increased
-        uint256 newLiquidity = strategy.getAvailableLiquidity();
+        uint256 newLiquidity = strategy.availableLiquidity();
         assertEq(newLiquidity, depositAmount, "Liquidity should increase by deposit amount");
     }
 
@@ -245,7 +245,7 @@ contract BtcVaultCriticalFixesTest is Test {
         uint256 depositAmount = 10e8; // 10 BTC
         
         // Check initial liquidity
-        uint256 initialLiquidity = strategy.getAvailableLiquidity();
+        uint256 initialLiquidity = strategy.availableLiquidity();
         
         // Alice deposits WBTC (not sovaBTC)
         vm.startPrank(alice);
@@ -254,7 +254,7 @@ contract BtcVaultCriticalFixesTest is Test {
         vm.stopPrank();
         
         // Check liquidity unchanged
-        uint256 newLiquidity = strategy.getAvailableLiquidity();
+        uint256 newLiquidity = strategy.availableLiquidity();
         assertEq(newLiquidity, initialLiquidity, "Liquidity should not change for WBTC deposits");
     }
 
@@ -283,7 +283,7 @@ contract BtcVaultCriticalFixesTest is Test {
         
         // Available liquidity should be clamped to actual balance
         uint256 actualBalance = sovaBTC.balanceOf(address(strategy));
-        uint256 availableLiq = strategy.getAvailableLiquidity();
+        uint256 availableLiq = strategy.availableLiquidity();
         
         assertEq(actualBalance, depositAmount + directTransfer + depositAmount, "Actual balance check");
         assertLe(availableLiq, actualBalance, "Available liquidity should not exceed actual balance");
@@ -302,14 +302,14 @@ contract BtcVaultCriticalFixesTest is Test {
         vaultToken.depositCollateral(address(sovaBTC), depositAmount, alice);
         vm.stopPrank();
         
-        uint256 liquidityBefore = strategy.getAvailableLiquidity();
+        uint256 liquidityBefore = strategy.availableLiquidity();
         assertEq(liquidityBefore, depositAmount, "Liquidity should equal deposit");
         
         // Manager withdraws some sovaBTC
         vm.prank(manager);
         strategy.withdrawCollateral(address(sovaBTC), withdrawAmount, manager);
         
-        uint256 liquidityAfter = strategy.getAvailableLiquidity();
+        uint256 liquidityAfter = strategy.availableLiquidity();
         assertEq(liquidityAfter, depositAmount - withdrawAmount, "Liquidity should decrease by withdrawal");
     }
 
@@ -344,14 +344,14 @@ contract BtcVaultCriticalFixesTest is Test {
         vm.stopPrank();
         
         // Liquidity should equal actual balance
-        assertEq(strategy.getAvailableLiquidity(), sovaBTC.balanceOf(address(strategy)), "Liquidity should match balance");
+        assertEq(strategy.availableLiquidity(), sovaBTC.balanceOf(address(strategy)), "Liquidity should match balance");
         
         // Simulate a direct transfer (not through addLiquidity)
         vm.prank(attacker);
         sovaBTC.transfer(address(strategy), 5e8);
         
         // Liquidity should automatically reflect new balance
-        assertEq(strategy.getAvailableLiquidity(), 15e8, "Liquidity should automatically update");
+        assertEq(strategy.availableLiquidity(), 15e8, "Liquidity should automatically update");
         assertEq(sovaBTC.balanceOf(address(strategy)), 15e8, "Balance check");
     }
 
@@ -396,7 +396,7 @@ contract BtcVaultCriticalFixesTest is Test {
         vm.stopPrank();
         
         assertEq(aliceShares, 10e18, "Alice gets 10e18 shares at 1:1");
-        assertEq(strategy.getAvailableLiquidity(), 10e8, "Liquidity is 10e8");
+        assertEq(strategy.availableLiquidity(), 10e8, "Liquidity is 10e8");
         
         // NAV increases to 1.5x
         vm.startPrank(manager);
@@ -412,7 +412,7 @@ contract BtcVaultCriticalFixesTest is Test {
         
         // Allow small rounding difference
         assertApproxEqAbs(bobShares, 4e18, 1e10, "Bob gets ~4e18 shares at 1.5x NAV");
-        assertEq(strategy.getAvailableLiquidity(), 10e8, "Liquidity unchanged from WBTC");
+        assertEq(strategy.availableLiquidity(), 10e8, "Liquidity unchanged from WBTC");
         
         // Attacker deposits sovaBTC
         vm.startPrank(attacker);
@@ -422,7 +422,7 @@ contract BtcVaultCriticalFixesTest is Test {
         
         // Allow small rounding difference
         assertApproxEqAbs(attackerShares, 10e18, 1e10, "Attacker gets ~10e18 shares at 1.5x NAV");
-        assertEq(strategy.getAvailableLiquidity(), 25e8, "Liquidity increased to 25e8");
+        assertEq(strategy.availableLiquidity(), 25e8, "Liquidity increased to 25e8");
         
         // Verify total supply and proportions
         uint256 totalShares = vaultToken.totalSupply();
@@ -448,14 +448,14 @@ contract BtcVaultCriticalFixesTest is Test {
         strategy.notifyCollateralDeposit(address(sovaBTC), depositAmount);
         
         // Available liquidity should equal actual balance (clamped)
-        assertEq(strategy.getAvailableLiquidity(), depositAmount, "Liquidity clamped to actual balance");
+        assertEq(strategy.availableLiquidity(), depositAmount, "Liquidity clamped to actual balance");
         
         // Try duplicate notification
         vm.prank(address(vaultToken));
         strategy.notifyCollateralDeposit(address(sovaBTC), depositAmount);
         
         // Still should be clamped to actual balance
-        assertEq(strategy.getAvailableLiquidity(), depositAmount, "Liquidity still clamped correctly");
+        assertEq(strategy.availableLiquidity(), depositAmount, "Liquidity still clamped correctly");
     }
 
     /*//////////////////////////////////////////////////////////////

@@ -82,7 +82,7 @@ interface IBtcVaultStrategy {
 
     /**
      * @notice Notify strategy of collateral deposit from vault
-     * @dev Called by BtcVaultToken after depositing collateral to maintain availableLiquidity sync
+     * @dev Compatibility hook - no tracking needed as liquidity uses actual balances
      * @param token The collateral token that was deposited
      * @param amount The amount that was deposited
      */
@@ -118,6 +118,6 @@ interface IBtcVaultStrategy {
      * @notice Get available sovaBTC balance for redemptions
      * @return Current sovaBTC balance in the strategy
      */
-    function getAvailableLiquidity() external view returns (uint256);
+    function availableLiquidity() external view returns (uint256);
 
 }

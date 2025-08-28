@@ -162,9 +162,9 @@ contract BtcVaultStrategyExtendedTest is Test {
         vm.startPrank(user);
         sovaBTC.approve(address(strategy), amount);
 
-        uint256 liquidityBefore = strategy.getAvailableLiquidity();
+        uint256 liquidityBefore = strategy.availableLiquidity();
         strategy.depositCollateral(address(sovaBTC), amount);
-        uint256 liquidityAfter = strategy.getAvailableLiquidity();
+        uint256 liquidityAfter = strategy.availableLiquidity();
 
         assertEq(liquidityAfter - liquidityBefore, amount);
         vm.stopPrank();
@@ -200,13 +200,13 @@ contract BtcVaultStrategyExtendedTest is Test {
         sovaBTC.approve(address(strategy), 10e8);
         strategy.addLiquidity(10e8);
 
-        uint256 liquidityBefore = strategy.getAvailableLiquidity();
+        uint256 liquidityBefore = strategy.availableLiquidity();
         assertEq(liquidityBefore, 10e8);
 
         // Withdraw sovaBTC
         strategy.withdrawCollateral(address(sovaBTC), 5e8, admin);
 
-        uint256 liquidityAfter = strategy.getAvailableLiquidity();
+        uint256 liquidityAfter = strategy.availableLiquidity();
         assertEq(liquidityAfter, 5e8);
         vm.stopPrank();
     }

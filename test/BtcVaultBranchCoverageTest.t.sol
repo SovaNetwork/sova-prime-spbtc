@@ -90,9 +90,9 @@ contract BtcVaultBranchCoverageTest is Test {
         vm.startPrank(user);
         wbtc.approve(address(strategy), 1e8);
 
-        uint256 liquidityBefore = strategy.getAvailableLiquidity();
+        uint256 liquidityBefore = strategy.availableLiquidity();
         strategy.depositCollateral(address(wbtc), 1e8);
-        uint256 liquidityAfter = strategy.getAvailableLiquidity();
+        uint256 liquidityAfter = strategy.availableLiquidity();
 
         // Liquidity should NOT increase for non-sovaBTC deposits
         assertEq(liquidityBefore, liquidityAfter);
@@ -106,9 +106,9 @@ contract BtcVaultBranchCoverageTest is Test {
         vm.startPrank(user);
         sovaBTC.approve(address(strategy), 1e8);
 
-        uint256 liquidityBefore = strategy.getAvailableLiquidity();
+        uint256 liquidityBefore = strategy.availableLiquidity();
         strategy.depositCollateral(address(sovaBTC), 1e8);
-        uint256 liquidityAfter = strategy.getAvailableLiquidity();
+        uint256 liquidityAfter = strategy.availableLiquidity();
 
         // Liquidity SHOULD increase for sovaBTC deposits
         assertEq(liquidityAfter - liquidityBefore, 1e8);
@@ -129,9 +129,9 @@ contract BtcVaultBranchCoverageTest is Test {
 
         // Withdraw WBTC (not sovaBTC) - tests branch where token != asset
         vm.startPrank(manager);
-        uint256 liquidityBefore = strategy.getAvailableLiquidity();
+        uint256 liquidityBefore = strategy.availableLiquidity();
         strategy.withdrawCollateral(address(wbtc), 2e8, user);
-        uint256 liquidityAfter = strategy.getAvailableLiquidity();
+        uint256 liquidityAfter = strategy.availableLiquidity();
 
         // Liquidity should NOT change
         assertEq(liquidityBefore, liquidityAfter);
@@ -147,14 +147,14 @@ contract BtcVaultBranchCoverageTest is Test {
 
         // Now liquidity equals balance automatically
         vm.startPrank(manager);
-        uint256 liquidityBefore = strategy.getAvailableLiquidity();
+        uint256 liquidityBefore = strategy.availableLiquidity();
         assertEq(liquidityBefore, 10e8); // Liquidity = balance
 
         // Can withdraw up to balance
         strategy.withdrawCollateral(address(sovaBTC), 5e8, user);
         
         // Liquidity automatically updates with balance
-        uint256 liquidityAfter = strategy.getAvailableLiquidity();
+        uint256 liquidityAfter = strategy.availableLiquidity();
         assertEq(liquidityAfter, 5e8);
         
         // Cannot withdraw more than remaining balance
@@ -170,14 +170,14 @@ contract BtcVaultBranchCoverageTest is Test {
         sovaBTC.approve(address(strategy), 10e8);
         strategy.addLiquidity(10e8);
 
-        uint256 liquidityBefore = strategy.getAvailableLiquidity();
+        uint256 liquidityBefore = strategy.availableLiquidity();
         assertEq(liquidityBefore, 10e8);
 
         // Withdraw within available liquidity
         // This tests the branch where token == asset && amount <= availableLiquidity
         strategy.withdrawCollateral(address(sovaBTC), 3e8, user);
 
-        uint256 liquidityAfter = strategy.getAvailableLiquidity();
+        uint256 liquidityAfter = strategy.availableLiquidity();
         assertEq(liquidityAfter, 7e8); // Properly decremented
         vm.stopPrank();
     }
@@ -333,12 +333,12 @@ contract BtcVaultBranchCoverageTest is Test {
         sovaBTC.approve(address(strategy), 5e8);
         strategy.addLiquidity(5e8);
 
-        assertEq(strategy.getAvailableLiquidity(), 5e8);
+        assertEq(strategy.availableLiquidity(), 5e8);
 
         // Remove exactly what's available
         strategy.removeLiquidity(5e8, user);
 
-        assertEq(strategy.getAvailableLiquidity(), 0);
+        assertEq(strategy.availableLiquidity(), 0);
         assertEq(sovaBTC.balanceOf(user), 100e8 + 5e8); // original + removed
         vm.stopPrank();
     }

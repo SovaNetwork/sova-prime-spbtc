@@ -7,6 +7,11 @@ import {IERC20} from "forge-std/interfaces/IERC20.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solady/utils/FixedPointMathLib.sol";
 
+// Minimal interface for decimals check
+interface IERC20Decimals {
+    function decimals() external view returns (uint8);
+}
+
 /**
  * @title BtcVaultStrategy
  * @notice Multi-collateral BTC vault strategy based on ManagedWithdrawRWAStrategy pattern
@@ -119,7 +124,7 @@ contract BtcVaultStrategy is ReportedStrategy {
         
         // Verify the token has 8 decimals
         // Note: This assumes the token implements decimals() - may revert for non-standard tokens
-        try IERC20(token).decimals() returns (uint8 decimals) {
+        try IERC20Decimals(token).decimals() returns (uint8 decimals) {
             if (decimals != COLLATERAL_DECIMALS) revert InvalidDecimals();
         } catch {
             revert InvalidDecimals();
@@ -180,7 +185,7 @@ contract BtcVaultStrategy is ReportedStrategy {
         
         // No-op: Balance tracking simplified to use actual balances
         // Kept for interface compatibility
-        emit CollateralDeposited(msg.sender, token, amount);
+        // Event removed as it was confusing (msg.sender is vault, not actual depositor)
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -300,14 +305,6 @@ contract BtcVaultStrategy is ReportedStrategy {
 
     /**
      * @notice Get available sovaBTC balance for redemptions
-     * @return Current sovaBTC balance in the strategy
-     */
-    function getAvailableLiquidity() external view returns (uint256) {
-        return IERC20(asset).balanceOf(address(this));
-    }
-    
-    /**
-     * @notice Get available sovaBTC balance (alias for compatibility)
      * @return Current sovaBTC balance in the strategy
      */
     function availableLiquidity() external view returns (uint256) {

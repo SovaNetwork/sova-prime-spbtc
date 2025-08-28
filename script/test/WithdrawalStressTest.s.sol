@@ -61,7 +61,7 @@ contract WithdrawalStressTestScript is Script {
 
         // Check current liquidity
         IBtcVaultStrategy strategy = IBtcVaultStrategy(BTC_VAULT_STRATEGY);
-        uint256 availableLiquidity = strategy.getAvailableLiquidity();
+        uint256 availableLiquidity = strategy.availableLiquidity();
         console2.log("Current Available Liquidity:", availableLiquidity);
 
         // Add more liquidity if needed
@@ -274,7 +274,7 @@ contract WithdrawalStressTestScript is Script {
         IBtcVaultShareToken token = IBtcVaultShareToken(BTC_VAULT_TOKEN);
 
         // Get current liquidity
-        uint256 availableLiquidity = strategy.getAvailableLiquidity();
+        uint256 availableLiquidity = strategy.availableLiquidity();
         console2.log("Available Liquidity:", availableLiquidity);
 
         // Create users requesting more than available liquidity

@@ -19,7 +19,7 @@ contract AddLiquidityScript is Script {
         console.log("sovaBTC address:", SOVABTC);
 
         // Check current liquidity
-        uint256 currentLiquidity = STRATEGY.getAvailableLiquidity();
+        uint256 currentLiquidity = STRATEGY.availableLiquidity();
         console.log("Current available liquidity:", currentLiquidity);
 
         // Check sovaBTC balance
@@ -59,7 +59,7 @@ contract AddLiquidityScript is Script {
         }
 
         // Check new liquidity
-        uint256 newLiquidity = STRATEGY.getAvailableLiquidity();
+        uint256 newLiquidity = STRATEGY.availableLiquidity();
         console.log("New available liquidity:", newLiquidity);
         console.log("Liquidity increase:", newLiquidity - currentLiquidity);
     }

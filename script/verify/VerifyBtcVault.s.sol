@@ -211,7 +211,7 @@ contract VerifyBtcVault is Script {
 
         // Check available liquidity
         IBtcVaultStrategy strategy = IBtcVaultStrategy(contracts.strategy);
-        uint256 liquidity = strategy.getAvailableLiquidity();
+        uint256 liquidity = strategy.availableLiquidity();
         console2.log("Available liquidity:", liquidity);
 
         if (liquidity == 0) {
@@ -231,7 +231,7 @@ contract VerifyBtcVault is Script {
         IBtcVaultStrategy strategy = IBtcVaultStrategy(contracts.strategy);
 
         uint256 totalAssets = strategy.totalCollateralAssets();
-        uint256 availableLiquidity = strategy.getAvailableLiquidity();
+        uint256 availableLiquidity = strategy.availableLiquidity();
 
         console2.log("Total assets:", totalAssets);
         console2.log("Available liquidity:", availableLiquidity);

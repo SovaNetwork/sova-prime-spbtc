@@ -188,11 +188,11 @@ contract BtcVaultRefactorTest is Test {
         // Add liquidity
         sovaBTC.approve(address(strategy), 50e8);
         strategy.addLiquidity(50e8);
-        assertEq(strategy.getAvailableLiquidity(), 50e8);
+        assertEq(strategy.availableLiquidity(), 50e8);
 
         // Remove some liquidity
         strategy.removeLiquidity(20e8, manager);
-        assertEq(strategy.getAvailableLiquidity(), 30e8);
+        assertEq(strategy.availableLiquidity(), 30e8);
 
         vm.stopPrank();
     }
