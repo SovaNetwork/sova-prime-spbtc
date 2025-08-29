@@ -173,21 +173,6 @@ contract BtcVaultStrategy is ReportedStrategy {
         emit CollateralDeposited(msg.sender, token, amount);
     }
 
-    /**
-     * @notice Notify strategy of collateral deposit from BtcVaultToken
-     * @dev No-op function kept for compatibility - actual tracking removed
-     * @param token The collateral token that was deposited
-     * @param amount The amount that was deposited
-     */
-    function notifyCollateralDeposit(address token, uint256 amount) external {
-        // Only the token contract can call this function
-        if (msg.sender != sToken) revert UnauthorizedCaller();
-        
-        // No-op: Balance tracking simplified to use actual balances
-        // Kept for interface compatibility
-        // Event removed as it was confusing (msg.sender is vault, not actual depositor)
-    }
-
     /*//////////////////////////////////////////////////////////////
                         LIQUIDITY MANAGEMENT
     //////////////////////////////////////////////////////////////*/

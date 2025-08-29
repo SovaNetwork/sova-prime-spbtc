@@ -113,7 +113,7 @@ contract DeployMultiNetwork is Script {
         address sovaBTC = collaterals.length > 0 ? collaterals[0].tokenAddress : address(0);
 
         console2.log("Deploying BtcVaultToken...");
-        token = new BtcVaultToken("sovaBTC", "sovaBTC", sovaBTC, address(strategy));
+        token = new BtcVaultToken("spBTC", "spBTC", sovaBTC, address(strategy));
         console2.log("Token deployed at:", address(token));
 
         // Initialize strategy

@@ -81,14 +81,6 @@ interface IBtcVaultStrategy {
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * @notice Notify strategy of collateral deposit from vault
-     * @dev Compatibility hook - no tracking needed as liquidity uses actual balances
-     * @param token The collateral token that was deposited
-     * @param amount The amount that was deposited
-     */
-    function notifyCollateralDeposit(address token, uint256 amount) external;
-
-    /**
      * @notice Withdraw collateral to admin
      * @param token Collateral token to withdraw
      * @param amount Amount to withdraw

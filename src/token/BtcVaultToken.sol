@@ -95,12 +95,6 @@ contract BtcVaultToken is ManagedWithdrawRWA {
 
         // Transfer collateral directly to strategy
         token.safeTransferFrom(msg.sender, strategy, amount);
-        
-        // CRITICAL FIX: Notify strategy of the deposit to keep availableLiquidity in sync
-        // This is essential for sovaBTC deposits to update the liquidity counter
-        // Without this notification, sovaBTC balance would increase but availableLiquidity wouldn't,
-        // breaking withdrawCollateral() and other liquidity-dependent functions in the strategy
-        IBtcVaultStrategy(strategy).notifyCollateralDeposit(token, amount);
 
         // Mint shares to receiver
         _mint(receiver, shares);

@@ -67,7 +67,7 @@ contract MultiNetworkForkTest is Test {
         address sovaBTC = _collaterals.length > 0 ? _collaterals[0].tokenAddress : address(0);
 
         // Deploy token
-        token = new BtcVaultToken("sovaBTC", "sovaBTC", sovaBTC, address(strategy));
+        token = new BtcVaultToken("spBTC", "spBTC", sovaBTC, address(strategy));
 
         // Initialize strategy
         bytes memory initData = abi.encode(address(oracle));
@@ -238,7 +238,7 @@ contract MultiNetworkForkTest is Test {
         BtcVaultStrategy tempStrategy = new BtcVaultStrategy();
         NetworkConfig.CollateralConfig[] memory _collaterals = NetworkConfig.getCollaterals(chainId);
         address sovaBTC = _collaterals.length > 0 ? _collaterals[0].tokenAddress : address(0);
-        BtcVaultToken tempToken = new BtcVaultToken("sovaBTC", "sovaBTC", sovaBTC, address(tempStrategy));
+        BtcVaultToken tempToken = new BtcVaultToken("spBTC", "spBTC", sovaBTC, address(tempStrategy));
 
         uint256 gasUsed = gasStart - gasleft();
         uint256 estimatedCost = gasUsed * networkConfig.maxFeePerGas;

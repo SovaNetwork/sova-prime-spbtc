@@ -429,34 +429,6 @@ contract BtcVaultCriticalFixesTest is Test {
         assertApproxEqAbs(totalShares, 24e18, 1e11, "Total shares: ~10 + 4 + 10 = 24");
     }
 
-    /**
-     * @notice Test that duplicate notifications are handled safely
-     */
-    function test_DefensiveAccounting_DuplicateNotification() public {
-        uint256 depositAmount = 10e8;
-        
-        // Alice deposits sovaBTC
-        vm.startPrank(alice);
-        sovaBTC.approve(address(vaultToken), depositAmount);
-        
-        // Transfer happens
-        sovaBTC.transfer(address(strategy), depositAmount);
-        
-        // Call notifyCollateralDeposit directly (simulating duplicate notification)
-        vm.stopPrank();
-        vm.prank(address(vaultToken));
-        strategy.notifyCollateralDeposit(address(sovaBTC), depositAmount);
-        
-        // Available liquidity should equal actual balance (clamped)
-        assertEq(strategy.availableLiquidity(), depositAmount, "Liquidity clamped to actual balance");
-        
-        // Try duplicate notification
-        vm.prank(address(vaultToken));
-        strategy.notifyCollateralDeposit(address(sovaBTC), depositAmount);
-        
-        // Still should be clamped to actual balance
-        assertEq(strategy.availableLiquidity(), depositAmount, "Liquidity still clamped correctly");
-    }
 
     /*//////////////////////////////////////////////////////////////
                             HELPER FUNCTIONS
