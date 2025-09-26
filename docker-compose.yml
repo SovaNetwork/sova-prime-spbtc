@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  ponder-indexer:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.indexer
+    container_name: sovabtc-ponder-indexer
+    ports:
+      - "42069:42069"
+    environment:
+      - NODE_ENV=development
+      - PONDER_DATABASE_URL=${DATABASE_URL}
+      - BASE_SEPOLIA_RPC_URL=${BASE_SEPOLIA_RPC_URL}
+      - NETWORK=baseSepolia
+      - BASE_VAULT_TOKEN_ADDRESS=0xfF09B2B0AfEe51E29941091C4dd6B635780BC34a
+      - BASE_VAULT_STRATEGY_ADDRESS=0x0A039085Ca2AD68a3FC77A9C5191C22B309126F8
+      - PORT=42069
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:42069/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - sovabtc-network
+
+  scheduler:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.scheduler
+    container_name: sovabtc-scheduler
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=${DATABASE_URL}
+      - BASE_SEPOLIA_RPC_URL=${BASE_SEPOLIA_RPC_URL}
+      - BASE_VAULT_TOKEN_ADDRESS=0xfF09B2B0AfEe51E29941091C4dd6B635780BC34a
+      - BASE_VAULT_STRATEGY_ADDRESS=0x0A039085Ca2AD68a3FC77A9C5191C22B309126F8
+      - PORT=3001
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - sovabtc-network
+    depends_on:
+      - ponder-indexer
+
+networks:
+  sovabtc-network:
+    driver: bridge

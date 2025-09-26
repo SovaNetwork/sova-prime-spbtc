@@ -120,7 +120,8 @@ abstract contract BasicStrategy is IStrategy, CloneableRoleManaged {
      * @param to The address to send the ETH to
      */
     function sendETH(address to) external onlyManager {
-        to.call{value: address(this).balance}("");
+        (bool success,) = to.call{value: address(this).balance}("");
+        require(success, "ETH transfer failed");
     }
 
     /**

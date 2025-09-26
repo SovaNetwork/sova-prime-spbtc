@@ -1,0 +1,105 @@
+name: Verify Contracts on Basescan
+
+on:
+  workflow_dispatch:
+    inputs:
+      network:
+        description: 'Network to verify on'
+        required: true
+        default: 'base-sepolia'
+        type: choice
+        options:
+          - base-sepolia
+          - base
+          - ethereum
+          - arbitrum
+          - optimism
+
+jobs:
+  verify:
+    name: Verify Contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Set environment variables
+        run: |
+          if [ "${{ github.event.inputs.network }}" == "base-sepolia" ]; then
+            echo "CHAIN_ID=84532" >> $GITHUB_ENV
+            echo "RPC_URL=https://base-sepolia.g.alchemy.com/v2/${{ secrets.ALCHEMY_KEY }}" >> $GITHUB_ENV
+            echo "ETHERSCAN_API_KEY=${{ secrets.BASESCAN_API_KEY }}" >> $GITHUB_ENV
+            echo "VAULT_ADDRESS=0x73E27097221d4d9D5893a83350dC7A967b46fab7" >> $GITHUB_ENV
+            echo "QUEUE_ADDRESS=0x22BC73098CE1Ba2CaE5431fb32051cB4fc0F9C52" >> $GITHUB_ENV
+            echo "STRATEGY_ADDRESS=0x740907524EbD6A481a81cE76B5115A4cDDb80099" >> $GITHUB_ENV
+            echo "REGISTRY_ADDRESS=0x15a9983784617aa8892b2677bbaEc23539482B65" >> $GITHUB_ENV
+            echo "ORACLE_ADDRESS=0xDB4479A2360E118CCbD99B88e82522813BDE48f5" >> $GITHUB_ENV
+          fi
+
+      - name: Verify MultiBTCVault
+        run: |
+          forge verify-contract \
+            $VAULT_ADDRESS \
+            src/vaults/MultiBTCVault.sol:MultiBTCVault \
+            --chain-id $CHAIN_ID \
+            --etherscan-api-key $ETHERSCAN_API_KEY \
+            --watch
+        continue-on-error: true
+
+      - name: Verify ManagedRedemptionQueue
+        run: |
+          forge verify-contract \
+            $QUEUE_ADDRESS \
+            src/vaults/ManagedRedemptionQueue.sol:ManagedRedemptionQueue \
+            --chain-id $CHAIN_ID \
+            --etherscan-api-key $ETHERSCAN_API_KEY \
+            --watch
+        continue-on-error: true
+
+      - name: Verify MultiCollateralStrategy
+        run: |
+          forge verify-contract \
+            $STRATEGY_ADDRESS \
+            src/strategies/MultiCollateralStrategy.sol:MultiCollateralStrategy \
+            --chain-id $CHAIN_ID \
+            --etherscan-api-key $ETHERSCAN_API_KEY \
+            --watch
+        continue-on-error: true
+
+      - name: Verify MultiCollateralRegistry
+        run: |
+          forge verify-contract \
+            $REGISTRY_ADDRESS \
+            src/strategies/MultiCollateralRegistry.sol:MultiCollateralRegistry \
+            --chain-id $CHAIN_ID \
+            --etherscan-api-key $ETHERSCAN_API_KEY \
+            --watch
+        continue-on-error: true
+
+      - name: Verify PriceOracleReporter
+        run: |
+          forge verify-contract \
+            $ORACLE_ADDRESS \
+            src/oracles/PriceOracleReporter.sol:PriceOracleReporter \
+            --chain-id $CHAIN_ID \
+            --etherscan-api-key $ETHERSCAN_API_KEY \
+            --watch
+        continue-on-error: true
+
+      - name: Verification Summary
+        run: |
+          echo "## Verification Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Contract | Address | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|---------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| MultiBTCVault | $VAULT_ADDRESS | [View](https://sepolia.basescan.org/address/$VAULT_ADDRESS#code) |" >> $GITHUB_STEP_SUMMARY
+          echo "| ManagedRedemptionQueue | $QUEUE_ADDRESS | [View](https://sepolia.basescan.org/address/$QUEUE_ADDRESS#code) |" >> $GITHUB_STEP_SUMMARY
+          echo "| MultiCollateralStrategy | $STRATEGY_ADDRESS | [View](https://sepolia.basescan.org/address/$STRATEGY_ADDRESS#code) |" >> $GITHUB_STEP_SUMMARY
+          echo "| MultiCollateralRegistry | $REGISTRY_ADDRESS | [View](https://sepolia.basescan.org/address/$REGISTRY_ADDRESS#code) |" >> $GITHUB_STEP_SUMMARY
+          echo "| PriceOracleReporter | $ORACLE_ADDRESS | [View](https://sepolia.basescan.org/address/$ORACLE_ADDRESS#code) |" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,252 @@
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.25;
+
+import {Test} from "forge-std/Test.sol";
+import {console2} from "forge-std/console2.sol";
+import {BtcVaultStrategy} from "../../src/strategy/BtcVaultStrategy.sol";
+import {BtcVaultToken} from "../../src/token/BtcVaultToken.sol";
+import {IERC20} from "forge-std/interfaces/IERC20.sol";
+
+/**
+ * @title E2ETest
+ * @notice End-to-end integration test for deployed BTC vault system
+ * @dev Tests the full flow from deployment to deposits and withdrawals
+ */
+contract E2ETest is Test {
+    // Deployed contract addresses from Base Sepolia
+    address payable constant BTC_VAULT_STRATEGY = payable(0x0A039085Ca2AD68a3FC77A9C5191C22B309126F8);
+    address payable constant BTC_VAULT_TOKEN = payable(0xfF09B2B0AfEe51E29941091C4dd6B635780BC34a);
+    address constant PRICE_REPORTER = 0x698FBBde2c9FF3aF64C0ec48f174d5e8231FAacF;
+    
+    // Test tokens
+    address constant WBTC = 0xe44b2870eFcd6Bb3C9305808012621f438e9636D;
+    address constant TBTC = 0xE2b47f0dD766834b9DD2612D2d3632B05Ca89802;
+    address constant SOVABTC = 0x05aB19d77516414f7333a8fd52cC1F49FF8eAFA9;
+    
+    // Test accounts
+    address deployer = 0x1f53aA5d3b5743BD0D41884124bC07f4d7682Fc1;
+    address user1 = address(0x1111);
+    address user2 = address(0x2222);
+    
+    BtcVaultStrategy strategy;
+    BtcVaultToken vaultToken;
+    
+    function setUp() public {
+        // Fork Base Sepolia at the current block
+        string memory rpcUrl = vm.envString("BASE_SEPOLIA_RPC");
+        vm.createSelectFork(rpcUrl);
+        
+        // Set up contract instances
+        strategy = BtcVaultStrategy(BTC_VAULT_STRATEGY);
+        vaultToken = BtcVaultToken(BTC_VAULT_TOKEN);
+        
+        console2.log("E2E Test Setup Complete");
+        console2.log("Strategy:", address(strategy));
+        console2.log("Token:", address(vaultToken));
+    }
+    
+    function test_ContractDeployment() public view {
+        console2.log("\n=== Testing Contract Deployment ===");
+        
+        // Verify strategy is deployed
+        assertTrue(address(strategy).code.length > 0, "Strategy should be deployed");
+        
+        // Verify token is deployed
+        assertTrue(address(vaultToken).code.length > 0, "Token should be deployed");
+        
+        // Verify token is linked to strategy
+        assertEq(vaultToken.strategy(), address(strategy), "Token should be linked to strategy");
+        
+        console2.log("[PASS] Contracts deployed successfully");
+    }
+    
+    function test_CollateralSupport() public view {
+        console2.log("\n=== Testing Collateral Support ===");
+        
+        // Check WBTC support
+        assertTrue(strategy.isSupportedAsset(WBTC), "WBTC should be supported");
+        // Note: WBTC has 8 decimals
+        
+        // Check TBTC support
+        assertTrue(strategy.isSupportedAsset(TBTC), "TBTC should be supported");
+        // Note: TBTC has 8 decimals (as configured)
+        
+        // Check sovaBTC support
+        assertTrue(strategy.isSupportedAsset(SOVABTC), "sovaBTC should be supported");
+        // Note: sovaBTC has 8 decimals (as configured)
+        
+        console2.log("[PASS] All collaterals properly configured");
+    }
+    
+    function test_DepositFlow() public {
+        console2.log("\n=== Testing Deposit Flow ===");
+        
+        // Setup: Give user1 some WBTC
+        vm.startPrank(deployer);
+        deal(WBTC, user1, 1e8); // 1 WBTC
+        vm.stopPrank();
+        
+        vm.startPrank(user1);
+        
+        // Check initial balance
+        uint256 wbtcBalance = IERC20(WBTC).balanceOf(user1);
+        console2.log("User1 WBTC balance:", wbtcBalance);
+        assertEq(wbtcBalance, 1e8, "User should have 1 WBTC");
+        
+        // Approve vault to spend WBTC
+        IERC20(WBTC).approve(address(vaultToken), 1e8);
+        
+        // Preview deposit
+        uint256 expectedShares = vaultToken.previewDepositCollateral(WBTC, 1e8);
+        console2.log("Expected shares:", expectedShares);
+        
+        // Deposit WBTC
+        uint256 shares = vaultToken.depositCollateral(WBTC, 1e8, user1);
+        console2.log("Received shares:", shares);
+        
+        // Verify deposit
+        assertGt(shares, 0, "Should receive shares");
+        assertEq(shares, expectedShares, "Shares should match preview");
+        assertEq(vaultToken.balanceOf(user1), shares, "User should have shares");
+        assertEq(IERC20(WBTC).balanceOf(user1), 0, "User WBTC should be deposited");
+        
+        vm.stopPrank();
+        
+        console2.log("[PASS] Deposit flow completed successfully");
+    }
+    
+    function test_MultiCollateralDeposit() public {
+        console2.log("\n=== Testing Multi-Collateral Deposits ===");
+        
+        // Setup: Give users different collateral
+        vm.startPrank(deployer);
+        deal(WBTC, user1, 0.5e8); // 0.5 WBTC
+        deal(TBTC, user2, 0.3e8); // 0.3 TBTC
+        vm.stopPrank();
+        
+        // User1 deposits WBTC
+        vm.startPrank(user1);
+        IERC20(WBTC).approve(address(vaultToken), 0.5e8);
+        uint256 shares1 = vaultToken.depositCollateral(WBTC, 0.5e8, user1);
+        console2.log("User1 shares from WBTC:", shares1);
+        vm.stopPrank();
+        
+        // User2 deposits TBTC
+        vm.startPrank(user2);
+        IERC20(TBTC).approve(address(vaultToken), 0.3e8);
+        uint256 shares2 = vaultToken.depositCollateral(TBTC, 0.3e8, user2);
+        console2.log("User2 shares from TBTC:", shares2);
+        vm.stopPrank();
+        
+        // Verify total assets
+        uint256 totalAssets = vaultToken.totalAssets();
+        console2.log("Total assets:", totalAssets);
+        assertEq(totalAssets, 0.8e8, "Total assets should be 0.8 BTC");
+        
+        console2.log("[PASS] Multi-collateral deposits working");
+    }
+    
+    function test_LiquidityManagement() public {
+        console2.log("\n=== Testing Liquidity Management ===");
+        
+        // Check initial liquidity
+        uint256 initialLiquidity = strategy.availableLiquidity();
+        console2.log("Initial liquidity:", initialLiquidity);
+        
+        // Manager adds liquidity
+        vm.startPrank(deployer);
+        deal(SOVABTC, deployer, 10e8); // 10 sovaBTC
+        IERC20(SOVABTC).approve(address(strategy), 10e8);
+        strategy.addLiquidity(10e8);
+        vm.stopPrank();
+        
+        // Check updated liquidity
+        uint256 updatedLiquidity = strategy.availableLiquidity();
+        console2.log("Updated liquidity:", updatedLiquidity);
+        assertEq(updatedLiquidity, initialLiquidity + 10e8, "Liquidity should increase");
+        
+        console2.log("[PASS] Liquidity management working");
+    }
+    
+    function test_WithdrawalFlow() public {
+        console2.log("\n=== Testing Withdrawal Flow ===");
+        
+        // Setup: User deposits first
+        vm.startPrank(deployer);
+        deal(WBTC, user1, 1e8);
+        deal(SOVABTC, address(strategy), 10e8); // Ensure liquidity
+        vm.stopPrank();
+        
+        vm.startPrank(user1);
+        IERC20(WBTC).approve(address(vaultToken), 1e8);
+        uint256 shares = vaultToken.depositCollateral(WBTC, 1e8, user1);
+        console2.log("User1 deposited and received shares:", shares);
+        
+        // Request withdrawal (will revert as it requires manager approval)
+        vm.expectRevert(); // Expected to revert for managed withdrawals
+        vaultToken.redeem(shares, user1, user1);
+        vm.stopPrank();
+        
+        // Manager processes withdrawal (using strategy to call redeem on vault)
+        vm.startPrank(address(strategy));
+        uint256 sovaBTCBefore = IERC20(SOVABTC).balanceOf(user1);
+        vaultToken.redeem(shares, user1, user1);
+        uint256 sovaBTCAfter = IERC20(SOVABTC).balanceOf(user1);
+        console2.log("User1 received sovaBTC:", sovaBTCAfter - sovaBTCBefore);
+        vm.stopPrank();
+        
+        // Verify withdrawal
+        assertGt(sovaBTCAfter, sovaBTCBefore, "User should receive sovaBTC");
+        assertEq(vaultToken.balanceOf(user1), 0, "User shares should be burned");
+        
+        console2.log("[PASS] Withdrawal flow completed");
+    }
+    
+    function test_AdminFunctions() public {
+        console2.log("\n=== Testing Admin Functions ===");
+        
+        vm.startPrank(deployer);
+        
+        // Test adding new collateral
+        address newToken = address(0x9999);
+        strategy.addCollateral(newToken, 8);
+        assertTrue(strategy.isSupportedAsset(newToken), "New token should be supported");
+        console2.log("[PASS] Added new collateral");
+        
+        // Test removing collateral
+        strategy.removeCollateral(newToken);
+        assertFalse(strategy.isSupportedAsset(newToken), "Token should be removed");
+        console2.log("[PASS] Removed collateral");
+        
+        vm.stopPrank();
+        
+        console2.log("[PASS] Admin functions working");
+    }
+    
+    function test_SystemMetrics() public {
+        console2.log("\n=== Testing System Metrics ===");
+        
+        // Get current metrics
+        uint256 totalAssets = vaultToken.totalAssets();
+        uint256 totalSupply = vaultToken.totalSupply();
+        uint256 liquidity = strategy.availableLiquidity();
+        
+        console2.log("Total Assets (TVL):", totalAssets);
+        console2.log("Total Supply (Shares):", totalSupply);
+        console2.log("Available Liquidity:", liquidity);
+        
+        // Calculate share price
+        uint256 sharePrice = totalSupply > 0 ? (totalAssets * 1e18) / totalSupply : 1e18;
+        console2.log("Share Price:", sharePrice);
+        
+        console2.log("[PASS] System metrics accessible");
+    }
+}
+
+/**
+ * @dev Run this test with:
+ * BASE_SEPOLIA_RPC=https://base-sepolia.g.alchemy.com/v2/YOUR_KEY forge test --match-contract E2ETest -vv
+ * 
+ * Or to test specific functions:
+ * forge test --match-test test_DepositFlow -vv
+ */
