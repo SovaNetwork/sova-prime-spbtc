@@ -23,7 +23,7 @@ contract DeployBtcVault is Script {
         address roleManager;
         address sovaBTC;
         address wBTC;
-        address tBTC;
+        address cbBTC;
         uint256 initialLiquidity;
         bool verifyContracts;
     }
@@ -68,8 +68,8 @@ contract DeployBtcVault is Script {
         // Initialize with reporter address encoded
         bytes memory initData = abi.encode(address(reporter));
         btcStrategy.initialize(
-            "BTC Vault Strategy",
-            "BTC-STRAT",
+            "Sova Prime BTC",
+            "spBTC",
             config.roleManager,
             deployer, // manager
             config.sovaBTC,
@@ -88,9 +88,9 @@ contract DeployBtcVault is Script {
             console2.log("Added WBTC as collateral:", config.wBTC);
         }
 
-        if (config.tBTC != address(0)) {
-            btcStrategy.addCollateral(config.tBTC); // 8 decimals for BTC
-            console2.log("Added tBTC as collateral:", config.tBTC);
+        if (config.cbBTC != address(0)) {
+            btcStrategy.addCollateral(config.cbBTC); // 8 decimals for BTC
+            console2.log("Added cbBTC as collateral:", config.cbBTC);
         }
 
         // 5. Add initial sovaBTC liquidity if desired
@@ -151,7 +151,7 @@ contract DeployBtcVault is Script {
         config.roleManager = vm.parseJsonAddress(json, string.concat(key, ".contracts.roleManager"));
         config.sovaBTC = vm.parseJsonAddress(json, string.concat(key, ".contracts.sovaBTC"));
         config.wBTC = vm.parseJsonAddress(json, string.concat(key, ".contracts.wBTC"));
-        config.tBTC = vm.parseJsonAddress(json, string.concat(key, ".contracts.tBTC"));
+        config.cbBTC = vm.parseJsonAddress(json, string.concat(key, ".contracts.cbBTC"));
         config.initialLiquidity = vm.parseJsonUint(json, string.concat(key, ".deployment.initialLiquidity"));
         config.verifyContracts = vm.parseJsonBool(json, string.concat(key, ".verification.verifyContracts"));
 

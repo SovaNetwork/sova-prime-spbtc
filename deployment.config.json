@@ -5,19 +5,19 @@
     "rpcUrl": "https://base-sepolia.g.alchemy.com/v2/e7qIcHOK60Sc4-hvyWA68",
     "contracts": {
       "roleManager": "0x15502fC5e872c8B22BA6dD5e01A7A5bd4f9A3d72",
-      "sovaBTC": "0x05aB19d77516414f7333a8fd52cC1F49FF8eAFA9",
-      "wBTC": "0xe44b2870eFcd6Bb3C9305808012621f438e9636D",
-      "tBTC": "0xE2b47f0dD766834b9DD2612D2d3632B05Ca89802"
+      "sovaBTC": "0x26319Bcf5457b7D95b4115B89CaFDc1484E57Eae",
+      "wBTC": "0xa87a96DBF51B950F283AFDFFd242170C40D90502",
+      "cbBTC": "0x6F6ACaA552936F6545D9b29757876E20d5e3fc93"
     },
     "deployment": {
-      "initialLiquidity": "1000000000",
+      "initialLiquidity": "0",
       "collaterals": [
         {
           "token": "wBTC",
           "decimals": 8
         },
         {
-          "token": "tBTC",
+          "token": "cbBTC",
           "decimals": 8
         }
       ]
