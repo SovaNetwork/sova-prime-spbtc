@@ -121,7 +121,7 @@ contract BtcVaultStrategy is ReportedStrategy {
     function addCollateral(address token) external onlyManager {
         if (token == address(0)) revert InvalidAddress();
         if (supportedAssets[token]) revert AssetAlreadySupported();
-        
+
         // Verify the token has 8 decimals
         // Note: This assumes the token implements decimals() - may revert for non-standard tokens
         try IERC20Decimals(token).decimals() returns (uint8 decimals) {

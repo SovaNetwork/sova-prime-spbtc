@@ -152,15 +152,15 @@ contract BtcVaultBranchCoverageTest is Test {
 
         // Can withdraw up to balance
         strategy.withdrawCollateral(address(sovaBTC), 5e8, user);
-        
+
         // Liquidity automatically updates with balance
         uint256 liquidityAfter = strategy.availableLiquidity();
         assertEq(liquidityAfter, 5e8);
-        
+
         // Cannot withdraw more than remaining balance
         vm.expectRevert();
         strategy.withdrawCollateral(address(sovaBTC), 10e8, user);
-        
+
         vm.stopPrank();
     }
 
