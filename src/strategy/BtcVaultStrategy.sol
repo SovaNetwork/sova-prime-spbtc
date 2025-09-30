@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.25;
 
-import {ReportedStrategy} from "./ReportedStrategy.sol";
+import {ManagedWithdrawReportedStrategy} from "./ManagedWithdrawRWAStrategy.sol";
 import {BtcVaultToken} from "../token/BtcVaultToken.sol";
 import {IERC20} from "forge-std/interfaces/IERC20.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
@@ -14,10 +14,10 @@ interface IERC20Decimals {
 
 /**
  * @title BtcVaultStrategy
- * @notice Multi-collateral BTC vault strategy based on ManagedWithdrawRWAStrategy pattern
- * @dev Extends ReportedStrategy, manages multiple BTC collateral types with managed withdrawals
+ * @notice Multi-collateral BTC vault strategy with managed withdrawals
+ * @dev Extends ManagedWithdrawReportedStrategy, manages multiple BTC collateral types with EIP-712 signed withdrawals
  */
-contract BtcVaultStrategy is ReportedStrategy {
+contract BtcVaultStrategy is ManagedWithdrawReportedStrategy {
     using FixedPointMathLib for uint256;
     using SafeTransferLib for address;
 

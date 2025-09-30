@@ -302,4 +302,157 @@ contract BtcVaultStrategyExtendedTest is Test {
         strategy.removeCollateral(address(newToken));
         vm.stopPrank();
     }
+
+    /*//////////////////////////////////////////////////////////////
+                    INITIALIZATION EDGE CASES
+    //////////////////////////////////////////////////////////////*/
+
+    function test_Initialize_InvalidDecimals() public {
+        // Deploy a new strategy without initializing
+        BtcVaultStrategy newStrategy = new BtcVaultStrategy();
+
+        // Try to initialize with wrong decimals (not 8)
+        bytes memory initData = abi.encode(address(reporter));
+
+        vm.expectRevert(IBtcVaultStrategy.InvalidDecimals.selector);
+        newStrategy.initialize(
+            "BTC Vault Strategy",
+            "BTC-STRAT",
+            address(roleManager),
+            manager,
+            address(sovaBTC),
+            18, // Wrong decimals - should be 8
+            initData
+        );
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                    TOKEN WITHOUT DECIMALS FUNCTION
+    //////////////////////////////////////////////////////////////*/
+
+    function test_AddCollateral_TokenWithoutDecimals() public {
+        // Deploy a contract that doesn't implement decimals()
+        TokenWithoutDecimals badToken = new TokenWithoutDecimals();
+
+        vm.startPrank(manager);
+        vm.expectRevert(IBtcVaultStrategy.InvalidDecimals.selector);
+        strategy.addCollateral(address(badToken));
+        vm.stopPrank();
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                    DEPOSIT COLLATERAL ERROR CASES
+    //////////////////////////////////////////////////////////////*/
+
+    function test_DepositCollateral_UnsupportedAsset() public {
+        vm.startPrank(user);
+        newToken.approve(address(strategy), 1e8);
+
+        vm.expectRevert(IBtcVaultStrategy.AssetNotSupported.selector);
+        strategy.depositCollateral(address(newToken), 1e8);
+        vm.stopPrank();
+    }
+
+    function test_DepositCollateral_ZeroAmount() public {
+        vm.startPrank(user);
+        wbtc.approve(address(strategy), 1e8);
+
+        vm.expectRevert(IBtcVaultStrategy.InvalidAmount.selector);
+        strategy.depositCollateral(address(wbtc), 0);
+        vm.stopPrank();
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                    LIQUIDITY MANAGEMENT TESTS
+    //////////////////////////////////////////////////////////////*/
+
+    function test_AddLiquidity_ZeroAmount() public {
+        vm.startPrank(manager);
+        sovaBTC.approve(address(strategy), 10e8);
+
+        vm.expectRevert(IBtcVaultStrategy.InvalidAmount.selector);
+        strategy.addLiquidity(0);
+        vm.stopPrank();
+    }
+
+    function test_RemoveLiquidity_Success() public {
+        // First add liquidity
+        vm.startPrank(manager);
+        sovaBTC.approve(address(strategy), 10e8);
+        strategy.addLiquidity(10e8);
+
+        uint256 adminBalanceBefore = sovaBTC.balanceOf(admin);
+        uint256 liquidityBefore = strategy.availableLiquidity();
+
+        // Remove liquidity
+        vm.expectEmit(false, false, false, true);
+        emit IBtcVaultStrategy.LiquidityRemoved(5e8);
+        strategy.removeLiquidity(5e8, admin);
+
+        uint256 adminBalanceAfter = sovaBTC.balanceOf(admin);
+        uint256 liquidityAfter = strategy.availableLiquidity();
+
+        assertEq(adminBalanceAfter - adminBalanceBefore, 5e8);
+        assertEq(liquidityBefore - liquidityAfter, 5e8);
+        vm.stopPrank();
+    }
+
+    function test_RemoveLiquidity_ZeroAmount() public {
+        vm.startPrank(manager);
+        vm.expectRevert(IBtcVaultStrategy.InvalidAmount.selector);
+        strategy.removeLiquidity(0, admin);
+        vm.stopPrank();
+    }
+
+    function test_RemoveLiquidity_InsufficientBalance() public {
+        vm.startPrank(manager);
+        vm.expectRevert(IBtcVaultStrategy.InsufficientLiquidity.selector);
+        strategy.removeLiquidity(100e8, admin);
+        vm.stopPrank();
+    }
+
+    function test_RemoveLiquidity_ZeroAddress() public {
+        // First add liquidity
+        vm.startPrank(manager);
+        sovaBTC.approve(address(strategy), 10e8);
+        strategy.addLiquidity(10e8);
+
+        vm.expectRevert(IBtcVaultStrategy.InvalidAddress.selector);
+        strategy.removeLiquidity(5e8, address(0));
+        vm.stopPrank();
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                    APPROVE TOKEN WITHDRAWAL
+    //////////////////////////////////////////////////////////////*/
+
+    function test_ApproveTokenWithdrawal() public {
+        vm.startPrank(manager);
+
+        // Add liquidity first
+        sovaBTC.approve(address(strategy), 10e8);
+        strategy.addLiquidity(10e8);
+
+        // Approve token withdrawal
+        strategy.approveTokenWithdrawal(5e8);
+
+        // Verify allowance was set
+        uint256 allowance = sovaBTC.allowance(address(strategy), address(vaultToken));
+        assertEq(allowance, 5e8);
+
+        vm.stopPrank();
+    }
+}
+
+/**
+ * @dev Mock contract that doesn't implement decimals() to test the catch block
+ */
+contract TokenWithoutDecimals {
+    // Minimal ERC20-like contract without decimals()
+    string public name = "Bad Token";
+    string public symbol = "BAD";
+
+    function balanceOf(address) external pure returns (uint256) {
+        return 0;
+    }
 }
