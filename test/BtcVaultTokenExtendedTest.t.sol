@@ -92,7 +92,7 @@ contract BtcVaultTokenExtendedTest is Test {
     function test_PreviewDepositCollateral_Supported() public view {
         uint256 amount = 1e8; // 1 BTC
         // With NAV-aware logic at initial 1:1 price, shares should be 1e18
-        uint256 expectedShares = 1e18; // NAV-aware calculation at 1:1 
+        uint256 expectedShares = 1e18; // NAV-aware calculation at 1:1
 
         uint256 shares = vaultToken.previewDepositCollateral(address(wbtc), amount);
         assertEq(shares, expectedShares);

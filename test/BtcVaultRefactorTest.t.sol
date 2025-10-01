@@ -136,7 +136,7 @@ contract BtcVaultRefactorTest is Test {
         // Strategy needs to approve vaultToken to pull sovaBTC for redemption payout
         vm.startPrank(address(strategy));
         sovaBTC.approve(address(vaultToken), depositAmount);
-        
+
         uint256 sovaBTCBefore = sovaBTC.balanceOf(user1);
 
         // Strategy calls redeem directly

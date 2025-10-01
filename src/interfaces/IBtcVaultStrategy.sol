@@ -75,7 +75,6 @@ interface IBtcVaultStrategy {
      */
     function removeLiquidity(uint256 amount, address to) external;
 
-
     /*//////////////////////////////////////////////////////////////
                         VAULT OPERATIONS
     //////////////////////////////////////////////////////////////*/
@@ -111,5 +110,4 @@ interface IBtcVaultStrategy {
      * @return Current sovaBTC balance in the strategy
      */
     function availableLiquidity() external view returns (uint256);
-
 }
