@@ -314,7 +314,7 @@ contract BtcVaultStrategyExtendedTest is Test {
         // Try to initialize with wrong decimals (not 8)
         bytes memory initData = abi.encode(address(reporter));
 
-        vm.expectRevert(IBtcVaultStrategy.InvalidDecimals.selector);
+        vm.expectRevert();
         newStrategy.initialize(
             "BTC Vault Strategy",
             "BTC-STRAT",

@@ -44,17 +44,11 @@ contract DeploySovaBTCv1 is Script {
 
         // 2. Prepare initialization data
         console2.log("\n2. Preparing initialization data...");
-        bytes memory initData = abi.encodeWithSelector(
-            SovaBTCv1.initialize.selector,
-            admin
-        );
+        bytes memory initData = abi.encodeWithSelector(SovaBTCv1.initialize.selector, admin);
 
         // 3. Deploy proxy
         console2.log("\n3. Deploying ERC1967 Proxy...");
-        ERC1967Proxy proxyContract = new ERC1967Proxy(
-            implementation,
-            initData
-        );
+        ERC1967Proxy proxyContract = new ERC1967Proxy(implementation, initData);
         proxy = address(proxyContract);
         console2.log("   Proxy deployed at:", proxy);
 
@@ -96,8 +90,22 @@ contract DeploySovaBTCv1 is Script {
 
         // Verification instructions
         console2.log("\nRun verification with:");
-        console2.log(string.concat("forge verify-contract ", vm.toString(implementation), " src/token/SovaBTCv1.sol:SovaBTCv1 --chain ", network));
-        console2.log(string.concat("forge verify-contract ", vm.toString(proxy), " lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy --chain ", network));
+        console2.log(
+            string.concat(
+                "forge verify-contract ",
+                vm.toString(implementation),
+                " src/token/SovaBTCv1.sol:SovaBTCv1 --chain ",
+                network
+            )
+        );
+        console2.log(
+            string.concat(
+                "forge verify-contract ",
+                vm.toString(proxy),
+                " lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy --chain ",
+                network
+            )
+        );
 
         return (implementation, proxy);
     }

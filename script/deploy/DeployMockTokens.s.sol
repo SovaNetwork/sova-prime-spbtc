@@ -91,8 +91,24 @@ contract DeployMockTokens is Script {
 
         // Verification instructions
         console2.log("\nRun verification with:");
-        console2.log(string.concat("forge verify-contract ", vm.toString(wbtc), " src/mocks/MockERC20.sol:MockERC20 --chain ", network, " --constructor-args $(cast abi-encode \"constructor(string,string,uint8)\" \"Wrapped BTC\" \"WBTC\" 8)"));
-        console2.log(string.concat("forge verify-contract ", vm.toString(cbbtc), " src/mocks/MockERC20.sol:MockERC20 --chain ", network, " --constructor-args $(cast abi-encode \"constructor(string,string,uint8)\" \"Coinbase Wrapped BTC\" \"cbBTC\" 8)"));
+        console2.log(
+            string.concat(
+                "forge verify-contract ",
+                vm.toString(wbtc),
+                " src/mocks/MockERC20.sol:MockERC20 --chain ",
+                network,
+                " --constructor-args $(cast abi-encode \"constructor(string,string,uint8)\" \"Wrapped BTC\" \"WBTC\" 8)"
+            )
+        );
+        console2.log(
+            string.concat(
+                "forge verify-contract ",
+                vm.toString(cbbtc),
+                " src/mocks/MockERC20.sol:MockERC20 --chain ",
+                network,
+                " --constructor-args $(cast abi-encode \"constructor(string,string,uint8)\" \"Coinbase Wrapped BTC\" \"cbBTC\" 8)"
+            )
+        );
 
         return (wbtc, cbbtc);
     }
