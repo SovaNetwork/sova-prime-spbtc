@@ -102,4 +102,28 @@ contract BtcVaultStrategy is ManagedWithdrawReportedStrategy {
     function availableLiquidity() external view returns (uint256) {
         return CollateralViewLib.availableLiquidity(asset);
     }
+
+    /*//////////////////////////////////////////////////////////////
+                            EIP-712 OVERRIDE
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice EIP-712 Type Hash Constants
+    bytes32 private constant EIP712_DOMAIN_TYPEHASH =
+        keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
+
+    /**
+     * @notice Calculate the EIP-712 domain separator with correct contract name
+     * @return The domain separator
+     */
+    function _domainSeparator() internal view override returns (bytes32) {
+        return keccak256(
+            abi.encode(
+                EIP712_DOMAIN_TYPEHASH,
+                keccak256(bytes("BtcVaultStrategy")),
+                keccak256(bytes("V1")),
+                block.chainid,
+                address(this)
+            )
+        );
+    }
 }
