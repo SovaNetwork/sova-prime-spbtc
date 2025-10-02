@@ -215,7 +215,7 @@ contract ManagedWithdrawReportedStrategy is ReportedStrategy {
      * @notice Calculate the EIP-712 domain separator
      * @return The domain separator
      */
-    function _domainSeparator() internal view returns (bytes32) {
+    function _domainSeparator() internal view virtual returns (bytes32) {
         return keccak256(
             abi.encode(
                 EIP712_DOMAIN_TYPEHASH,
