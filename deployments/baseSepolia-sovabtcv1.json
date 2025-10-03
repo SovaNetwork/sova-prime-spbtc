@@ -1,7 +1,7 @@
 {
-  "admin": "0x1b7927F77ec63DBa7Ee88C6cda6814d33c09Cc22",
-  "deployedBlock": 31737562,
-  "implementation": "0x96C9383841Cc19E53DD7aa8155675d0C104058f2",
-  "proxy": "0x26319Bcf5457b7D95b4115B89CaFDc1484E57Eae",
-  "timestamp": 1759243412
+  "admin": "0xa75B02e7BCdA37233Edb65Ea621cc6FD98B2d034",
+  "deployedBlock": 23493860,
+  "implementation": "0xa91aB5B04aDC98d65f51b40B05ca19c2CB1Bf9b2",
+  "proxy": "0x528D47215fbFB355371F21CD9099cA859B03d500",
+  "timestamp": 1759453583
 }

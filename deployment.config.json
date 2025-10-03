@@ -48,6 +48,27 @@
       "blockExplorer": "https://basescan.org"
     }
   },
+  "ethereumMainnet": {
+    "network": "mainnet",
+    "chainId": 1,
+    "rpcUrl": "${ETH_RPC_URL}",
+    "contracts": {
+      "roleManager": "0xD1880cE56803336f6D75D6611e1A50C37CEC6919",
+      "sovaBTC": "0xA11e418F06818E8f2E5af10c1a329088CF9b3BB4",
+      "wBTC": "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+      "cbBTC": "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf",
+      "usdc": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+    },
+    "deployment": {
+      "initialLiquidity": "0",
+      "collaterals": []
+    },
+    "verification": {
+      "etherscanApiKey": "${ETHERSCAN_API_KEY}",
+      "verifyContracts": true,
+      "blockExplorer": "https://etherscan.io"
+    }
+  },
   "localhost": {
     "network": "localhost",
     "chainId": 31337,
